@@ -1,0 +1,76 @@
+{
+  "record_type": "t6-release-gate-preflight",
+  "checked_at": "2026-10-04T00:00:00+08:00",
+  "gate": "fail",
+  "checks": [
+    {
+      "check_id": "projects_router_registered",
+      "passed": false,
+      "path": "backend/app/main.py",
+      "missing_markers": [
+        "app.api.projects"
+      ]
+    },
+    {
+      "check_id": "research_schema_and_restart_interrupt_wired",
+      "passed": false,
+      "path": "backend/app/db/sqlite.py",
+      "missing_markers": [
+        "init_research_schema",
+        "interrupt_incomplete_tasks"
+      ]
+    },
+    {
+      "check_id": "research_task_runner_wired",
+      "passed": false,
+      "path": "backend/app/jobs.py",
+      "missing_markers": [
+        "run_research_task"
+      ]
+    },
+    {
+      "check_id": "t2_t1_adapter_available",
+      "passed": false,
+      "paths": [
+        "backend/app/research/extraction.py"
+      ],
+      "missing_paths": [
+        "backend/app/research/extraction.py"
+      ]
+    },
+    {
+      "check_id": "t5_projection_and_query_available",
+      "passed": false,
+      "paths": [
+        "backend/app/research/graph_projection.py",
+        "backend/app/research/graph_queries.py",
+        "docs/parallel-dev/handoffs/T5.md"
+      ],
+      "missing_paths": [
+        "docs/parallel-dev/handoffs/T5.md"
+      ]
+    },
+    {
+      "check_id": "research_frontend_routes_registered",
+      "passed": false,
+      "path": "frontend/src/App.tsx",
+      "missing_markers": [
+        "/research",
+        "ResearchProjectsPage",
+        "ResearchProjectPage"
+      ]
+    }
+  ],
+  "failed_checks": [
+    "projects_router_registered",
+    "research_schema_and_restart_interrupt_wired",
+    "research_task_runner_wired",
+    "t2_t1_adapter_available",
+    "t5_projection_and_query_available",
+    "research_frontend_routes_registered"
+  ],
+  "limitations": [
+    "This is a static integration preflight, not a live API or service test.",
+    "A passing preflight does not replace automated or real integration acceptance."
+  ]
+}

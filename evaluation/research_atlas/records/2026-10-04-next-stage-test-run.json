@@ -1,0 +1,29 @@
+{
+  "record_type": "t6-next-stage-automated-acceptance",
+  "run_date": "2026-10-04",
+  "contract_version": "research-v1.1",
+  "command": "powershell -ExecutionPolicy Bypass -File evaluation/research_atlas/run_acceptance.ps1",
+  "result": "pass",
+  "stages": [
+    {"name": "research_backend", "passed": 106, "failed": 0},
+    {"name": "legacy_backend", "passed": 116, "failed": 0},
+    {"name": "frontend_print_jsdom", "passed": 2, "failed": 0},
+    {"name": "static_preflight", "passed": 11, "failed": 0},
+    {"name": "synthetic_scorer_self_check", "completed_records": 1, "incomplete_excluded": 1}
+  ],
+  "boundaries": {
+    "sqlite": "temporary test directories only",
+    "models": "mocked; no real provider call",
+    "graph": "mocked; no real Neo4j call",
+    "papers": "invented fixtures; no real-paper effectiveness claim",
+    "print": "jsdom only; no generated PDF inspection"
+  },
+  "real_validation_not_run": [
+    "authorized model provider",
+    "GROBID",
+    "Neo4j",
+    "browser PDF rendering",
+    "human gold annotations",
+    "A/B/C task comparison"
+  ]
+}

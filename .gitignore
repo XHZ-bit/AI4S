@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+.venv/
+backend/data/
+.env
+node_modules/
+dist/
+*.egg-info/
+
+.pytest_tmp*/
+
+.ui_validation/
+
+.local-backups/
+.codeartsdoer/
+.tmp/
+
+# Regenerable test/compiler caches, never source or release evidence.
+.pytest_cache/
+.pytest-tmp/
+.ruff_cache/
+*.tsbuildinfo

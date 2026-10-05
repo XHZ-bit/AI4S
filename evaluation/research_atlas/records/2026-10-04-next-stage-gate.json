@@ -1,0 +1,84 @@
+{
+  "record_type": "t6-release-gate-preflight",
+  "checked_at": "2026-10-04T00:00:00+08:00",
+  "gate": "pass",
+  "checks": [
+    {
+      "check_id": "projects_router_registered",
+      "passed": true,
+      "path": "backend/app/main.py",
+      "missing_markers": []
+    },
+    {
+      "check_id": "research_schema_and_restart_interrupt_wired",
+      "passed": true,
+      "path": "backend/app/db/sqlite.py",
+      "missing_markers": []
+    },
+    {
+      "check_id": "research_task_runner_wired",
+      "passed": true,
+      "path": "backend/app/jobs.py",
+      "missing_markers": []
+    },
+    {
+      "check_id": "t2_t1_adapter_available",
+      "passed": true,
+      "paths": [
+        "backend/app/research/extraction.py"
+      ],
+      "missing_paths": []
+    },
+    {
+      "check_id": "t5_projection_and_query_available",
+      "passed": true,
+      "paths": [
+        "backend/app/research/graph_projection.py",
+        "backend/app/research/graph_queries.py",
+        "docs/parallel-dev/handoffs/T5.md"
+      ],
+      "missing_paths": []
+    },
+    {
+      "check_id": "research_frontend_routes_registered",
+      "passed": true,
+      "path": "frontend/src/App.tsx",
+      "missing_markers": []
+    },
+    {
+      "check_id": "generation_failure_and_json_export_are_explicit",
+      "passed": true,
+      "path": "backend/app/research/service.py",
+      "missing_markers": []
+    },
+    {
+      "check_id": "projection_retry_and_snapshot_exports_registered",
+      "passed": true,
+      "path": "backend/app/api/projects.py",
+      "missing_markers": []
+    },
+    {
+      "check_id": "print_page_labels_saved_and_unsaved_content",
+      "passed": true,
+      "path": "frontend/src/pages/research/ResearchPrintPage.tsx",
+      "missing_markers": []
+    },
+    {
+      "check_id": "print_page_boundary_tests_available",
+      "passed": true,
+      "path": "frontend/src/__tests__/research/print.test.tsx",
+      "missing_markers": []
+    },
+    {
+      "check_id": "release_boundary_acceptance_tests_available",
+      "passed": true,
+      "path": "backend/tests/test_research_acceptance_preintegration.py",
+      "missing_markers": []
+    }
+  ],
+  "failed_checks": [],
+  "limitations": [
+    "This is a static integration preflight, not a live API or service test.",
+    "A passing preflight does not replace automated or real integration acceptance."
+  ]
+}

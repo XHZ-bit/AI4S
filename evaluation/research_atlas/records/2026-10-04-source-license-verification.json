@@ -1,0 +1,22 @@
+{
+  "record_type": "source-license-verification",
+  "verified_at": "2026-10-04T00:00:00+08:00",
+  "method": "Opened each specified arXiv abstract record and its displayed license link; no paper PDF was downloaded.",
+  "verified_sources": [
+    {"paper_id": "arxiv:2011.08785", "version": "v1", "license": "arXiv non-exclusive license to distribute 1.0"},
+    {"paper_id": "arxiv:2106.08265", "version": "v2", "license": "arXiv non-exclusive license to distribute 1.0"},
+    {"paper_id": "arxiv:2111.07677", "version": "v2", "license": "arXiv non-exclusive license to distribute 1.0"},
+    {"paper_id": "arxiv:2205.13504", "version": "v3", "license": "CC BY 4.0"},
+    {"paper_id": "arxiv:2211.14730", "version": "v2", "license": "arXiv non-exclusive license to distribute 1.0"},
+    {"paper_id": "arxiv:2310.06625", "version": "v4", "license": "CC BY-NC-ND 4.0"}
+  ],
+  "decision": {
+    "paper_files_in_public_artifact": false,
+    "reason": "Public access is not treated as downstream redistribution permission. The default artifact contains metadata and links only."
+  },
+  "limitations": [
+    "This is an operational source/licensing check, not legal advice.",
+    "Publisher versions, embedded third-party figures, trademarks, privacy, and moral rights were not separately cleared."
+  ]
+}
+

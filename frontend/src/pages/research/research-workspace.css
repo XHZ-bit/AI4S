@@ -1,0 +1,92 @@
+.research-page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.research-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.research-measurement-row,
+.research-constraint-row,
+.research-evidence-row {
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.research-evidence-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.research-graph {
+  max-width: 100%;
+  overflow: auto;
+}
+
+.research-graph-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+  gap: 16px;
+}
+
+.research-graph-canvas {
+  min-height: 560px;
+  overflow: hidden;
+  border: 1px solid #d9d9d9;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.research-print-page {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 32px;
+  color: #111;
+  background: white;
+}
+
+.research-print-status,
+.research-print-page .ant-alert,
+.research-print-page .ant-descriptions {
+  margin-bottom: 20px;
+}
+
+.research-print-step {
+  break-inside: avoid;
+  margin-bottom: 24px;
+}
+
+.research-print-reference {
+  display: inline-block;
+  font-family: Arial, sans-serif;
+  white-space: nowrap;
+  letter-spacing: normal;
+}
+
+@media (max-width: 640px) {
+  .research-page-heading { flex-direction: column; }
+  .research-card-grid { grid-template-columns: 1fr; }
+  .research-graph-layout { grid-template-columns: 1fr; }
+  .research-print-page { padding: 16px; }
+  .research-plans .ant-card-head-wrapper { flex-wrap: wrap; gap: 8px; }
+  .research-plans .ant-card-extra { margin-inline-start: 0; max-width: 100%; }
+  .research-plans .ant-card-extra > .ant-space { flex-wrap: wrap; }
+  .research-plans .ant-card-body { padding: 16px; }
+}
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { background: white !important; }
+  .research-print-actions { display: none !important; }
+  .research-print-page { max-width: none; padding: 0; font-family: Arial, "Microsoft YaHei", sans-serif; }
+  .research-print-page h1, .research-print-page h2, .research-print-page h3 { break-after: avoid; }
+  .research-print-status { display: block; }
+  .research-print-page .ant-alert { border: 1px solid #555; }
+  .research-print-page a { color: black; text-decoration: none; }
+}

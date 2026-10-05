@@ -1,0 +1,50 @@
+{
+  "record_type": "t6-preintegration-test-run",
+  "run_date": "2026-10-04",
+  "environment": "local Windows workspace; temporary SQLite; mock model/graph services",
+  "runs": [
+    {
+      "command": "python -m pytest -q tests/test_research_acceptance_preintegration.py --basetemp=../evaluation/research_atlas/.tmp/pytest-preintegration",
+      "result": "10 passed in 1.33s; final rerun 10 passed in 1.20s",
+      "classification": "synthetic pre-integration acceptance"
+    },
+    {
+      "command": "python -m ruff check tests/test_research_acceptance_preintegration.py ../evaluation/research_atlas/evaluate.py ../evaluation/research_atlas/check_release_gate.py",
+      "result": "All checks passed",
+      "classification": "static quality"
+    },
+    {
+      "command": "python -m py_compile ../evaluation/research_atlas/evaluate.py ../evaluation/research_atlas/check_release_gate.py",
+      "result": "passed",
+      "classification": "syntax"
+    },
+    {
+      "command": "python -m pytest -q tests/test_health.py tests/test_cases.py tests/test_roadmap_api.py --basetemp=../evaluation/research_atlas/.tmp/pytest-legacy-regression",
+      "result": "27 passed in 2.32s",
+      "classification": "selected legacy regression"
+    },
+    {
+      "command": "PowerShell-expanded test_research*.py suite",
+      "result": "95 passed, 1 failed in 2.61s",
+      "classification": "Research Atlas synthetic/contract regression",
+      "failure": "test_research_t1_storage.py::test_real_t5_three_query_modes_and_sync_status"
+    },
+    {
+      "command": "python evaluation/research_atlas/evaluate.py --input evaluation/research_atlas/fixtures/synthetic_annotations.jsonl --output evaluation/research_atlas/records/2026-10-04-synthetic-scorer-check.json",
+      "result": "passed; 1 completed synthetic record scored and 1 incomplete record excluded",
+      "classification": "scorer self-check"
+    },
+    {
+      "command": "python evaluation/research_atlas/check_release_gate.py --output evaluation/research_atlas/records/2026-10-04-preintegration-gate.json",
+      "result": "exit 1; gate fail with 6 failed integration checks",
+      "classification": "release preflight"
+    }
+  ],
+  "not_run": [
+    "real paper extraction effectiveness",
+    "real model API",
+    "real Neo4j",
+    "real browser end-to-end workflow",
+    "A/B/C internal task comparison"
+  ]
+}

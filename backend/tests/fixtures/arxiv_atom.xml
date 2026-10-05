@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <id>http://arxiv.org/abs/2401.12345v2</id>
+    <updated>2024-03-01T00:00:00Z</updated>
+    <published>2024-01-22T18:59:00Z</published>
+    <title>  Diffusion Policy for Robot Manipulation </title>
+    <summary>  We propose a diffusion-based policy. </summary>
+    <author><name>Cheng Chi</name></author>
+    <author><name>Shuran Song</name></author>
+    <category term="cs.RO"/>
+    <category term="cs.LG"/>
+    <link href="http://arxiv.org/pdf/2401.12345v2" title="pdf" type="application/pdf"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2310.08882v1</id>
+    <published>2023-10-12T00:00:00Z</published>
+    <title>DreamerV3</title>
+    <summary>Mastering diverse domains.</summary>
+    <author><name>Danijar Hafner</name></author>
+    <category term="cs.LG"/>
+  </entry>
+</feed>

@@ -1,0 +1,8 @@
+.case-study { min-width: 0; overflow-wrap: anywhere; }
+.case-study .ant-space-item, .case-study .ant-col { min-width: 0; }
+.case-study .ant-space-vertical { max-width: 100%; }
+.case-study input[type="file"] { max-width: 100%; }
+.case-study .ant-typography code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.case-study .ant-collapse-header-text { min-width: 0; overflow-wrap: anywhere; }
+.case-study .ant-btn { max-width: 100%; white-space: normal; height: auto; min-height: 32px; }
+.case-study > .ant-space-item { width: 100%; max-width: 100%; }

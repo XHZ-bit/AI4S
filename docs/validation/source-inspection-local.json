@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "case_id": "diffusion-policy-intro",
+  "case_version": "1.0.0",
+  "commit": "5ba07ac6661db573af695b419a7947ecb704690f",
+  "scope": "source_inspection",
+  "run_id": "06b18737-e69f-41a2-a8af-e98f29c0ee0e",
+  "created_at": "2026-09-30T08:59:18.440112+00:00",
+  "environment": {
+    "python": "3.13.9",
+    "system": "Windows",
+    "machine": "AMD64"
+  },
+  "files": [
+    {
+      "path": "diffusion_policy/policy/base_lowdim_policy.py",
+      "sha256": "80779d2492f629be926f0788e763fb3d33beba024ed94c4327bc8eae5f4100bb"
+    },
+    {
+      "path": "diffusion_policy/config/task/pusht_lowdim.yaml",
+      "sha256": "f623b6225002d9d754ec452a8e57c07ae633cf757b388d60fc98773d213eb384"
+    },
+    {
+      "path": "eval.py",
+      "sha256": "e62694214cce4265ad783d1352713e25e963fb6684365ff1f0f4db08e57ade12"
+    }
+  ],
+  "checks": [
+    {
+      "id": "python_version",
+      "passed": true
+    },
+    {
+      "id": "policy_interface",
+      "passed": true
+    },
+    {
+      "id": "observation_shape",
+      "passed": true
+    },
+    {
+      "id": "action_shape",
+      "passed": true
+    },
+    {
+      "id": "observation_dimension",
+      "passed": true
+    },
+    {
+      "id": "action_dimension",
+      "passed": true
+    },
+    {
+      "id": "checkpoint_option",
+      "passed": true
+    },
+    {
+      "id": "evaluation_log",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,95 @@
+{
+  "manifest_version": "research-atlas-eval-v1",
+  "verified_at": "2026-10-04T00:00:00+08:00",
+  "verification_scope": "arXiv identity, displayed version, and license link only",
+  "artifact_policy": {
+    "paper_bytes_in_repository": false,
+    "training_data_downloaded": false,
+    "model_weights_downloaded": false,
+    "public_access_equals_redistribution_permission": false,
+    "default_redistribution_decision": "exclude_original_full_text_from_public_artifacts"
+  },
+  "contamination": {
+    "same_domain_holdout_answers_created": false,
+    "used_by_development": false,
+    "details": null
+  },
+  "sources": [
+    {
+      "paper_id": "arxiv:2011.08785",
+      "title": "PaDiM: a Patch Distribution Modeling Framework for Anomaly Detection and Localization",
+      "partition": "development",
+      "domain": "image_anomaly_detection",
+      "arxiv_version": "v1",
+      "source_url": "https://arxiv.org/abs/2011.08785",
+      "license_name": "arXiv non-exclusive license to distribute 1.0",
+      "license_url": "https://arxiv.org/licenses/nonexclusive-distrib/1.0/",
+      "redistribution_status": "not_authorized_by_recorded_license",
+      "redistribution_note": "The recorded grant authorizes arXiv to distribute; it is not a general downstream redistribution license."
+    },
+    {
+      "paper_id": "arxiv:2106.08265",
+      "title": "Towards Total Recall in Industrial Anomaly Detection",
+      "common_name": "PatchCore",
+      "partition": "development",
+      "domain": "image_anomaly_detection",
+      "arxiv_version": "v2",
+      "source_url": "https://arxiv.org/abs/2106.08265",
+      "license_name": "arXiv non-exclusive license to distribute 1.0",
+      "license_url": "https://arxiv.org/licenses/nonexclusive-distrib/1.0/",
+      "redistribution_status": "not_authorized_by_recorded_license",
+      "redistribution_note": "The recorded grant authorizes arXiv to distribute; it is not a general downstream redistribution license."
+    },
+    {
+      "paper_id": "arxiv:2111.07677",
+      "title": "FastFlow: Unsupervised Anomaly Detection and Localization via 2D Normalizing Flows",
+      "partition": "same_domain_holdout",
+      "domain": "image_anomaly_detection",
+      "arxiv_version": "v2",
+      "source_url": "https://arxiv.org/abs/2111.07677",
+      "license_name": "arXiv non-exclusive license to distribute 1.0",
+      "license_url": "https://arxiv.org/licenses/nonexclusive-distrib/1.0/",
+      "redistribution_status": "not_authorized_by_recorded_license",
+      "redistribution_note": "No paper bytes or answer labels are included. Holdout annotation is incomplete."
+    },
+    {
+      "paper_id": "arxiv:2205.13504",
+      "title": "Are Transformers Effective for Time Series Forecasting?",
+      "common_name": "DLinear",
+      "partition": "cross_domain",
+      "domain": "time_series_forecasting",
+      "arxiv_version": "v3",
+      "source_url": "https://arxiv.org/abs/2205.13504",
+      "license_name": "Creative Commons Attribution 4.0 International",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "redistribution_status": "permitted_with_conditions",
+      "redistribution_note": "Redistribution requires attribution, a license link, and change indication. The project still excludes the original paper from the default public artifact."
+    },
+    {
+      "paper_id": "arxiv:2211.14730",
+      "title": "A Time Series is Worth 64 Words: Long-term Forecasting with Transformers",
+      "common_name": "PatchTST",
+      "partition": "cross_domain",
+      "domain": "time_series_forecasting",
+      "arxiv_version": "v2",
+      "source_url": "https://arxiv.org/abs/2211.14730",
+      "license_name": "arXiv non-exclusive license to distribute 1.0",
+      "license_url": "https://arxiv.org/licenses/nonexclusive-distrib/1.0/",
+      "redistribution_status": "not_authorized_by_recorded_license",
+      "redistribution_note": "The recorded grant authorizes arXiv to distribute; it is not a general downstream redistribution license."
+    },
+    {
+      "paper_id": "arxiv:2310.06625",
+      "title": "iTransformer: Inverted Transformers Are Effective for Time Series Forecasting",
+      "partition": "cross_domain",
+      "domain": "time_series_forecasting",
+      "arxiv_version": "v4",
+      "source_url": "https://arxiv.org/abs/2310.06625",
+      "license_name": "Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International",
+      "license_url": "https://creativecommons.org/licenses/by-nc-nd/4.0/",
+      "redistribution_status": "permitted_with_conditions",
+      "redistribution_note": "Only noncommercial, attributed sharing of unchanged material is covered. Modified material may not be distributed. The project excludes the original paper from the default public artifact."
+    }
+  ]
+}
+

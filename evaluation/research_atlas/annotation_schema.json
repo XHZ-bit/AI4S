@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "research-atlas-annotation-v1",
+  "title": "Research Atlas human annotation and evaluation record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "record_id",
+    "partition",
+    "paper_id",
+    "task_id",
+    "annotation_status",
+    "annotator",
+    "gold_fields",
+    "predicted_fields",
+    "manual_actions",
+    "condition_checks",
+    "citation_checks",
+    "plan_sections",
+    "time_minutes",
+    "contamination"
+  ],
+  "properties": {
+    "record_id": {"type": "string", "minLength": 1},
+    "partition": {
+      "enum": ["development", "same_domain_holdout", "cross_domain", "synthetic"]
+    },
+    "paper_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "annotation_status": {"enum": ["incomplete", "completed"]},
+    "annotator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "human_reviewed", "completed_at"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "human_reviewed": {"type": "boolean"},
+        "completed_at": {"type": ["string", "null"], "format": "date-time"},
+        "notes": {"type": ["string", "null"]}
+      }
+    },
+    "gold_fields": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/field"}
+    },
+    "predicted_fields": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/field"}
+    },
+    "manual_actions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["added", "corrected", "removed"],
+      "properties": {
+        "added": {"type": "integer", "minimum": 0},
+        "corrected": {"type": "integer", "minimum": 0},
+        "removed": {"type": "integer", "minimum": 0}
+      }
+    },
+    "condition_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check_id", "expected", "actual"],
+        "properties": {
+          "check_id": {"type": "string", "minLength": 1},
+          "expected": {"enum": ["compatible", "incompatible", "insufficient"]},
+          "actual": {"enum": ["compatible", "incompatible", "insufficient"]},
+          "notes": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "citation_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["evidence_id", "located"],
+        "properties": {
+          "evidence_id": {"type": "string", "minLength": 1},
+          "located": {"type": "boolean"},
+          "notes": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "plan_sections": {
+      "type": "object",
+      "additionalProperties": {"type": "boolean"},
+      "required": ["objective", "route", "data_and_split", "metrics", "steps", "risks"]
+    },
+    "time_minutes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preparation", "review", "correction"],
+      "properties": {
+        "preparation": {"type": "number", "minimum": 0},
+        "review": {"type": "number", "minimum": 0},
+        "correction": {"type": "number", "minimum": 0}
+      }
+    },
+    "contamination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["used_by_development", "details"],
+      "properties": {
+        "used_by_development": {"type": "boolean"},
+        "details": {"type": ["string", "null"]}
+      }
+    }
+  },
+  "$defs": {
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field_id", "kind", "value", "finding_status", "evidence"],
+      "properties": {
+        "field_id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["method", "experiment_setting", "measurement"]},
+        "value": {},
+        "finding_status": {
+          "enum": ["unknown", "not_found", "not_parsed", "conflicting", "reported"]
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["document_version", "page", "passage_id", "table_id", "row_label", "column_label"],
+          "properties": {
+            "document_version": {"type": ["string", "null"]},
+            "page": {"type": ["integer", "null"], "minimum": 1},
+            "passage_id": {"type": ["string", "null"]},
+            "table_id": {"type": ["string", "null"]},
+            "row_label": {"type": ["string", "null"]},
+            "column_label": {"type": ["string", "null"]}
+          }
+        }
+      }
+    }
+  }
+}
+
