@@ -27,6 +27,7 @@ const api = vi.hoisted(() => {
 const papers = vi.hoisted(() => ({ listPapers: vi.fn(), uploadPdf: vi.fn() }));
 vi.mock("../../api/projects", () => api);
 vi.mock("../../api/papers", () => papers);
+vi.mock("../../api/assistant", async importOriginal => ({...await importOriginal<typeof import("../../api/assistant")>(),getInsights:vi.fn(async()=>({candidates:facts.experiment_settings.map(s=>({id:s.id,checks:[{dimension:"memory",actual:null,status:"unknown",reason:"资源未报告"}]}))}))}));
 
 beforeEach(() => {
   localStorage.clear();
@@ -76,7 +77,7 @@ test("upload failure is shown without inventing a linked paper", async () => {
 test("comparison separates project constraints from literature comparability", async () => {
   render(<ComparisonPanel project={project} />);
   expect((await screen.findAllByText("课题约束匹配")).length).toBe(2);
-  expect(screen.getAllByText("未知/待补").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("信息不足").length).toBeGreaterThan(0);
   const checks = screen.getAllByRole("checkbox");
   fireEvent.click(checks[0]); fireEvent.click(checks[1]);
   fireEvent.click(screen.getByRole("button", { name: /比较选中的 2 个候选/ }));

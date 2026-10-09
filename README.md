@@ -2,9 +2,15 @@
 
 Research Atlas 同时保留原有单篇论文学习工作台，并新增课题工作流：**建立课题 → 关联多篇论文 → 提取并确认方法与实验条件 → 比较候选 → 用户选定路线 → 编辑、保存和导出首轮验证方案**。原文证据与知识图谱提供上下文，但来源可定位不代表科学结论正确。
 
+2026-10-09 增加[统一学习与研究执行闭环](docs/workflow-loop-release.md)：`/workflow` 汇总正式路线、论文、案例和课题快照的活动；明确区分进度、固定检查与用户确认掌握；正式路线可先预览，再保存依据当前记录调整的新版本。原有学习和课题记录保持可读。
+
+新增[平台自动检查与候选预览](docs/automatic-project-audit.md)：课题页检查冻结来源、引文定位、实验条件和方案步骤，并提示本地新资料；知识质量页诊断关系结构；路线页提供不落库的机器核查候选路线；论文库增加可解释的本地检索。机器检查不改变原有审核状态。
+
 课题工作台使用方法见 [课题工作台使用说明](docs/research-project-workspace.md)，原学习工作台边界见 [科研工作台说明](docs/research-workspace-release.md)。真实集成状态见 [集成检查清单](docs/parallel-dev/02-integration-checklist.md)。早期原型文档中的测试数量、自动合并和创新信号描述不代表当前发布行为。
 
 ## 已提供
+
+2026-10-08 新增以交互为核心的工作空间：**联动画布与来源检查器、四情景资源推演、PDF 图文与固定源码阅读、张量和时间窗口动画、服务端自动练习及自适应教练、SQLite 历史差分**。核心分析不依赖模型和 Neo4j，本轮没有新增人工验证流程。功能、接口、三条演示路径及自动验收方法见 [交互工作空间交付说明](docs/interactive-workspace-release.md)。
 
 2026-10-04 真实验证已覆盖 Chrome 编辑/保存/刷新/窄屏/离线草稿恢复、PDF 文本与版式、隔离 Neo4j 认证写入查询及 GROBID 合成 PDF 解析。真实 Qwen 调用成功但方法名质量门槛失败；之后已实现默认关闭的生产方案 provider 与抽取防护，但尚未重新进行真实模型质量验收。历史记录见[真实验收记录](docs/parallel-dev/acceptance/T0-live-validation-20261004.md)，新增实现和测试边界见[T0 交接](docs/parallel-dev/handoffs/T0.md)。
 
@@ -80,7 +86,7 @@ Neo4j 和 GROBID 按 docker-compose.yml 配置启动。当前为单机模式，�
 
 ```powershell
 cd backend
-python -m pytest -q --basetemp=.pytest_tmp_release
+python scripts/test.py -q
 python -m ruff check app tests scripts
 cd ../frontend
 npm test

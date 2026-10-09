@@ -1,3 +1,4 @@
+import { useInspector } from "../workspace/InspectorContext";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Card, Empty, Input, Modal, Select, Space, Spin, Tag, Timeline, Typography, message } from "antd";
 import type { AsyncTask, ProtocolStep, ResearchDecision, ResearchProject, ProjectSnapshot, ValidationPlan } from "../../api/project-types";
@@ -77,6 +78,7 @@ function recoverNewUserDraft(projectId: string): ValidationPlan | null {
 }
 
 export default function PlansPanel({ project }: { project: ResearchProject }) {
+  const inspector = useInspector();
   const [decisions, setDecisions] = useState<ResearchDecision[]>([]);
   const [plans, setPlans] = useState<ValidationPlan[]>([]);
   const [snapshots, setSnapshots] = useState<ProjectSnapshot[]>([]);
@@ -230,7 +232,7 @@ export default function PlansPanel({ project }: { project: ResearchProject }) {
         <Typography.Text strong>假设条件（每行一项）</Typography.Text><Input.TextArea rows={3} value={draft.assumptions.join("\n")} onChange={event => patchDraft({ assumptions: splitLines(event.target.value) })} />
         <Typography.Text strong>未知项（每行一项）</Typography.Text><Input.TextArea rows={3} value={draft.unknowns.join("\n")} onChange={event => patchDraft({ unknowns: splitLines(event.target.value) })} />
         <Typography.Title level={5}>验证步骤</Typography.Title>
-        {draft.steps.map((step, index) => <Card size="small" key={step.id} title={`步骤 ${index + 1}`} extra={<Button danger onClick={() => patchDraft({ steps: draft.steps.filter(item => item.id !== step.id) })}>移除</Button>}>
+        {draft.steps.map((step, index) => <Card size="small" key={step.id} title={<Space wrap><span>步骤 {index + 1}</span>{step.evidence_ids.map(id=><Button size="small" key={id} onClick={()=>inspector.inspect({kind:"evidence",id})}>查看步骤依据</Button>)}</Space>} extra={<Button danger onClick={() => patchDraft({ steps: draft.steps.filter(item => item.id !== step.id) })}>移除</Button>}>
           <Input style={{ marginBottom: 8 }} value={step.title} onChange={event => patchStep(index, { title: event.target.value })} placeholder="步骤标题" />
           <Input.TextArea style={{ marginBottom: 8 }} value={step.purpose} onChange={event => patchStep(index, { purpose: event.target.value })} placeholder="目的" />
           <Input.TextArea style={{ marginBottom: 8 }} value={step.procedure.join("\n")} onChange={event => patchStep(index, { procedure: splitLines(event.target.value) })} placeholder="操作，每行一步" />

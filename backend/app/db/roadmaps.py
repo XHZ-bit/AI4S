@@ -37,6 +37,10 @@ def get_roadmap(conn, rid):
     data = _normalize(json.loads(row["result_json"]), rid)
     data["id"] = rid
     data["created_at"] = row["created_at"]
+    parent = conn.execute(
+        "SELECT parent_id FROM workflow_roadmap_lineage WHERE child_id=?", (rid,)
+    ).fetchone()
+    data["parent_id"] = parent["parent_id"] if parent else None
     return RoadmapResult.model_validate(data)
 
 

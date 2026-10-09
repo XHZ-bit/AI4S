@@ -9,6 +9,11 @@ import EvidencePanel from "../../components/research/EvidencePanel";
 import PlansPanel from "../../components/research/PlansPanel";
 import ProjectSettingsPanel from "../../components/research/ProjectSettingsPanel";
 import "./research-workspace.css";
+import ResearchCanvas from "../../components/workspace/ResearchCanvas";
+import ScenarioPanel from "../../components/workspace/ScenarioPanel";
+import DiffPanel from "../../components/workspace/DiffPanel";
+import ProjectAuditPanel from "../../components/research/ProjectAuditPanel";
+import LocalRadarPanel from "../../components/research/LocalRadarPanel";
 
 export const WORKFLOW_GUIDANCE: Record<string, { message: string; description: string; next: string; action: string }> = {
   evidence: { message: "第 1 步：关联资料并确认事实", description: "先关联带原文的论文，再提取候选。逐项核对方法、实验设置和测量；表格未解析时保留待补录标记，不直接采信数值。未报告的信息保持未知。", next: "compare", action: "前往条件比较" },
@@ -42,14 +47,20 @@ export default function ResearchProjectPage() {
   if (loading && !project) return <Spin />;
   if (!project) return <Alert type="error" showIcon message="无法打开课题" description={error || "课题不存在"} action={<Button onClick={() => void reload()}>重试</Button>} />;
 
-  const requestedTab = params.get("tab") ?? "evidence";
-  const tab = Object.prototype.hasOwnProperty.call(WORKFLOW_GUIDANCE, requestedTab) ? requestedTab : "evidence";
+  const requestedTab = params.get("tab") ?? "overview";
+  const tab = ["overview", "scenarios", "changes", "audit", "radar", ...Object.keys(WORKFLOW_GUIDANCE)].includes(requestedTab) ? requestedTab : "overview";
   const guidance = WORKFLOW_GUIDANCE[tab];
+  const switchTab = (key: string) => setParams(previous => { const next = new URLSearchParams(previous); next.set("tab", key); return next; });
   return <Space direction="vertical" size="large" style={{ width: "100%" }}>
     <div><Link to="/research">← 返回课题列表</Link><div className="research-page-heading"><div><Typography.Title level={2}>{project.title}</Typography.Title><Typography.Paragraph>{project.research_question}</Typography.Paragraph><Space wrap><Tag>{DOMAIN_PROFILES[project.domain].label}</Tag><Tag>项目 v{project.version}</Tag><Tag>约束 v{project.constraints.version}</Tag><Tag color={project.status === "active" ? "green" : "default"}>{project.status === "active" ? "进行中" : "已归档"}</Tag></Space></div><Button onClick={() => void reload()}>刷新服务端版本</Button></div></div>
     {error && <Alert type="error" showIcon message="刷新失败，当前仍显示上次已加载内容" description={error} />}
-    <Alert type="info" showIcon message={guidance.message} description={<Space direction="vertical"><span>{guidance.description}</span><Button onClick={() => setParams({ tab: guidance.next })}>{guidance.action}</Button></Space>} />
-    <Tabs activeKey={tab} onChange={key => setParams({ tab: key })} items={[
+    {guidance && <Alert type="info" showIcon message={guidance.message} description={<Space direction="vertical"><span>{guidance.description}</span><Button onClick={() => switchTab(guidance.next)}>{guidance.action}</Button></Space>} />}
+    <Tabs activeKey={tab} onChange={switchTab} items={[
+      { key: "overview", label: "联动画布", children: <ResearchCanvas project={project} /> },
+      { key: "scenarios", label: "资源推演", children: <ScenarioPanel key={`${project.id}:${project.version}`} project={project} /> },
+      { key: "changes", label: "变化解释", children: <DiffPanel projectId={project.id} /> },
+      { key: "audit", label: "自动核查", children: <ProjectAuditPanel projectId={project.id} /> },
+      { key: "radar", label: "本地资料雷达", children: <LocalRadarPanel projectId={project.id} /> },
       { key: "evidence", label: "资料与证据", children: <EvidencePanel project={project} onProjectReload={() => reload()} /> },
       { key: "compare", label: "候选比较与选择", children: <ComparisonPanel project={project} /> },
       { key: "plans", label: "方案编辑与历史", children: <PlansPanel project={project} /> },

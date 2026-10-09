@@ -15,6 +15,14 @@ from app.pipeline.evidence import ENDPOINTS, check_quote
 router = APIRouter(prefix="/api/learning", tags=["curation"])
 
 
+@router.get("/relations/audit")
+def audit_relations():
+    from app.roadmap.relation_audit import relation_audit
+
+    with closing(connect()) as conn:
+        return relation_audit(conn)
+
+
 class SourceCandidate(BaseModel):
     title: str = Field(min_length=1, max_length=1000)
     source_url: str = Field(min_length=8, max_length=2000)

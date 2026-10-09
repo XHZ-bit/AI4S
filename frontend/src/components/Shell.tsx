@@ -1,19 +1,19 @@
-import { Layout, Menu, Typography, Space, Tag } from "antd";
+import { useEffect, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import type { ReactNode } from "react";
+import { ApartmentOutlined, BookOutlined, CompassOutlined, ExperimentOutlined, HomeOutlined, NodeIndexOutlined, SettingOutlined, ThunderboltOutlined } from "@ant-design/icons";
+import Workspace from "./workspace/Workspace";
+import WorkflowSummary from "./WorkflowSummary";
+import type { Scope } from "../api/assistant";
+import "./workspace/workspace.css";
+const links = [
+ {path:"/",title:"开始 / 继续",icon:<HomeOutlined/>}, {path:"/research",title:"科研课题",icon:<ApartmentOutlined/>},
+ {path:"/manage",title:"论文库",icon:<BookOutlined/>}, {path:"/cases/diffusion-policy-intro",title:"专题实践",icon:<ExperimentOutlined/>},
+ {path:"/roadmap",title:"学习路线",icon:<CompassOutlined/>}, {path:"/workflow",title:"统一任务",icon:<ThunderboltOutlined/>}, {path:"/demo/personalized-roadmap",title:"个性化路线案例",icon:<CompassOutlined/>}, {path:"/graph",title:"探索知识",icon:<NodeIndexOutlined/>}, {path:"/tasks",title:"处理进度",icon:<ThunderboltOutlined/>}
+];
 export default function Shell({children}:{children:ReactNode}) {
- const {pathname}=useLocation();
- const selectedKey=pathname.startsWith("/research")?"/research":pathname;
- return <Layout style={{minHeight:"100vh",background:"#f3f6fa"}}>
- <Layout.Header style={{height:"auto",padding:"12px 24px",background:"#12263a"}}>
- <Space><Link to="/"><Typography.Text strong style={{color:"white",fontSize:22}}>Research Atlas</Typography.Text></Link><Tag color="cyan">科研学习工作台</Tag></Space>
- <Menu theme="dark" mode="horizontal" style={{background:"transparent",minWidth:0}} selectedKeys={[selectedKey]} items={[
- {key:"/",label:<Link to="/">开始 / 继续</Link>},{key:"/manage",label:<Link to="/manage">论文库</Link>},
- {key:"/research",label:<Link to="/research">科研课题</Link>},
- {key:"/cases/diffusion-policy-intro",label:<Link to="/cases/diffusion-policy-intro">专题实践</Link>},
- {key:"/roadmap",label:<Link to="/roadmap">学习路线</Link>},{key:"/graph",label:<Link to="/graph">探索知识</Link>},
- {key:"/tasks",label:<Link to="/tasks">处理进度</Link>}]}/>
- </Layout.Header><Layout.Content style={{padding:"24px clamp(12px, 3vw, 48px)",boxSizing:"border-box",minWidth:0,maxWidth:1500,width:"100%",margin:"0 auto"}}>{children}</Layout.Content>
- <Layout.Footer style={{textAlign:"center"}}>结论可追溯 · 学习可继续 · 实验可记录 <Link to="/admin/quality" style={{marginLeft:24}}>维护者工作台</Link></Layout.Footer>
- </Layout>;
+ const {pathname}=useLocation(); const parts=pathname.split("/");
+ const scope:Scope|null=parts[1]==="research"&&parts[2]?"project":parts[1]==="papers"&&parts[2]?"paper":parts[1]==="cases"&&parts[2]?"case":null;
+ const id=parts[2]?decodeURIComponent(parts[2]):"";
+ useEffect(()=>{document.title="Research Atlas · 让研究的下一步看得见";},[]);
+ return <div className="atlas-shell"><aside className="atlas-sidebar"><Link className="atlas-brand" to="/"><span className="atlas-brand-symbol">A<span>•</span></span><div>Research Atlas<small>连接理解与研究行动</small></div></Link><span className="atlas-nav-caption">WORKSPACE</span><nav aria-label="主导航">{links.map(link=><Link className={(link.path==="/"?pathname==="/":pathname.startsWith(link.path))?"active":""} key={link.path} to={link.path} title={link.title}>{link.icon}<span>{link.title}</span></Link>)}</nav><div className="atlas-sidebar-bottom"><span className="atlas-local-status"><i/>本地优先 · 上下文可追溯</span><Link to="/admin/quality"><SettingOutlined/><span>维护者工作台</span></Link></div></aside><div className="atlas-body"><header className="atlas-global-header"><span>你的科研工作空间</span><Link to="/tasks"><span className="atlas-status-dot"/>后台任务</Link></header><div className="atlas-content">{scope?<Workspace key={`${scope}:${id}`} scope={scope} id={id}><>{children}<WorkflowSummary kind={scope} id={id}/></></Workspace>:children}</div><footer className="atlas-footer">结论可追溯 · 学习可继续 · 实验可记录</footer></div></div>;
 }

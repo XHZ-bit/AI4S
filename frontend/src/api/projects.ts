@@ -102,6 +102,7 @@ async function request<T>(
   });
   const response = await fetch(url, options);
   if (!response.ok) throw await parseError(response);
+  if (options.method && options.method !== "GET") window.dispatchEvent(new Event("atlas:data-change"));
   return response.json() as Promise<T>;
 }
 
@@ -122,6 +123,47 @@ export const listProjects = (
 
 export const getProject = (projectId: string, signal?: AbortSignal) =>
   request<ResearchProject>(`/api/projects/${encodeURIComponent(projectId)}`, { signal });
+
+export interface ProjectAuditIssue {
+  id: string;
+  code: string;
+  severity: "blocking" | "warning" | "notice";
+  title: string;
+  detail: string;
+  fact_ids: string[];
+  evidence_ids: string[];
+  paper_uids: string[];
+  affected_plan_ids: string[];
+  affected_snapshot_ids: string[];
+}
+
+export interface ProjectAudit {
+  contract_version: "project-audit-v1";
+  rule_version: string;
+  project_id: string;
+  input_fingerprint: string;
+  summary: Record<ProjectAuditIssue["severity"], number>;
+  issues: ProjectAuditIssue[];
+  notice: string;
+}
+
+export const getProjectAudit = (projectId: string, signal?: AbortSignal) =>
+  request<ProjectAudit>(`/api/projects/${encodeURIComponent(projectId)}/audit`, { signal });
+
+export interface LocalRadar {
+  contract_version: "local-radar-v1";
+  project_id: string;
+  input_fingerprint: string;
+  total: number;
+  notice: string;
+  items: {
+    uid: string; title: string; year: number | null; source: string;
+    source_url: string; match_reasons: string[]; potentially_affected_plan_ids: string[];
+  }[];
+}
+
+export const getProjectRadar = (projectId: string, signal?: AbortSignal) =>
+  request<LocalRadar>(`/api/projects/${encodeURIComponent(projectId)}/radar`, { signal });
 
 export const createProject = (body: ResearchProjectCreate) =>
   request<ResearchProject>("/api/projects", jsonOptions("POST", body));

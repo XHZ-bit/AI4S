@@ -6,8 +6,8 @@ from app.roadmap.generate import generate_roadmap
 from app.db.roadmaps import get_roadmap, update_item_done
 
 
-def test_seed_reading_progress_survives_reload(monkeypatch):
-    conn = setup_trusted(monkeypatch)
+def test_seed_reading_progress_survives_reload():
+    conn = setup_trusted()
     result = generate_roadmap(
         LearnerProfile(goal="target", target_uid="method:target"), conn
     )
@@ -19,8 +19,8 @@ def test_seed_reading_progress_survives_reload(monkeypatch):
     assert len(result.knowledge_ids) >= 2
 
 
-def test_seed_prune_known_skips_basics(monkeypatch):
-    conn = setup_trusted(monkeypatch)
+def test_seed_prune_known_skips_basics():
+    conn = setup_trusted()
     result = generate_roadmap(
         LearnerProfile(
             goal="target", target_uid="method:target", known_concepts=["concept:basics"]

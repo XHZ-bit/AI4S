@@ -19,6 +19,8 @@ from app.api.review import router as review_router
 from app.api.roadmap import router as roadmap_router
 from app.api.search import router as search_router
 from app.api.projects import router as projects_router
+from app.api.assistant import router as assistant_router
+from app.api.workflow import router as workflow_router
 from app.db.neo4j_client import close_driver, ensure_constraints
 from app.db.sqlite import (
     connect,
@@ -79,6 +81,8 @@ app.include_router(review_router)
 app.include_router(search_router)
 app.include_router(roadmap_router)
 app.include_router(projects_router)
+app.include_router(assistant_router)
+app.include_router(workflow_router)
 
 
 @app.exception_handler(RequestValidationError)

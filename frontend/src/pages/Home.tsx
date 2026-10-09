@@ -1,19 +1,14 @@
-import { useEffect, useState } from "react";
-import { Alert, Button, Card, Col, Row, Space, Typography } from "antd";
-import { Link } from "react-router-dom";
-import { listPapers } from "../api/papers";
+import {useEffect,useState} from "react";
+import {Alert,Button,Skeleton,Space} from "antd";
+import {Link} from "react-router-dom";
+import {ApartmentOutlined,ExperimentOutlined,ReadOutlined} from "@ant-design/icons";
+import {listPapers} from "../api/papers";
+import {workflowOverview,type WorkflowOverview} from "../api/workflow";
 export default function Home(){
- const [papers,setPapers]=useState<any[]>([]); const [error,setError]=useState("");
- useEffect(()=>{listPapers(6).then(r=>setPapers(r.items)).catch(e=>setError(String(e)));},[]);
- return <Space direction="vertical" size="large" style={{width:"100%"}}>
- <div><Typography.Title>从读懂一篇论文，到迈出研究的下一步</Typography.Title>
- <Typography.Paragraph type="secondary">围绕同一篇目标论文，理解方法、准备复现、整理值得验证的问题。图谱和原文证据为每一步提供上下文。</Typography.Paragraph>
- <Space wrap><Link to="/cases/diffusion-policy-intro"><Button type="primary" size="large">体验源码入门案例</Button></Link><Link to="/manage"><Button size="large">选择或上传自己的论文</Button></Link></Space></div>
- <Row gutter={[16,16]}>{[["01 读懂论文","按章节阅读，查看有出处的解释，记录理解检查。"],["02 基础复现","记录环境、代码版本、实验配置与结果，区分跑通和复现。"],["03 研究方向","比较有证据的主张，把想法变成可验证的问题。"]].map(([title,text])=><Col xs={24} md={8} key={title}><Card title={title}>{text}</Card></Col>)}</Row>
- <Alert type="info" showIcon message="试点专题：Diffusion Policy" description="固定源码入门已开放；策略评估仍待实测。源码检查不代表模型或论文结果复现。"/>
- {error&&<Alert type="error" message={error}/>}
- <Typography.Title level={3}>继续学习</Typography.Title>
- <Row gutter={[16,16]}>{papers.map(p=><Col xs={24} md={12} key={p.uid}><Card title={p.title}><Space wrap><Link to={`/papers/${p.uid}?tab=reading`}>继续阅读</Link><Link to={`/papers/${p.uid}?tab=experiment`}>继续实验</Link><Link to={`/papers/${p.uid}?tab=research`}>研究问题</Link></Space></Card></Col>)}</Row>
- {!papers.length&&!error&&<Typography.Text type="secondary">还没有论文。先上传一篇 PDF，原文会先保存，再在后台解析。</Typography.Text>}
- </Space>;
+ const [papers,setPapers]=useState<{uid:string;title:string}[]>([]),[error,setError]=useState(""); const [loading,setLoading]=useState(true);let last="";
+ const [workflow,setWorkflow]=useState<WorkflowOverview>();
+ try{const value=localStorage.getItem("atlas:lastWorkspace")||"";if(/^\/(research|papers|cases)\/[A-Za-z0-9._%/-]+(?:\?.*)?$/.test(value))last=value;}catch{}
+ useEffect(()=>{let dead=false;listPapers(6).then(r=>{if(!dead)setPapers(r.items);}).catch(e=>{if(!dead)setError(String(e));}).finally(()=>{if(!dead)setLoading(false);});return()=>{dead=true;};},[]);
+ useEffect(()=>{let live=true;const load=()=>workflowOverview().then(r=>{if(live&&r?.counts&&Array.isArray(r.next))setWorkflow(r);}).catch(()=>{});void load();window.addEventListener("atlas:data-change",load);return()=>{live=false;window.removeEventListener("atlas:data-change",load);};},[]);
+ return <div className="atlas-home"><section className="atlas-home-hero"><div><span className="atlas-eyebrow">RESEARCH ATLAS / 研究与学习</span><h1>让研究的下一步<br/><span>看得见，也走得通。</span></h1><p>在原文、源码和知识关系之间自由探索。推演条件变化，动手理解方法，把每一个问题连接到下一步行动。</p><Space wrap style={{marginTop:14}}>{last&&<Link to={last}><Button type="primary" size="large">继续上次任务 ↗</Button></Link>}<Link to="/workflow"><Button type="primary" size="large">查看统一任务</Button></Link><Link to="/research"><Button type={last?"default":"primary"} size="large">进入科研课题</Button></Link><Link to="/cases/diffusion-policy-intro"><Button ghost size="large">体验交互案例</Button></Link><Link to="/demo/personalized-roadmap"><Button ghost size="large">对比两条学习路线</Button></Link></Space></div><svg className="atlas-hero-graph" viewBox="0 0 430 280" role="img" aria-label="原文、方法、学习与研究行动的联动示意"><defs><pattern id="atlas-dots" width="18" height="18" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#36545f"/></pattern></defs><rect width="430" height="280" fill="url(#atlas-dots)"/><g stroke="#4d8b91" fill="none"><path d="M75 72 Q180 50 215 135 T360 190"/><path d="M75 210 Q155 220 215 135 T348 65"/></g>{[[75,72,"原文证据"],[75,210,"源码与图解"],[348,65,"条件推演"],[360,210,"学习行动"]].map(([x,y,t])=><g key={t}><rect x={Number(x)-50} y={Number(y)-20} width="100" height="40" rx="10" fill="#1c414e" stroke="#3d707b"/><text x={x} y={Number(y)+4} textAnchor="middle">{t}</text></g>)}<circle cx="215" cy="135" r="42" fill="#286b70" stroke="#68c4b6"/><text x="215" y="132" textAnchor="middle">你的问题</text><text x="215" y="150" textAnchor="middle" style={{fontSize:9,fill:"#85d5c6"}}>CONTEXT → ACTION</text></svg></section>{workflow&&<section className="atlas-section-heading"><div><h2>接着做</h2><p>待执行 {workflow.counts.pending} 项 · 进行中 {workflow.counts.in_progress} 项 · 待复核 {workflow.counts.needs_review} 项</p>{workflow.next.slice(0,2).map(item=><p key={item.id}><Link to={item.url}>{item.title} →</Link></p>)}</div><Link to="/workflow">打开完整任务清单 →</Link></section>}<div className="atlas-feature-grid">{[{path:"/research",icon:<ApartmentOutlined/>,title:"在条件变化中，找到路线",text:"证据体检、资源情景与版本变化，在同一画布中联动。"},{path:"/manage",icon:<ReadOutlined/>,title:"在图文之间，读懂方法",text:"保留原文上下文，结合有来源的解释，记录理解与实验。"},{path:"/cases/diffusion-policy-intro",icon:<ExperimentOutlined/>,title:"在动手操作中，理解源码",text:"改变张量参数，观察时间窗口，用自动练习检验理解。"}].map(item=><Link className="atlas-feature-card" key={item.path} to={item.path}><span>{item.icon}</span><h3>{item.title}</h3><p>{item.text}</p><small>开始探索 ↗</small></Link>)}</div><div className="atlas-section-heading"><h2>继续学习</h2><Link to="/manage">打开论文库 →</Link></div>{error&&<Alert type="warning" message={error}/>} {loading&&<Skeleton active/>}<div className="atlas-recent-list">{papers.map(p=><article className="atlas-recent-paper" key={p.uid}><span className="atlas-eyebrow">YOUR READING</span><h3>{p.title}</h3><Link to={`/papers/${p.uid}?tab=reading`}>继续阅读 ↗</Link><Link to={`/papers/${p.uid}?tab=experiment`}>继续实验</Link></article>)}</div>{!loading&&!papers.length&&!error&&<p className="atlas-muted">先体验交互案例，或上传一篇PDF开始你的阅读工作空间。</p>}</div>;
 }

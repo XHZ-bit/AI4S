@@ -1,4 +1,4 @@
-"""Build recommendations only from published evidence. No invented prerequisite edges."""
+"""Build recommendations from provenance-bound relations; preserve evidence status."""
 
 import json
 import re
@@ -8,7 +8,7 @@ from app.db.sqlite import connect
 from app.llm.client import chat
 from app.models.roadmap import RoadmapResult
 from app.roadmap import graphalgo, scoring
-from app.roadmap.graph_queries import (
+from app.roadmap.trusted_queries import (
     get_papers_for_concept,
     get_prerequisite_edges,
     resolve_target,
@@ -22,7 +22,7 @@ def _parse_llm_json(raw):
     return json.loads(match.group(1).strip() if match else text)
 
 
-def _parse_target(goal):
+def _parse_target(goal, conn, status):
     try:
         name = (
             _parse_llm_json(
@@ -32,48 +32,32 @@ def _parse_target(goal):
         )
     except ValueError:
         name = goal
-    uid = resolve_target(name)
+    uid = resolve_target(conn, name, status)
     if not uid:
         raise ValueError("目标无法唯一定位，请搜索并确认目标实体")
     return uid
 
 
-def _build_skeleton(profile, conn=None):
-    target_uid = profile.target_uid or _parse_target(profile.goal)
-    edges = get_prerequisite_edges()
-    if conn is not None:
-        from app.pipeline.extract import canonical_uid
-
-        trusted = set()
-        for row in conn.execute(
-            "SELECT p.payload_json FROM knowledge k JOIN extraction_proposals p ON p.id=k.id WHERE k.status='human_verified' AND k.layer='teaching'"
-        ):
-            edge = json.loads(row["payload_json"])
-            if edge.get("rel_type") == "PREREQUISITE_OF":
-                trusted.add(
-                    (
-                        edge.get("src_uid")
-                        or canonical_uid(edge["src_type"], edge["src_name"]),
-                        edge.get("dst_uid")
-                        or canonical_uid(edge["dst_type"], edge["dst_name"]),
-                    )
-                )
-        edges = [edge for edge in edges if edge in trusted]
+def _build_skeleton(profile, conn, status):
+    target_uid = profile.target_uid or _parse_target(profile.goal, conn, status)
+    if not resolve_target(conn, target_uid, status):
+        raise ValueError("目标没有可用的来源关系，请先核验资料并选择目标")
+    edges = get_prerequisite_edges(conn, status)
     closure = graphalgo.prerequisite_closure([target_uid], edges)
     order = graphalgo.topological_sort(sorted(closure), edges)
     known = set()
     for name in profile.known_concepts:
-        uid = name if name in closure else resolve_target(name)
+        uid = resolve_target(conn, name, status)
         if not uid:
             raise ValueError(f"已掌握概念无法唯一定位：{name}")
         known.add(uid)
     order = graphalgo.prune_known(order, known)
     papers = {
-        uid: scoring.rank_papers(get_papers_for_concept(uid), top_k=2) for uid in order
+        uid: scoring.rank_papers(get_papers_for_concept(conn, uid, status), top_k=2) for uid in order
     }
     if not any(papers.values()):
         raise ValueError(
-            "缺少已核验的论文与目标关联。可以先进入论文工作区阅读，维护者发布证据后再规划路线。"
+            "缺少当前证据级别可用的论文与目标关联；请检查资料与关系状态。"
         )
     return {
         "target": target_uid,
@@ -84,11 +68,13 @@ def _build_skeleton(profile, conn=None):
     }
 
 
-def generate_roadmap(profile, conn=None):
+def generate_roadmap(profile, conn=None, *, status="human_verified", persist=True):
     if conn is None:
         with closing(connect()) as owned:
-            return generate_roadmap(profile, owned)
-    skeleton = _build_skeleton(profile, conn)
+            return generate_roadmap(profile, owned, status=status, persist=persist)
+    if status not in ("human_verified", "demo_curated", "auto_checked") or (status != "human_verified" and persist):
+        raise ValueError("自动核查或演示预览不得作为正式路线保存")
+    skeleton = _build_skeleton(profile, conn, status)
     # Deterministic evidence-bound tasks: text generation cannot add unknown papers.
     phases = []
     kids = set()
@@ -99,8 +85,8 @@ def generate_roadmap(profile, conn=None):
             verified_ids = paper.get("knowledge_ids", [])
             if not verified_ids or any(
                 not conn.execute(
-                    "SELECT 1 FROM knowledge WHERE id=? AND status='human_verified'",
-                    (kid,),
+                    "SELECT 1 FROM knowledge WHERE id=? AND status=?",
+                    (kid, status),
                 ).fetchone()
                 for kid in verified_ids
             ):
@@ -118,7 +104,8 @@ def generate_roadmap(profile, conn=None):
                     "kind": "paper",
                     "uid": paper["uid"],
                     "title": paper["title"],
-                    "reason": "与本阶段知识有关，关联已人工核验；完成后在论文工作区检查理解。",
+                    "reason": ("与本阶段知识有关，关联已人工核验。" if status == "human_verified"
+                               else "与本阶段知识有关；仅通过自动结构与原文定位检查，教学顺序仍是假设。"),
                     "evidence": "原文证据可定位；不代表论文结论已被独立复现。",
                     "evidence_ids": evidence_ids,
                     "done": False,
@@ -129,18 +116,20 @@ def generate_roadmap(profile, conn=None):
                 {
                     "phase": idx,
                     "title": uid,
-                    "weeks": "按每周可用时间安排",
+                    "weeks": "未估算时长",
                     "items": items,
                 }
             )
     if not phases:
         raise ValueError("没有证据完整的学习任务")
     for row in conn.execute(
-        "SELECT id FROM knowledge WHERE status='human_verified' AND layer='teaching'"
+        "SELECT id FROM knowledge WHERE status=? AND layer='teaching'", (status,)
     ):
         kids.add(row["id"])
     result = RoadmapResult(
         goal=profile.goal, phases=phases, innovations=[], knowledge_ids=sorted(kids)
     )
+    if not persist:
+        return result
     rid = save_roadmap(conn, result, profile)
     return get_roadmap(conn, rid)

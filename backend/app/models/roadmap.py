@@ -22,6 +22,9 @@ class RoadmapItem(BaseModel):
     evidence: str
     difficulty: float | None = None
     done: bool = False
+    estimated_minutes: int | None = None
+    scheduled_week: int | None = None
+    source_url: str | None = None
 
 
 class RoadmapPhase(BaseModel):
@@ -46,3 +49,4 @@ class RoadmapResult(BaseModel):
     phases: list[RoadmapPhase]
     innovations: list[InnovationSuggestion] = []
     created_at: str | None = None
+    parent_id: int | None = None

@@ -5,6 +5,9 @@ import { Alert, Button, Card, Col, Collapse, Input, Radio, Row, Select, Space, S
 import { apiGet } from "../api/client";
 import { answerCaseQuestion, caseBase, getCase, getCaseSession, importCaseRun, newCaseSession, patchCaseSession } from "../api/cases";
 import type { CaseInfo, CaseSession, Profile } from "../api/cases";
+import InteractiveLab from "../components/workspace/InteractiveLab";
+import SourceView from "../components/workspace/SourceView";
+import { useInspector } from "../components/workspace/InspectorContext";
 
 const storageKey = (id:string) => `atlas:case:${id}`;
 function remember(id:string,sid:string) { try { localStorage.setItem(storageKey(id),sid); } catch { /* URL still preserves progress */ } }
@@ -13,6 +16,7 @@ function remembered(id:string) { try { return localStorage.getItem(storageKey(id
 export default function CaseStudy() {
   const { caseId = "diffusion-policy-intro" } = useParams();
   const [params,setParams] = useSearchParams();
+  const inspector = useInspector();
   const sid = params.get("session");
   const [info,setInfo] = useState<CaseInfo>();
   const [session,setSession] = useState<CaseSession>();
@@ -56,7 +60,7 @@ export default function CaseStudy() {
     try {
       const saved=await work();
       if (address.current !== target) return;
-      setSession(saved); remember(caseId,saved.id); setNotice(message);
+      setSession(saved); remember(caseId,saved.id); setNotice(message); inspector.refresh();
     } catch(e) { if(address.current===target) setError(String(e)); }
     finally { lock.current=false; setBusy(false); }
   }
@@ -64,7 +68,7 @@ export default function CaseStudy() {
     if(lock.current)return;
     lock.current=true; setBusy(true); setError("");
     const target=address.current;
-    try { const saved=await newCaseSession(caseId); if(address.current!==target)return; remember(caseId,saved.id); setParams({session:saved.id}); }
+    try { const saved=await newCaseSession(caseId); if(address.current!==target)return; remember(caseId,saved.id); setLoading(true); setParams(old=>{const n=new URLSearchParams(old);n.set("session",saved.id);return n;}); }
     catch(e){setError(String(e));} finally{lock.current=false;setBusy(false);}
   }
   async function reload() {
@@ -80,7 +84,7 @@ export default function CaseStudy() {
   }
   if(loading)return <Spin aria-label="加载专题"/>;
   if(!info)return <Alert type="error" message={error||"专题不可用"} action={<Link to="/">返回首页</Link>}/>;
-  const index=Math.max(0,info.steps.findIndex(s=>s.id===session?.state.current_step));
+  const index=Math.max(0,info.steps.findIndex(s=>s.id===(info.steps.some(s=>s.id===params.get("focus"))?params.get("focus"):session?.state.current_step)));
   const step=info.steps[index];
   const sourceIndices=step.id==="interface"?[0]:step.id==="config"?[1]:step.id==="reflect"?[2]:[0,1,2];
   const latest=session?.runs[0];
@@ -97,9 +101,9 @@ export default function CaseStudy() {
     if(id==="reflect")return !!answers.scope?.correct&&!!latest?.report.passed;
     return false;
   }
-  const changeStep=(next:number)=>session&&mutate(()=>patchCaseSession(caseId,session.id,{version:session.version,current_step:info.steps[next].id}),"步骤已保存，可随时继续。");
+  const changeStep=(next:number)=>{setParams(old=>{const n=new URLSearchParams(old);n.set("focus",info.steps[next].id);return n;});return session&&mutate(()=>patchCaseSession(caseId,session.id,{version:session.version,current_step:info.steps[next].id}),"步骤已保存，可随时继续。");};
 
-  return <Space className="case-study" direction="vertical" size="large" style={{width:"100%"}}>
+  return <Space className="case-study" data-session-id={session?.id} direction="vertical" size="large" style={{width:"100%"}}>
     <div><Link to="/">← 返回首页</Link><Typography.Title level={2}>{info.title}</Typography.Title>
       <Space wrap><Tag color="blue">免模型 API · 源码入门</Tag><Tag>专题 v{info.version}</Tag><Tag>{info.status}</Tag></Space>
     </div>
@@ -108,10 +112,11 @@ export default function CaseStudy() {
     {notice&&<Alert type="success" message={notice} closable onClose={()=>setNotice("")}/>}
     <Space wrap>
       <Button onClick={create} loading={busy} type={session?"default":"primary"}>{session?"新建独立学习记录":"开始学习并保存进度"}</Button>
-      {history.length>0&&<Select aria-label="历史学习记录" placeholder="恢复其他记录" style={{minWidth:240}} value={session?.id} disabled={busy} onChange={id=>setParams({session:id})} options={history.map(h=>({value:h.id,label:h.updated_at+" UTC · "+h.id.slice(0,8)}))}/>}
+      {history.length>0&&<Select aria-label="历史学习记录" placeholder="恢复其他记录" style={{minWidth:240}} value={session?.id} disabled={busy} onChange={id=>{setLoading(true);setParams(old=>{const n=new URLSearchParams(old);n.set("session",id);return n;});}} options={history.map(h=>({value:h.id,label:h.updated_at+" UTC · "+h.id.slice(0,8)}))}/>}
       {session&&<a href={base+"/sessions/"+session.id+"/report"} download>导出学习与检查报告</a>}
     </Space>
     {!session&&<Card title="先了解流程"><p>读懂接口 → 核对配置 → 本机检查 → 解释结果。无需上传论文，也不会自动运行模型。</p><p>预计阅读与源码检查约 25 分钟；这是教学估计，不是实测学习成效。</p></Card>}
+    <InteractiveLab caseId={caseId} session={session} onSaved={saved=>{setSession(previous=>previous?.id===saved.id&&saved.version>=previous.version?saved:previous);}} />
     {session&&<>
       {session.stale&&<Alert type="warning" message="专题版本已变化，请新建记录继续；历史内容仍可导出。"/>}
       <Steps current={index} direction="horizontal" responsive onChange={n=>!busy&&!session.stale&&changeStep(n)} items={info.steps.map(s=>({title:s.title,status:s.id===step.id?("process" as const):stepComplete(s.id)?("finish" as const):("wait" as const)}))}/>
@@ -153,8 +158,8 @@ export default function CaseStudy() {
         </Space></Col>
         <Col xs={24} lg={10}><Space direction="vertical" size="middle" style={{width:"100%"}}>
           <Card title="依据与代码对照"><p><a href={info.paper_url} target="_blank" rel="noreferrer">阅读论文原文入口</a></p><p>{info.paper_notice}</p><Typography.Paragraph copyable>{info.commit}</Typography.Paragraph>
-            {info.mappings.filter(m=>sourceIndices.includes(m.source)).map(m=><div key={m.title} style={{marginTop:14}}><a href={m.url} target="_blank" rel="noreferrer">{m.title} · 第 {m.line} 行</a><p>{m.explanation}</p></div>)}
-            <Collapse items={info.sources.filter((_,n)=>sourceIndices.includes(n)).map(s=>({key:s.path,label:s.path,children:<pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere",fontSize:12,maxHeight:420,overflow:"auto"}}>{s.text.split("\n").map((line,n)=>`${n+1}  ${line}`).join("\n")}</pre>}))}/>
+            {info.mappings.filter(m=>sourceIndices.includes(m.source)).map(m=><div key={m.title} style={{marginTop:14}}><Button type="link" onClick={()=>inspector.inspect({kind:"source",id:info.sources[m.source].path,line:m.line})}>{m.title} · 第 {m.line} 行</Button><p>{m.explanation}</p></div>)}
+            <Collapse items={info.sources.filter((_,n)=>sourceIndices.includes(n)).map(s=>({key:s.path,label:s.path,children:<SourceView text={s.text} />}))}/>
             <p style={{marginTop:12}}>源码版权：Columbia Artificial Intelligence and Robotics Lab，MIT；离线包保留原许可。教学说明为平台整理，尚待领域评估。</p>
           </Card>
           <Card title="我卡住了"><Collapse items={info.troubleshooting.map(t=>({key:t.id,label:t.title,children:<p>{t.action}</p>}))}/></Card>

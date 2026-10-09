@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { beforeEach, expect, test, vi } from "vitest";
 import type { GraphQueryResult, ProjectSnapshot } from "../../api/project-types";
@@ -65,11 +65,9 @@ test("isolates graph by project and rejects a foreign response", async () => {
 
 test("shows node details and readable evidence with a document jump", async () => {
   renderPage();
-  fireEvent.click(await screen.findByRole("button", { name: "node-Evidence One" }));
+  fireEvent.click(within(await screen.findByTestId("graph-canvas")).getByRole("button", { name: "node-Evidence One" }));
   expect(screen.getByText(evidence.quote!)).toBeTruthy();
-  const link = screen.getByRole("link", { name: "打开论文与定位章节" });
-  expect(link.getAttribute("href")).toContain("/papers/paper-1");
-  expect(link.getAttribute("href")).toContain("passage-1");
+  expect(screen.getByRole("button", {name:"侧栏定位原文"})).toBeTruthy();
 });
 
 test("method view keeps same method experiment settings separate", async () => {

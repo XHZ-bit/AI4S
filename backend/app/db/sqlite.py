@@ -71,9 +71,11 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE tasks ADD COLUMN result_json TEXT")
     from app.db.workspace import init_workspace
     from app.db.projects import init_research_schema
+    from app.db.workflow import init_workflow
 
     init_workspace(conn)
     init_research_schema(conn)
+    init_workflow(conn)
     conn.commit()
 
 

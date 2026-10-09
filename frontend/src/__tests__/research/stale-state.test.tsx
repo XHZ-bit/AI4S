@@ -10,6 +10,7 @@ const api = vi.hoisted(() => ({
   ProjectApiError: class extends Error { status = 503; },
 }));
 vi.mock("../../api/projects", () => api);
+vi.mock("../../api/assistant",async importOriginal=>({...await importOriginal<typeof import("../../api/assistant")>(),getInsights:vi.fn(async()=>({candidates:[{id:facts.experiment_settings[0].id,checks:[{dimension:"dataset_policy",status:"conflict",actual:"MVTec AD",reason:"排除列表 excluded_datasets 优先"}]}]}))}));
 vi.mock("react-force-graph-2d", () => ({ default: ({ graphData }: { graphData: unknown }) => <pre>{JSON.stringify(graphData)}</pre> }));
 
 function deferred<T>() {
@@ -27,7 +28,7 @@ beforeEach(() => {
 
 test("excluded datasets override the allowlist", async () => {
   render(<ComparisonPanel project={{ ...project, constraints: { ...project.constraints, excluded_datasets: ["MVTec AD"] } }} />);
-  expect(await screen.findByText(/课题已明确排除此数据集；排除条件优先于允许列表/)).toBeTruthy();
+  expect(await screen.findByText(/排除列表 excluded_datasets 优先/)).toBeTruthy();
 });
 
 test("withdrawn methods cannot appear as route candidates", async () => {

@@ -11,7 +11,7 @@ vi.mock("../../components/research/PlansPanel", () => ({ default: () => <div>pla
 vi.mock("../../components/research/ProjectSettingsPanel", () => ({ default: () => <div>settings-panel</div> }));
 
 test("next actions explain manual review and navigate without claiming completion", async () => {
-  render(<MemoryRouter initialEntries={["/research/project-1?tab=unknown"]}><Routes><Route path="/research/:projectId" element={<ResearchProjectPage />} /></Routes></MemoryRouter>);
+  render(<MemoryRouter initialEntries={["/research/project-1?tab=evidence"]}><Routes><Route path="/research/:projectId" element={<ResearchProjectPage />} /></Routes></MemoryRouter>);
   expect(await screen.findByText("第 1 步：关联资料并确认事实")).toBeTruthy();
   fireEvent.click(screen.getByText("前往条件比较"));
   expect(await screen.findByText("第 2 步：比较条件，再由你选择路线")).toBeTruthy();

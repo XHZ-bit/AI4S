@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { ConfigProvider, Spin } from "antd";
+import { ConfigProvider, Skeleton } from "antd";
 import Shell from "./components/Shell";
 
 const CaseStudy = lazy(() => import("./pages/CaseStudy"));
@@ -10,7 +10,9 @@ const Paper = lazy(() => import("./pages/PaperDetail"));
 const Quality = lazy(() => import("./pages/Quality"));
 const Manage = lazy(() => import("./pages/Manage"));
 const Roadmap = lazy(() => import("./pages/Roadmap"));
+const PersonalizedRoadmapDemo = lazy(() => import("./pages/PersonalizedRoadmapDemo"));
 const Tasks = lazy(() => import("./pages/Tasks"));
+const WorkflowHub = lazy(() => import("./pages/WorkflowHub"));
 const ResearchProjectsPage = lazy(() => import("./pages/research/ResearchProjectsPage"));
 const ResearchProjectPage = lazy(() => import("./pages/research/ResearchProjectPage"));
 const ProjectGraph = lazy(() => import("./pages/research/ProjectGraph"));
@@ -18,7 +20,7 @@ const ResearchPrintPage = lazy(() => import("./pages/research/ResearchPrintPage"
 
 function AppRoutes() {
   const { pathname } = useLocation();
-  const routes = <Suspense fallback={<Spin tip="页面加载中…" />}>
+  const routes = <Suspense fallback={<div aria-label="工作空间加载中"><Skeleton active paragraph={{rows:8}} /></div>}>
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/cases/:caseId" element={<CaseStudy />} />
@@ -26,7 +28,9 @@ function AppRoutes() {
       <Route path="/papers/:uid" element={<Paper />} />
       <Route path="/manage" element={<Manage />} />
       <Route path="/roadmap" element={<Roadmap />} />
+      <Route path="/demo/personalized-roadmap" element={<PersonalizedRoadmapDemo />} />
       <Route path="/tasks" element={<Tasks />} />
+      <Route path="/workflow" element={<WorkflowHub />} />
       <Route path="/research" element={<ResearchProjectsPage />} />
       <Route path="/research/:projectId" element={<ResearchProjectPage />} />
       <Route path="/research/:projectId/graph" element={<ProjectGraph />} />

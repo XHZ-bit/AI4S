@@ -15,7 +15,7 @@ function detailToMessage(detail: unknown, fallback: string): string {
 async function errorFrom(response: Response): Promise<Error> {
   try {
     const body = await response.json();
-    return new Error(detailToMessage(body.detail, `${response.status} ${response.statusText}`));
+    return Object.assign(new Error(detailToMessage(body.detail, `${response.status} ${response.statusText}`)), { status: response.status });
   } catch {
     return new Error(`${response.status} ${response.statusText}`);
   }
@@ -41,6 +41,7 @@ export async function apiPost<T>(path: string, body?: unknown, signal?: AbortSig
     signal,
   });
   if (!resp.ok) throw await errorFrom(resp);
+  if (!/\/assistant\/|\/scenarios\//.test(path)) window.dispatchEvent(new CustomEvent("atlas:data-change", { detail: { path } }));
   return resp.json() as Promise<T>;
 }
 
@@ -51,5 +52,6 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!resp.ok) throw await errorFrom(resp);
+  window.dispatchEvent(new CustomEvent("atlas:data-change", { detail: { path } }));
   return resp.json() as Promise<T>;
 }

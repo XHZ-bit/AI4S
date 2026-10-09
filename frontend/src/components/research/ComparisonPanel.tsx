@@ -5,9 +5,15 @@ import { compareProjectCandidates, getProjectFacts, isVersionConflict, saveProje
 import EvidenceDrawer from "./EvidenceDrawer";
 import { FindingStatusTag, RecordStatusTag, displayKnown } from "./StatusLabels";
 
+import { getInsights, statusLabels, type Report } from "../../api/assistant";
+import { useInspector } from "../workspace/InspectorContext";
+
 type Candidate = { key: string; methodId: string; methodName: string; setting: ExperimentSetting };
 
 export default function ComparisonPanel({ project }: { project: ResearchProject }) {
+  const inspector = useInspector();
+  const [report, setReport] = useState<Report>();
+  useEffect(() => { const c = new AbortController(); getInsights("project", project.id, null, c.signal).then(r=>{if(!c.signal.aborted)setReport(r);}).catch(()=>{}); return ()=>c.abort(); }, [project.id, project.version]);
   const [facts, setFacts] = useState<ProjectFactsResponse | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [comparison, setComparison] = useState<ComparisonResult | null>(null);
@@ -57,24 +63,7 @@ export default function ComparisonPanel({ project }: { project: ResearchProject 
   const selectedCandidates = candidates.filter(item => selected.includes(item.key));
   const evidenceById = new Map((facts?.evidence ?? []).map(item => [item.id, item]));
 
-  const constraintCheck = (candidate: Candidate) => {
-    const rows: { key: string; label: string; value: string; status: "match" | "unknown" | "mismatch"; explanation: string }[] = [];
-    const allowed = project.constraints.allowed_datasets;
-    if (candidate.setting.dataset && project.constraints.excluded_datasets.includes(candidate.setting.dataset)) rows.push({ key: "dataset", label: "数据集约束", value: candidate.setting.dataset, status: "mismatch", explanation: "课题已明确排除此数据集；排除条件优先于允许列表" });
-    else if (!allowed.length) rows.push({ key: "dataset", label: "数据集约束", value: displayKnown(candidate.setting.dataset), status: "unknown", explanation: "课题尚未指定允许的数据集" });
-    else if (!candidate.setting.dataset) rows.push({ key: "dataset", label: "数据集约束", value: "未知", status: "unknown", explanation: "文献实验设置没有可确认的数据集" });
-    else if (allowed.includes(candidate.setting.dataset)) rows.push({ key: "dataset", label: "数据集约束", value: candidate.setting.dataset, status: "match", explanation: "与课题允许列表一致" });
-    else rows.push({ key: "dataset", label: "数据集约束", value: candidate.setting.dataset, status: "mismatch", explanation: "不在课题允许列表中" });
-    const measured = new Set((facts?.measurements ?? []).filter(item => item.experiment_setting_id === candidate.setting.id && item.status !== "withdrawn").map(item => item.metric_name));
-    project.constraints.required_metrics.forEach(metric => rows.push({
-      key: `metric:${metric}`,
-      label: `必需指标 ${metric}`,
-      value: measured.has(metric) ? "有候选测量" : "未找到候选测量",
-      status: measured.has(metric) ? "match" : "unknown",
-      explanation: measured.has(metric) ? "仅表示存在可审核记录，不表示指标达标" : "需要补充来源或人工记录，不能按 0 处理",
-    }));
-    return rows;
-  };
+  const constraintCheck = (candidate: Candidate) => (report?.candidates.find(c=>c.id===candidate.setting.id)?.checks || []).map(c=>({key:c.dimension,label:c.dimension,value:String(c.actual??"未知"),status:c.status,explanation:c.reason}));
 
   const runComparison = async () => {
     if (lock.current || selectedCandidates.length < 2) return;
@@ -145,9 +134,9 @@ export default function ComparisonPanel({ project }: { project: ResearchProject 
         { key: "protocol", label: "协议", children: displayKnown(candidate.setting.evaluation_protocol) },
       ]} />
       <Typography.Title level={5}>课题约束匹配</Typography.Title>
-      {constraintCheck(candidate).map(row => <div key={row.key} className="research-constraint-row"><Tag color={row.status === "match" ? "green" : row.status === "mismatch" ? "red" : "gold"}>{row.status === "match" ? "匹配" : row.status === "mismatch" ? "不匹配" : "未知/待补"}</Tag><strong>{row.label}</strong>：{row.value}<Typography.Text type="secondary"> · {row.explanation}</Typography.Text></div>)}
+      {constraintCheck(candidate).map(row => <div key={row.key} className="research-constraint-row"><Tag color={row.status === "match" ? "green" : row.status === "conflict" ? "red" : "gold"}>{statusLabels[row.status]}</Tag><strong>{row.label}</strong>：{row.value}<Typography.Text type="secondary"> · {row.explanation}</Typography.Text></div>)}
       <Typography.Title level={5}>关键字段依据</Typography.Title>
-      {candidate.setting.field_evidence.length ? candidate.setting.field_evidence.map(field => <div key={field.field_path} className="research-evidence-row"><Space wrap><Typography.Text code>{field.field_path}</Typography.Text><FindingStatusTag status={field.finding_status} />{field.evidence_ids.map(id => <Button key={id} size="small" onClick={() => setEvidence(evidenceById.get(id) ?? null)}>查看来源</Button>)}</Space><Typography.Text type="secondary">{field.note || (field.evidence_ids.length ? "" : "没有来源绑定")}</Typography.Text></div>) : <Typography.Text type="secondary">没有逐字段依据，不能据此得出比较结论。</Typography.Text>}
+      {candidate.setting.field_evidence.length ? candidate.setting.field_evidence.map(field => <div key={field.field_path} className="research-evidence-row"><Space wrap><Typography.Text code>{field.field_path}</Typography.Text><FindingStatusTag status={field.finding_status} />{field.evidence_ids.map(id => <Button key={id} size="small" onClick={() => inspector.available ? inspector.inspect({kind:"evidence",id}) : setEvidence(evidenceById.get(id) ?? null)}>查看来源</Button>)}</Space><Typography.Text type="secondary">{field.note || (field.evidence_ids.length ? "" : "没有来源绑定")}</Typography.Text></div>) : <Typography.Text type="secondary">没有逐字段依据，不能据此得出比较结论。</Typography.Text>}
     </Card>)}</div>
     <Button type="primary" loading={busy} disabled={selectedCandidates.length < 2} onClick={() => void runComparison()}>比较选中的 {selectedCandidates.length} 个候选</Button>
     {comparison && <Card title="文献实验条件检查" extra={<Tag color={comparison.groups.some(group => group.comparable) ? "green" : "orange"}>{comparison.groups.some(group => group.comparable) ? "存在可比组" : "没有可直接比较的组"}</Tag>}>

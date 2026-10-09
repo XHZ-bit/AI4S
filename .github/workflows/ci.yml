@@ -1,0 +1,44 @@
+name: Offline quality and interaction
+on: [push, pull_request]
+jobs:
+  quality:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: python -m pip install -e "backend[dev]" ruff
+      - run: python -m ruff check backend/app backend/scripts backend/tests
+      - run: python backend/scripts/test.py -q
+      - run: npm ci
+        working-directory: frontend
+      - run: npm test
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - run: npm install --no-save --package-lock=false playwright
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: python evaluation/research_atlas/prepare_interaction_fixture.py --output-dir .ui_validation/ci-interaction
+      - run: node evaluation/research_atlas/run_assistant_browser.cjs .ui_validation/ci-interaction
+        env:
+          ATLAS_PLAYWRIGHT_PATH: ${{ github.workspace }}/frontend/node_modules/playwright
+          ATLAS_PYTHON: python
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: interaction-${{ matrix.os }}
+          path: |
+            .ui_validation/ci-interaction/*.png
+            .ui_validation/ci-interaction/assistant-browser.json

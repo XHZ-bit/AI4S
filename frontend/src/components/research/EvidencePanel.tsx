@@ -1,3 +1,4 @@
+import { useInspector } from "../workspace/InspectorContext";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Card, Collapse, Descriptions, Empty, Form, Input, Modal, Select, Space, Spin, Tag, Typography, Upload, message } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
@@ -42,6 +43,7 @@ const roleOptions: { value: PaperRole; label: string }[] = [
 const terminal = new Set(["succeeded", "failed", "interrupted"]);
 
 export default function EvidencePanel({ project, onProjectReload }: { project: ResearchProject; onProjectReload: () => Promise<void> }) {
+  const inspector = useInspector();
   const [links, setLinks] = useState<PaperLink[]>([]);
   const [facts, setFacts] = useState<ProjectFactsResponse>({ methods: [], experiment_settings: [], measurements: [], evidence: [] });
   const [paperOptions, setPaperOptions] = useState<ExistingPaper[]>([]);
@@ -110,7 +112,7 @@ export default function EvidencePanel({ project, onProjectReload }: { project: R
     try { await operation(); } finally { actionLock.current = false; setBusy(false); }
   };
 
-  const sourceButtons = (ids: string[]) => ids.length ? <Space wrap>{ids.map(id => <Button size="small" key={id} onClick={() => setSelectedEvidence(evidenceById.get(id) ?? null)}>来源 {id.slice(-6)}</Button>)}</Space> : <Typography.Text type="secondary">无绑定来源；请按缺失项处理</Typography.Text>;
+  const sourceButtons = (ids: string[]) => ids.length ? <Space wrap>{ids.map(id => <Button size="small" key={id} onClick={() => inspector.available ? inspector.inspect({kind:"evidence",id}) : setSelectedEvidence(evidenceById.get(id) ?? null)}>来源 {id.slice(-6)}</Button>)}</Space> : <Typography.Text type="secondary">无绑定来源；请按缺失项处理</Typography.Text>;
 
   const fieldEvidence = (item: MethodCard | ExperimentSetting) => item.field_evidence.length ? <Collapse size="small" items={item.field_evidence.map(field => ({
     key: field.field_path,

@@ -20,7 +20,12 @@ def save_original(path: Path, raw: bytes):
             output.flush()
             os.fsync(output.fileno())
         try:
-            os.link(temp, path)
+            if os.name == "nt":
+                # Windows rename is atomic and refuses an existing destination.
+                # POSIX rename would overwrite, so keep link publication there.
+                os.rename(temp, path)
+            else:
+                os.link(temp, path)
         except FileExistsError:
             if path.read_bytes() != raw:
                 raise ValueError("A different original already exists")

@@ -31,6 +31,8 @@ def read_session(conn, case_id, sid):
         raise HTTPException(404, "学习记录不存在")
     result = dict(row)
     result["state"] = json.loads(result.pop("state_json"))
+    result["state"].setdefault("practice", {})
+    result["state"].setdefault("practice_history", [])
     result["stale"] = result["case_version"] != VERSION
     result["runs"] = [
         {
@@ -288,6 +290,11 @@ def report(case_id: str, sid: str):
             else ("本题正确，不代表全面掌握" if a["correct"] else "需要回顾")
         )
         lines.append(f"- {q['question']}：{status}")
+    lines.extend(["", "## 交互练习"])
+    for identity, result in session["state"]["practice"].items():
+        lines.append(f"- {identity}：{'答对' if result['correct'] else '需回顾'}，{result['attempts']} 次不同作答；{result['explanation']}")
+    if not session["state"]["practice"]:
+        lines.append("尚未提交交互练习。")
     lines.extend(["", "## 最新导入结果"])
     if latest:
         bundle = json.loads(latest["bundle_json"])

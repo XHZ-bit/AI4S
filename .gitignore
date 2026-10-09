@@ -20,3 +20,5 @@ dist/
 .pytest-tmp/
 .ruff_cache/
 *.tsbuildinfo
+
+frontend/public/pdf-assets/

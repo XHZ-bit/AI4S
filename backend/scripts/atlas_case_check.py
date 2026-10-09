@@ -100,7 +100,7 @@ def collect(source_dir=None):
         "environment": {
             "python": platform.python_version(),
             "system": platform.system(),
-            "machine": platform.machine(),
+            "machine": platform.machine() or "unknown",
         },
         "files": files,
         "checks": inspect_sources(contents),
