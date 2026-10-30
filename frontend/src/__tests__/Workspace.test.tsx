@@ -8,7 +8,7 @@ test("one paper links reading, reproduction and research without claiming verifi
  render(<MemoryRouter initialEntries={["/papers/p1"]}><Routes><Route path="/papers/:uid" element={<PaperDetail/>}/></Routes></MemoryRouter>);
  await screen.findByText("Target");
  expect(screen.getByText("摘要级资料")).toBeTruthy();
- fireEvent.click(screen.getByRole("tab",{name:"基础复现"}));
+ fireEvent.click(screen.getByRole("tab",{name:"实验记录"}));
  expect(await screen.findByText("尚未实测")).toBeTruthy();
  fireEvent.click(screen.getByRole("tab",{name:"研究方向"}));
  expect(await screen.findByText("待验证研究问题，不等于创新性结论")).toBeTruthy();

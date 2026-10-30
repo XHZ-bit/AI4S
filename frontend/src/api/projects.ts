@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "./session";
 import type {
   AsyncTask,
   ComparisonRequest,
@@ -100,7 +101,7 @@ async function request<T>(
     if (Array.isArray(value)) value.forEach(item => url.searchParams.append(key, item));
     else if (value !== null && value !== undefined && value !== "") url.searchParams.set(key, String(value));
   });
-  const response = await fetch(url, options);
+  const response = await authenticatedFetch(url, options);
   if (!response.ok) throw await parseError(response);
   if (options.method && options.method !== "GET") window.dispatchEvent(new Event("atlas:data-change"));
   return response.json() as Promise<T>;
@@ -149,6 +150,75 @@ export interface ProjectAudit {
 
 export const getProjectAudit = (projectId: string, signal?: AbortSignal) =>
   request<ProjectAudit>(`/api/projects/${encodeURIComponent(projectId)}/audit`, { signal });
+
+export interface ProjectImpact {
+  contract_version: "project-impact-v1";
+  project_id: string;
+  input_fingerprint: string;
+  issues: { issue_id: string; code: string; severity: ProjectAuditIssue["severity"];
+    source_refs: { kind: string; id: string }[];
+    affected: { kind: "plan" | "snapshot" | "activity"; id: string; url: string; reason: string }[] }[];
+  notice: string;
+}
+export const getProjectImpact = (projectId: string, signal?: AbortSignal) =>
+  request<ProjectImpact>(`/api/projects/${encodeURIComponent(projectId)}/impact`, { signal });
+
+export interface ImpactCheckpoint {
+  checkpoint_id: string;
+  project_id: string;
+  input_fingerprint: string;
+  created_at: string;
+}
+
+export interface ImpactChanges {
+  contract_version: "project-impact-changes-v1";
+  project_id: string;
+  checkpoint_id: string;
+  baseline_created_at: string;
+  baseline_fingerprint: string;
+  current_fingerprint: string;
+  added: ProjectAuditIssue[];
+  resolved: ProjectAuditIssue[];
+  changed: { before: ProjectAuditIssue; after: ProjectAuditIssue }[];
+  notice: string;
+}
+
+export const getImpactCheckpoint = (projectId: string, signal?: AbortSignal) =>
+  request<{ checkpoint: ImpactCheckpoint | null }>(
+    `/api/projects/${encodeURIComponent(projectId)}/impact/checkpoints`, { signal });
+
+export const saveImpactCheckpoint = (projectId: string, expectedFingerprint: string) =>
+  request<ImpactCheckpoint>(`/api/projects/${encodeURIComponent(projectId)}/impact/checkpoints`,
+    jsonOptions("POST", { expected_fingerprint: expectedFingerprint }));
+
+export const getImpactChanges = (projectId: string, checkpointId: string, signal?: AbortSignal) =>
+  request<ImpactChanges>(`/api/projects/${encodeURIComponent(projectId)}/impact/changes`,
+    { signal }, { checkpoint_id: checkpointId });
+
+export interface ComparisonReadiness {
+  contract_version: "comparison-readiness-v1";
+  project_id: string;
+  input_fingerprint: string;
+  candidates: { setting_id: string; method_id: string; label: string; constraint_status: string;
+    missing_fields: string[]; source_gaps?: string[]; evidence_gaps?: string[];
+    constraint_gaps: { dimension: string; status: string; reason: string }[] }[];
+  pairs: { left_setting_id: string; right_setting_id: string;
+    status: "comparable" | "conflict" | "information_insufficient";
+    missing_fields: string[]; conflicting_fields: string[]; next_action: string;
+    condition_checks?: {field: string; status: "match" | "missing" | "conflict";
+      left_value: string | null; right_value: string | null; reason: string}[];
+    metric_checks?: {field: string; status: "missing" | "conflict";
+      left_value: string | null; right_value: string | null; reason: string}[];
+    shared_metrics?: {metric_name: string; metric_scope: string; scale: string;
+      unit: string | null; aggregation: string | null;
+      left_measurement_id: string; right_measurement_id: string}[];
+    source_gaps?: string[]; evidence_gaps?: string[] }[];
+  total_pairs: number;
+  truncated: boolean;
+  notice: string;
+}
+export const getComparisonReadiness = (projectId: string, signal?: AbortSignal) =>
+  request<ComparisonReadiness>(`/api/projects/${encodeURIComponent(projectId)}/comparison-readiness`, { signal });
 
 export interface LocalRadar {
   contract_version: "local-radar-v1";
@@ -209,6 +279,11 @@ export const transitionFact = (
   `/api/projects/${encodeURIComponent(projectId)}/facts/${encodeURIComponent(factId)}/status`,
   jsonOptions("PATCH", body),
 );
+
+export const reviseProjectFact = (projectId: string, factId: string, body: {
+  expected_version: number; changes: Record<string, unknown>; evidence_ids: string[]; actor: string; reason: string;
+}) => request<ProjectFactsResponse["methods"][number] | ProjectFactsResponse["experiment_settings"][number] | ProjectFactsResponse["measurements"][number]>(
+  `/api/projects/${encodeURIComponent(projectId)}/facts/${encodeURIComponent(factId)}`, jsonOptions("PATCH", body));
 
 export const compareProjectCandidates = (projectId: string, body: ComparisonRequest) =>
   request<ComparisonResult>(`/api/projects/${encodeURIComponent(projectId)}/comparisons`, jsonOptions("POST", body));

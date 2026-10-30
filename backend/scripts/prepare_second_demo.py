@@ -10,7 +10,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 import fitz
 
@@ -78,7 +78,9 @@ def main():
             uid = f"arxiv-{source['arxiv']}"
             path = pdf_dir / f"{uid}.pdf"
             raw = ((args.pdf_dir / f"{source['arxiv']}.pdf").read_bytes() if args.pdf_dir
-                   else urlopen(f"https://arxiv.org/pdf/{source['arxiv']}", timeout=90).read())
+                   else urlopen(Request(f"https://arxiv.org/pdf/{source['arxiv']}",
+                                        headers={"User-Agent": "ResearchAtlas/0.1 (source verification)"}),
+                                timeout=90).read())
             if hashlib.sha256(raw).hexdigest() != source["sha256"]:
                 raise ValueError(f"PDF hash changed: {source['arxiv']}; inspect source before continuing")
             path.write_bytes(raw)

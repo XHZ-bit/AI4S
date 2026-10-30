@@ -10,6 +10,7 @@ import json
 from itertools import combinations
 
 from app.db import projects as store
+from app.db.dependencies import affected_targets
 from app.research.service import project_facts
 
 RULE_VERSION = "project-audit-1"
@@ -20,6 +21,24 @@ def _normal(value: str | None) -> str:
 
 
 def project_audit(conn, project_id: str) -> dict:
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='project_audit_cache'").fetchone():
+        return _project_audit(conn, project_id)
+    row = conn.execute("SELECT token FROM projection_revisions WHERE kind='project' AND source_id=?", (project_id,)).fetchone()
+    token = row['token'] if row else 'initial'
+    cached = conn.execute('SELECT payload_json FROM project_audit_cache WHERE project_id=? AND token=? AND rule_version=?',
+                          (project_id, token, RULE_VERSION)).fetchone()
+    if cached:
+        return json.loads(cached[0])
+    result = _project_audit(conn, project_id)
+    prior_transaction = conn.in_transaction
+    conn.execute('INSERT OR REPLACE INTO project_audit_cache VALUES(?,?,?,?)',
+                 (project_id, token, RULE_VERSION, json.dumps(result, ensure_ascii=False)))
+    if not prior_transaction:
+        conn.commit()
+    return result
+
+
+def _project_audit(conn, project_id: str) -> dict:
     project = store.get_project(conn, project_id)
     if project is None:
         raise store.NotFoundError("项目不存在")
@@ -209,37 +228,16 @@ def project_audit(conn, project_id: str) -> dict:
                 "; ".join(snapshot.review_reasons) or snapshot.id,
                 fact_ids=[ref.id for ref in snapshot.frozen_facts])
 
-    paper_by_link = {link.id: link.paper_uid for link in links}
-    measurement_setting = {item.id: item.experiment_setting_id for item in facts.measurements}
-
-    def plan_facts(plan):
-        return {plan.selected_method_id, *plan.selected_experiment_setting_ids,
-                *(measurement_id for measurement_id, setting_id in measurement_setting.items()
-                  if setting_id in plan.selected_experiment_setting_ids)}
-
-    def plan_papers(plan):
-        selected = [methods.get(plan.selected_method_id),
-                    *(settings.get(identity) for identity in plan.selected_experiment_setting_ids)]
-        return {paper_by_link.get(item.paper_link_id) for item in selected if item and item.paper_link_id}
-
     for issue in issues:
-        touched_facts = set(issue["fact_ids"])
-        touched_evidence = set(issue["evidence_ids"])
-        touched_papers = set(issue["paper_uids"])
+        targets = [target for kind, values in (("fact", issue["fact_ids"]),
+                                               ("evidence", issue["evidence_ids"]),
+                                               ("paper", issue["paper_uids"]))
+                   for identity in values
+                   for target in affected_targets(conn, project_id, kind, identity)]
         issue["affected_plan_ids"] = sorted(set(issue["affected_plan_ids"]) | {
-            plan.id for plan in plans if plan.id and (
-                bool(plan_facts(plan) & touched_facts)
-                or bool(plan_papers(plan) & touched_papers)
-                or any(set(step.evidence_ids) & touched_evidence for step in plan.steps)
-            )
-        })
-        issue["affected_snapshot_ids"] = sorted(
-            snapshot.id for snapshot in snapshots if (
-                bool({ref.id for ref in snapshot.frozen_facts} & touched_facts)
-                or bool({doc.paper_uid for doc in snapshot.frozen_documents} & touched_papers)
-                or any(set(step.evidence_ids) & touched_evidence for step in snapshot.plan.steps)
-            )
-        )
+            target["target_id"] for target in targets if target["target_kind"] == "plan"})
+        issue["affected_snapshot_ids"] = sorted({
+            target["target_id"] for target in targets if target["target_kind"] == "snapshot"})
     issues.sort(key=lambda item: ({"blocking": 0, "warning": 1, "notice": 2}[item["severity"]], item["code"], item["id"]))
     payload = dict(project=project.model_dump(mode="json"),
                    links=[x.model_dump(mode="json") for x in links],

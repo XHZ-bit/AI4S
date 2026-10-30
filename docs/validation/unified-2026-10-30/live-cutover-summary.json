@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "database_count": 8,
+  "legacy_quality_records_preserved": 406,
+  "additional_model_calls": 0,
+  "root_library_papers": 14,
+  "identity_database_integrity": "ok",
+  "identity_original_rows_missing_or_changed": 0,
+  "available_assets": 21,
+  "missing_original_assets": 9,
+  "original_nodes_edges_preserved": 2593,
+  "historical_table_checks": 593,
+  "first_skipped_scopes": [],
+  "second_skipped_scopes": [],
+  "canonical_digest_identical": true,
+  "backup": ".local-backups/pre-cutover-1.0.0-20261030.zip"
+}

@@ -1,19 +1,22 @@
+import {usePreferences} from "../components/PreferencesContext";
 import "./CaseStudy.css";
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { Alert, Button, Card, Col, Collapse, Input, Radio, Row, Select, Space, Spin, Steps, Tag, Typography } from "antd";
+import { Alert, Button, Card, Collapse, Input, Radio, Select, Space, Spin, Tag, Typography } from "antd";
 import { apiGet } from "../api/client";
 import { answerCaseQuestion, caseBase, getCase, getCaseSession, importCaseRun, newCaseSession, patchCaseSession } from "../api/cases";
 import type { CaseInfo, CaseSession, Profile } from "../api/cases";
 import InteractiveLab from "../components/workspace/InteractiveLab";
 import SourceView from "../components/workspace/SourceView";
 import { useInspector } from "../components/workspace/InspectorContext";
+import DisclosureCard from "../components/DisclosureCard";
 
 const storageKey = (id:string) => `atlas:case:${id}`;
 function remember(id:string,sid:string) { try { localStorage.setItem(storageKey(id),sid); } catch { /* URL still preserves progress */ } }
 function remembered(id:string) { try { return localStorage.getItem(storageKey(id)); } catch { return null; } }
 
 export default function CaseStudy() {
+  const {preferences}=usePreferences();
   const { caseId = "diffusion-policy-intro" } = useParams();
   const [params,setParams] = useSearchParams();
   const inspector = useInspector();
@@ -116,13 +119,13 @@ export default function CaseStudy() {
       {session&&<a href={base+"/sessions/"+session.id+"/report"} download>导出学习与检查报告</a>}
     </Space>
     {!session&&<Card title="先了解流程"><p>读懂接口 → 核对配置 → 本机检查 → 解释结果。无需上传论文，也不会自动运行模型。</p><p>预计阅读与源码检查约 25 分钟；这是教学估计，不是实测学习成效。</p></Card>}
-    <InteractiveLab caseId={caseId} session={session} onSaved={saved=>{setSession(previous=>previous?.id===saved.id&&saved.version>=previous.version?saved:previous);}} />
+    {(preferences.features.quizzes||preferences.features.visuals)&&<InteractiveLab caseId={caseId} session={session} onSaved={saved=>{setSession(previous=>previous?.id===saved.id&&saved.version>=previous.version?saved:previous);}} />}
     {session&&<>
       {session.stale&&<Alert type="warning" message="专题版本已变化，请新建记录继续；历史内容仍可导出。"/>}
-      <Steps current={index} direction="horizontal" responsive onChange={n=>!busy&&!session.stale&&changeStep(n)} items={info.steps.map(s=>({title:s.title,status:s.id===step.id?("process" as const):stepComplete(s.id)?("finish" as const):("wait" as const)}))}/>
+      <nav className="case-step-navigation" aria-label="学习步骤">{info.steps.map((s,n)=><button type="button" key={s.id} aria-current={n===index?"step":undefined} disabled={busy||session.stale} onClick={()=>changeStep(n)}><span className="case-step-number">{stepComplete(s.id)?"✓":n+1}</span><span>{s.title}</span></button>)}</nav>
       {wrong.length>0&&<Alert type="warning" message="有理解问题需要回顾" description={<Space wrap>{wrong.map(([id,a])=><Button key={id} disabled={busy||session.stale} onClick={()=>changeStep(info.steps.findIndex(s=>s.id===a.review_step))}>{info.questions.find(q=>q.id===id)?.question}</Button>)}</Space>}/>}
-      <Row gutter={[20,20]}>
-        <Col xs={24} lg={14}><Space direction="vertical" size="middle" style={{width:"100%"}}>
+      <div className="case-study-layout">
+        <div className="case-study-primary"><Space direction="vertical" size="middle" style={{width:"100%"}}>
           <Card title={step.title} extra={<Tag>约 {step.minutes} 分钟</Tag>}>
             <p>{step.body}</p><Typography.Text strong>完成标准：{step.criterion}</Typography.Text>
             {step.id==="orient"&&profile&&<Space direction="vertical" style={{width:"100%",marginTop:16}}>
@@ -132,11 +135,11 @@ export default function CaseStudy() {
               <Button disabled={busy||session.stale} onClick={()=>mutate(()=>patchCaseSession(caseId,session.id,{version:session.version,profile}),"学习目标已保存。")}>保存目标</Button>
             </Space>}
             {step.id==="inspect"&&<Space direction="vertical" style={{width:"100%",marginTop:16}}>
-              <p>1. 下载检查工具与离线源码包，放在同一文件夹。解压源码包为 atlas-sources 文件夹。</p>
+              <p>1. 下载检查工具与离线源码包，放在同一文件夹。解压源码包为 paperstride-sources 文件夹。</p>
               <Space wrap><a href={base+"/checker"} download>下载 Python 检查工具</a><a href={base+"/sources.zip"} download>下载离线源码包（含原许可）</a></Space>
               <p>2. 在该文件夹打开终端，执行以下命令。无需安装 PyTorch，也不会运行模型。</p>
-              <Typography.Paragraph copyable code style={{overflowWrap:"anywhere"}}>python atlas_case_check.py --source-dir atlas-sources --output atlas-result.json</Typography.Paragraph>
-              <p>输出文件已存在时更换文件名，以保留历史。去掉 --source-dir atlas-sources 可从固定官方地址在线读取源码。</p>
+              <Typography.Paragraph copyable code style={{overflowWrap:"anywhere"}}>python paperstride_case_check.py --source-dir paperstride-sources --output paperstride-result.json</Typography.Paragraph>
+              <p>输出文件已存在时更换文件名，以保留历史。去掉 --source-dir paperstride-sources 可从固定官方地址在线读取源码。</p>
               <label>3. 导入结果 JSON<input aria-label="导入检查结果 JSON" type="file" accept=".json,application/json" disabled={busy||session.stale} onChange={e=>{void upload(e.target.files?.[0]);e.target.value="";}} style={{display:"block",marginTop:8}}/></label>
             </Space>}
             <Space wrap style={{marginTop:20}}>
@@ -145,7 +148,7 @@ export default function CaseStudy() {
               {index<info.steps.length-1&&<Button type="primary" disabled={busy||session.stale} onClick={()=>changeStep(index+1)}>下一步</Button>}
             </Space>
           </Card>
-          {questions.map(q=>{const a=session.state.answers[q.id];return <Card key={q.id} title="理解检查">
+          {preferences.features.quizzes&&questions.map(q=>{const a=session.state.answers[q.id];return <Card key={q.id} title="理解检查">
             <Typography.Paragraph strong>{q.question}</Typography.Paragraph>
             <Radio.Group value={choices[q.id]} onChange={e=>setChoices({...choices,[q.id]:e.target.value})}><Space direction="vertical">{q.options.map((option,n)=><Radio key={n} value={n}>{option}</Radio>)}</Space></Radio.Group>
             <div style={{marginTop:16}}><Button disabled={choices[q.id]===undefined||busy||session.stale} onClick={()=>mutate(()=>answerCaseQuestion(caseId,session.id,{version:session.version,question_id:q.id,choice:choices[q.id]}),"回答已保存，反馈不等于全面掌握评估。")}>检查回答</Button></div>
@@ -155,19 +158,19 @@ export default function CaseStudy() {
             <Alert type={latest.report.passed?"success":"warning"} message={latest.report.passed?"记录一致性检查通过":"检查记录有待处理项"} description={latest.report.verification}/>
             <p>{latest.report.notice}</p><Space wrap>{latest.report.checks.map(c=><Tag key={c.id} color={c.passed?"green":"red"}>{c.label}：{c.passed?"通过":"未通过"}</Tag>)}</Space>
           </Card>}
-        </Space></Col>
-        <Col xs={24} lg={10}><Space direction="vertical" size="middle" style={{width:"100%"}}>
-          <Card title="依据与代码对照"><p><a href={info.paper_url} target="_blank" rel="noreferrer">阅读论文原文入口</a></p><p>{info.paper_notice}</p><Typography.Paragraph copyable>{info.commit}</Typography.Paragraph>
+        </Space></div>
+        <div className="case-supporting-panels">
+          <DisclosureCard title="依据与代码对照" storageKey="atlas:case:source-collapsed"><p><a href={info.paper_url} target="_blank" rel="noreferrer">阅读论文原文入口</a></p><p>{info.paper_notice}</p><Typography.Paragraph copyable>{info.commit}</Typography.Paragraph>
             {info.mappings.filter(m=>sourceIndices.includes(m.source)).map(m=><div key={m.title} style={{marginTop:14}}><Button type="link" onClick={()=>inspector.inspect({kind:"source",id:info.sources[m.source].path,line:m.line})}>{m.title} · 第 {m.line} 行</Button><p>{m.explanation}</p></div>)}
             <Collapse items={info.sources.filter((_,n)=>sourceIndices.includes(n)).map(s=>({key:s.path,label:s.path,children:<SourceView text={s.text} />}))}/>
             <p style={{marginTop:12}}>源码版权：Columbia Artificial Intelligence and Robotics Lab，MIT；离线包保留原许可。教学说明为平台整理，尚待领域评估。</p>
-          </Card>
-          <Card title="我卡住了"><Collapse items={info.troubleshooting.map(t=>({key:t.id,label:t.title,children:<p>{t.action}</p>}))}/></Card>
-          <Card title="学习记录"><p>理解检查已作答 {Object.keys(session.state.answers).length}/{info.questions.length}；读过 {session.state.read_steps.length}/{info.steps.length} 步。均不代表完成模型复现。</p><p>共保存 {session.runs.length} 次不同检查记录。</p>
+          </DisclosureCard>
+          <DisclosureCard title="我卡住了" storageKey="atlas:case:help-collapsed" defaultCollapsed><Collapse items={info.troubleshooting.map(t=>({key:t.id,label:t.title,children:<p>{t.action}</p>}))}/></DisclosureCard>
+          <DisclosureCard title="学习记录" storageKey="atlas:case:records-collapsed" defaultCollapsed><p>理解检查已作答 {Object.keys(session.state.answers).length}/{info.questions.length}；读过 {session.state.read_steps.length}/{info.steps.length} 步。均不代表完成模型复现。</p><p>共保存 {session.runs.length} 次不同检查记录。</p>
             <Collapse items={session.runs.slice(1).map(r=>({key:r.id,label:r.created_at+" UTC · "+(r.report.passed?"一致性通过":"需处理"),children:<p>{r.report.notice}</p>}))}/>
-          </Card>
-        </Space></Col>
-      </Row>
+          </DisclosureCard>
+        </div>
+      </div>
     </>}
   </Space>;
 }

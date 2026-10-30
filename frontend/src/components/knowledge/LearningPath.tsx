@@ -1,0 +1,7 @@
+import {useEffect,useState} from 'react';
+import {getKnowledgePath,type KnowledgePath} from '../../api/knowledgeExperience';
+export default function LearningPath({projectId,nodeId,onNode}:{projectId:string;nodeId:string;onNode:(id:string)=>void}){
+ const [path,setPath]=useState<KnowledgePath>(),[error,setError]=useState(''),[open,setOpen]=useState(false),[retry,setRetry]=useState(0);
+ useEffect(()=>{setPath(undefined);setError('');if(!open)return;const c=new AbortController();getKnowledgePath(projectId,{source:nodeId,kind:'prerequisites',max_depth:4},c.signal).then(setPath).catch(e=>{if(!c.signal.aborted)setError(String(e))});return()=>c.abort()},[projectId,nodeId,open,retry]);
+ return <details className="kw-learning-path" onToggle={e=>setOpen(e.currentTarget.open)}><summary>沿图谱查看前置学习路径</summary>{open&&(!path&&!error?<p role="status">读取前置关系…</p>:error?<p>路径暂未读取：{error} <button onClick={()=>setRetry(v=>v+1)}>重试</button></p>:path&&<><p>{path.message||'以下路径来自当前空间已保存的前置知识关系，可按需要选择。'}</p>{path.cycle_detected&&<p role="note">部分前置关系形成循环，已停止重复展开；请结合原文核对。</p>}{path.truncated&&<p>当前显示有界路径，可进入节点继续展开。</p>}{path.paths.map((p,i)=><ol key={i} className="kw-learning-path-steps">{p.node_ids.map((id,j)=>{const n=path.nodes.find(n=>n.id===id);return <li key={id+':'+j}><button disabled={id===nodeId} onClick={()=>onNode(id)}>{n?.label||'关联知识'}</button>{j<p.edge_ids.length&&<small>{path.edges.find(e=>e.id===p.edge_ids[j])?.explanation||'前置知识关系'}</small>}</li>})}</ol>)}</>)}</details>;
+}

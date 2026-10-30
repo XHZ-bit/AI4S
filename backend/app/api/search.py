@@ -1,5 +1,7 @@
 from contextlib import closing
+from typing import Literal
 from fastapi import APIRouter, Query
+from pydantic import BaseModel
 from app.db.sqlite import connect
 from app.search.service import lexical_search, semantic_search
 
@@ -10,7 +12,30 @@ def _connect():
     return connect()
 
 
-@router.get("/v2")
+class SearchHit(BaseModel):
+    uid: str
+    title: str
+    snippet: str
+    score: float
+    hit_reason: str
+    year: int | None = None
+    source: str | None = None
+    # These are present only for a matching stored passage. quote is an exact
+    # substring of passage.text; page is one-based when supplied by the parser.
+    passage_id: str | None = None
+    document_id: str | None = None
+    document_version: str | None = None
+    page: int | None = None
+    quote: str | None = None
+
+
+class SearchResponse(BaseModel):
+    items: list[SearchHit]
+    mode: Literal["keyword", "semantic", "hybrid"]
+    notice: str
+
+
+@router.get("/v2", response_model=SearchResponse, response_model_exclude_unset=True)
 def search_v2(q: str, limit: int = Query(10, ge=1, le=50)):
     if not q.strip():
         return {"items": [], "mode": "keyword", "notice": "请输入检索词"}

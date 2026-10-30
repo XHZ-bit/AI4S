@@ -14,7 +14,7 @@ _COMMAND_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _UNVERIFIED_RESULT_PATTERN = re.compile(
-    r"\b(?:auroc|auc|rmse|mae|mape|accuracy|精度|准确率)\b[^\n]{0,24}\d",
+    r"(?:(?<![a-z0-9])(?:auroc|auc|rmse|mae|mape|accuracy)(?![a-z0-9])|精度|准确率)[^\n]{0,24}\d",
     re.IGNORECASE,
 )
 

@@ -1,0 +1,9 @@
+import {useEffect,useState} from 'react';
+import {Alert,Button,Input,Select,Space} from 'antd';
+import {Link,useSearchParams} from 'react-router-dom';
+import {apiGet,apiPost} from '../../api/client';
+export default function ImportBar({onDone}:{onDone:()=>void}){
+ const [params]=useSearchParams();const [value,setValue]=useState(''),[project,setProject]=useState(params.get('project')||''),[projects,setProjects]=useState<any[]>([]),[busy,setBusy]=useState(false),[result,setResult]=useState<any>(),[resultProject,setResultProject]=useState(''),[error,setError]=useState('');
+ useEffect(()=>{apiGet<any>('/api/projects').then(r=>setProjects(r.items||[])).catch(e=>setError(String(e)))},[]);
+ return <section><h3>粘贴链接或论文标识</h3><Space.Compact style={{width:'100%'}}><Input aria-label="论文链接或标识" value={value} onChange={e=>setValue(e.target.value)} placeholder="doi.org 链接、DOI 或 arXiv 编号"/><Button aria-label="添加论文标识" type="primary" loading={busy} disabled={!value.trim()} onClick={async()=>{setBusy(true);setError('');setResult(undefined);try{const r=await apiPost('/api/workbench/import',{value,project_id:project||null});setResult(r);setResultProject(project);onDone()}catch(e){setError(String(e))}finally{setBusy(false)}}}>添加</Button></Space.Compact><div style={{margin:"14px 0"}}><Select disabled={busy} aria-label="导入到课题" style={{width:'100%'}} value={project} onChange={setProject} options={[{value:'',label:'仅添加到论文库'},...projects.map(p=>({value:p.id,label:p.title}))]}/></div>{error&&<Alert type="warning" message={error}/>} {result&&<Alert type="success" message={resultProject?'已加入研究空间':result.duplicate?'已找到已有论文，未重复添加':'已添加论文'} description={<>{result.notice} <Link to={resultProject?`/research/${encodeURIComponent(resultProject)}?tab=reading&paper=${encodeURIComponent(result.uid)}`:`/papers/${encodeURIComponent(result.uid)}?tab=reading`}>打开论文</Link></>}/>}<p>PDF 文件可在下方拖入。已有论文可切换到“我的论文”加入研究空间。</p></section>
+}

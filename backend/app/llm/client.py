@@ -1,6 +1,7 @@
 """OpenAI 兼容 LLM 客户端：chat / embeddings，httpx 直连，429/5xx/超时重试。"""
 import logging
 import time
+from threading import Lock
 
 import httpx
 
@@ -8,6 +9,30 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 _RETRY_SLEEP = 1.0
+_client = None
+_client_lock = Lock()
+
+
+class ModelOutputTruncated(RuntimeError):
+    pass
+
+
+def shared_client():
+    """Reuse TLS setup and keep-alive connections across the bounded workers."""
+    global _client
+    with _client_lock:
+        if _client is None or _client.is_closed:
+            _client = httpx.Client(limits=httpx.Limits(max_connections=12, max_keepalive_connections=8),
+                                   timeout=httpx.Timeout(60, connect=10, pool=10))
+        return _client
+
+
+def close_client():
+    global _client
+    with _client_lock:
+        client, _client = _client, None
+    if client is not None:
+        client.close()
 
 
 def _base() -> str:
@@ -37,14 +62,17 @@ def _post_with_retry(client: httpx.Client, url: str, payload: dict) -> dict:
     last: Exception | None = None
     last_response: httpx.Response | None = None
     for attempt in range(3):
+        from app.task_control import check_active
+        check_active()
         try:
             resp = client.post(
                 url,
                 json=payload,
                 headers={"Authorization": f"Bearer {_api_key()}"},
-                timeout=get_settings().llm_timeout_seconds,
+                timeout=httpx.Timeout(get_settings().llm_timeout_seconds, connect=10, pool=10),
             )
             resp.raise_for_status()
+            check_active()
             return resp.json()
         except httpx.HTTPStatusError as exc:
             last = exc
@@ -64,7 +92,13 @@ def _post_with_retry(client: httpx.Client, url: str, payload: dict) -> dict:
 
 def _extract_choice(data: dict) -> str:
     try:
-        return data["choices"][0]["message"]["content"]
+        choice = data["choices"][0]
+        if choice.get("finish_reason") == "length":
+            raise ModelOutputTruncated("模型输出达到上限，需要缩短输入后重试")
+        content = choice["message"]["content"]
+        if not isinstance(content, str) or not content.strip():
+            raise RuntimeError("llm response has no text content")
+        return content
     except (KeyError, IndexError, TypeError) as exc:
         raise RuntimeError("llm response missing choices/content") from exc
 
@@ -81,17 +115,17 @@ def _extract_embeddings(data: dict) -> list[list[float]]:
 
 def chat(messages: list[dict], json_mode: bool = False) -> str:
     _api_key()
-    payload = {"model": get_settings().llm_model, "messages": messages}
+    payload = {"model": get_settings().llm_model, "messages": messages, "max_tokens": 8192}
+    if get_settings().llm_model.startswith("qwen3"):
+        payload["enable_thinking"] = False
     if json_mode:
         payload["response_format"] = {"type": "json_object"}
-    with httpx.Client() as client:
-        data = _post_with_retry(client, f"{_base()}/chat/completions", payload)
+    data = _post_with_retry(shared_client(), f"{_base()}/chat/completions", payload)
     return _extract_choice(data)
 
 
 def embed(texts: list[str]) -> list[list[float]]:
     _api_key()
     payload = {"model": get_settings().llm_embed_model, "input": texts}
-    with httpx.Client() as client:
-        data = _post_with_retry(client, f"{_base()}/embeddings", payload)
+    data = _post_with_retry(shared_client(), f"{_base()}/embeddings", payload)
     return _extract_embeddings(data)

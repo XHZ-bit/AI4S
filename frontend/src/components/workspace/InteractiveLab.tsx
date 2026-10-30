@@ -1,3 +1,4 @@
+import {usePreferences} from "../PreferencesContext";
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, InputNumber, Radio, Slider, Space, Tabs, Tag } from "antd";
 import { getCaseSession } from "../../api/cases";
@@ -60,13 +61,14 @@ function Practice({ exercise, caseId, session, onSaved }: { exercise: Exercise; 
 }
 
 export default function InteractiveLab({ caseId, session, onSaved }: { caseId: string; session?: CaseSession; onSaved: (session: CaseSession) => void }) {
+  const {preferences}=usePreferences();
   const [params, setParams] = useSearchParams();
   const [report, setReport] = useState<Report>(); const [error, setError] = useState("");
   useEffect(() => {
-    if (!session) return;
+    if (!session||!preferences.features.quizzes) return;
     const c = new AbortController();
     getInsights("case", caseId, session.id, c.signal).then(value => { if (!c.signal.aborted) { setReport(value); setError(""); } }).catch(e => { if (!c.signal.aborted) setError(String(e)); });
     return () => c.abort();
-  }, [caseId, session?.id, session?.version]);
-  return <Card id="atlas-interactive-lab" className="atlas-lab" title={<Space wrap><span>交互实验室</span><Tag color="cyan">图解 · 源码 · 自动练习</Tag></Space>}><Tabs activeKey={["tensor","windows","practice"].includes(params.get("lab")||"")?params.get("lab")!:"tensor"} onChange={lab=>setParams(old=>{const n=new URLSearchParams(old);n.set("lab",lab);return n;})} items={[{ key: "tensor", label: "张量形状", children: <TensorAnimation /> }, { key: "windows", label: "时间窗口", children: <WindowAnimation /> }, { key: "practice", label: "动手练习", children: <Space direction="vertical" style={{ width: "100%" }}>{!session && <Alert type="info" message="开始学习并保存进度后，可以提交自动练习" />}{error && <Alert type="error" message={error} />}{report?.exercises?.map(e => <Practice key={`${session!.id}:${e.id}`} exercise={e} caseId={caseId} session={session!} onSaved={onSaved} />)}</Space> }]} /></Card>;
+  }, [caseId, session?.id, session?.version,preferences.features.quizzes]);
+  return <Card id="atlas-interactive-lab" className="atlas-lab" title={<Space wrap><span>交互实验室</span><Tag color="cyan">图解 · 源码 · 自动练习</Tag></Space>}><Tabs activeKey={preferences.features.visuals?(params.get("lab")==="practice"&&!preferences.features.quizzes?"tensor":params.get("lab")||"tensor"):"practice"} onChange={lab=>setParams(old=>{const n=new URLSearchParams(old);n.set("lab",lab);return n;})} items={[{ key: "tensor", label: "张量形状", children: <TensorAnimation /> }, { key: "windows", label: "时间窗口", children: <WindowAnimation /> }, { key: "practice", label: "动手练习", children: <Space direction="vertical" style={{ width: "100%" }}>{!session && <Alert type="info" message="开始学习并保存进度后，可以提交自动练习" />}{error && <Alert type="error" message={error} />}{report?.exercises?.map(e => <Practice key={`${session!.id}:${e.id}`} exercise={e} caseId={caseId} session={session!} onSaved={onSaved} />)}</Space> }].filter(item=>item.key==="practice"?preferences.features.quizzes:preferences.features.visuals)} /></Card>;
 }

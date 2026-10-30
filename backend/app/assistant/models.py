@@ -73,6 +73,7 @@ class Report(Model):
     actions: list[Action] = Field(default_factory=list)
     candidates: list[CandidateChecks] = Field(default_factory=list)
     exercises: list[Exercise] = Field(default_factory=list)
+    knowledge_context: dict = Field(default_factory=dict)
     coverage: dict[str, int] = Field(default_factory=dict)
     notice: str = "自动分析用于发现缺口与指导下一步，资料原有状态保持可见。"
 
@@ -120,6 +121,9 @@ class Resource(Model):
     document_id: str | None = None
     text: str | None = None
     url: str | None = None
+    source_file_sha256: str | None = None
+    file_available: bool | None = None
+    current_file_url: str | None = None
     line: int | None = None
     tasks: list[str] = Field(default_factory=list)
     passages: list[dict] = Field(default_factory=list)

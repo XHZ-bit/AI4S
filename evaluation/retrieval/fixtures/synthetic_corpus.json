@@ -1,0 +1,120 @@
+{
+  "contract_version": "offline-retrieval-fixture-v1",
+  "partition": "synthetic",
+  "notice": "All papers, passages and relevance labels are fictional regression fixtures. They are not scientific findings or a human-reviewed retrieval benchmark.",
+  "papers": [
+    {
+      "uid": "diffusion-title",
+      "title": "Diffusion Policy",
+      "abstract": "A fictional robot control article.",
+      "documents": [{"id": "diffusion-doc", "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "passages": [
+        {"id": "diffusion-background", "heading": "Background", "text": "Diffusion is briefly mentioned before unrelated background material.", "page": 1, "ordinal": 0},
+        {"id": "diffusion-evidence", "heading": "Method", "text": "Diffusion policy predicts action sequences under the recorded observation setting. This diffusion policy example is fictional.", "page": 3, "ordinal": 1}
+      ]}]
+    },
+    {
+      "uid": "control-source",
+      "title": "Robotic visuomotor control",
+      "abstract": "The original text records the experimental conditions.",
+      "documents": [{"id": "control-doc", "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "passages": [
+        {"id": "control-evidence", "heading": "Method", "text": "The diffusion policy example evaluates a fixed action horizon. Diffusion policy uses the same observation window throughout this fictional experiment.", "page": 7, "ordinal": 0}
+      ]}]
+    },
+    {
+      "uid": "diffusion-distractor",
+      "title": "Image diffusion overview",
+      "abstract": "This fictional catalogue entry has no original document.",
+      "documents": []
+    },
+    {
+      "uid": "calibration-source",
+      "title": "Condition logs",
+      "abstract": "Measurement details are retained in the source.",
+      "documents": [
+        {"id": "calibration-old-doc", "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "created_at": "2026-01-01", "passages": [
+          {"id": "calibration-evidence", "heading": "Measured setting", "text": "Calibration variance is measured on a fixed split. Calibration variance changes with the sample count in this fictional setting.", "page": 4, "ordinal": 3}
+        ]},
+        {"id": "calibration-new-doc", "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "created_at": "2026-02-01", "passages": [
+          {"id": "calibration-weak", "heading": "Background", "text": "Calibration is mentioned in a broad introduction. The surrounding paragraphs discuss documentation, notation, unrelated implementation notes and general background. None of those sentences provides the requested joint measurement condition.", "page": 1, "ordinal": 0}
+        ]}
+      ]
+    },
+    {
+      "uid": "cn-title",
+      "title": "工业图像异常检测",
+      "abstract": "合成资料，仅用于检索回归。",
+      "documents": [{"id": "cn-doc", "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "passages": [
+        {"id": "cn-evidence", "heading": "条件", "text": "工业图像异常检测只比较固定划分下的结果。图像分辨率与训练样本数量均被记录。这里的资料为虚构夹具。", "page": 2, "ordinal": 0}
+      ]}]
+    },
+    {
+      "uid": "cn-body",
+      "title": "跨域条件记录",
+      "abstract": "合成原文片段。",
+      "documents": [{"id": "cn-body-doc", "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "passages": [
+        {"id": "cn-body-evidence", "heading": "摘要", "text": "这里记录图像任务的输入条件，便于检查两字中文查询。", "page": null, "ordinal": 0}
+      ]}]
+    },
+    {
+      "uid": "notation-source",
+      "title": "Compact notation",
+      "abstract": "A fictional implementation record.",
+      "documents": [{"id": "notation-doc", "content_hash": "1111111111111111111111111111111111111111111111111111111111111111", "passages": [
+        {"id": "xy-evidence", "heading": "Notation", "text": "The symbol XY names a fixed two-step action in this fictional record.", "page": 5, "ordinal": 0},
+        {"id": "ppo-evidence", "heading": "Implementation", "text": "PPO uses the recorded clipping condition in this fictional implementation example.", "page": 6, "ordinal": 1}
+      ]}]
+    },
+    {
+      "uid": "few-shot-source",
+      "title": "Small-data adaptation",
+      "abstract": "The source records a limited-data setting.",
+      "documents": [{"id": "few-shot-doc", "content_hash": "2222222222222222222222222222222222222222222222222222222222222222", "passages": [
+        {"id": "few-shot-evidence", "heading": "Setting", "text": "Few-shot adaptation keeps the support set fixed. Few-shot adaptation is compared only under the same fictional split.", "page": 8, "ordinal": 0}
+      ]}]
+    },
+    {
+      "uid": "metadata-only",
+      "title": "Metadata only signal",
+      "abstract": "There is no uploaded original for this entry.",
+      "documents": []
+    },
+    {
+      "uid": "abstract-only",
+      "title": "Ablation record",
+      "abstract": "Frozen ablation settings are recorded only in collected metadata.",
+      "documents": [{"id": "heading-doc", "content_hash": "3333333333333333333333333333333333333333333333333333333333333333", "passages": [
+        {"id": "heading-only", "heading": "Appendixneedle", "text": "This source contains unrelated prose without the requested phrase.", "page": 10, "ordinal": 0}
+      ]}]
+    }
+  ],
+  "queries": [
+    {"id": "title-with-best-source", "query": "diffusion policy", "relevant_uids": ["diffusion-title", "control-source"], "expected_first": "diffusion-title", "evidence": [
+      {"uid": "diffusion-title", "passage_id": "diffusion-evidence", "contains": ["Diffusion policy"], "page": 3},
+      {"uid": "control-source", "passage_id": "control-evidence", "contains": ["diffusion policy"], "page": 7}
+    ]},
+    {"id": "relevance-before-recency", "query": "calibration variance", "relevant_uids": ["calibration-source"], "expected_first": "calibration-source", "evidence": [
+      {"uid": "calibration-source", "passage_id": "calibration-evidence", "contains": ["Calibration variance"], "page": 4}
+    ]},
+    {"id": "two-character-chinese", "query": "图像", "relevant_uids": ["cn-title", "cn-body"], "expected_first": "cn-title", "evidence": [
+      {"uid": "cn-title", "passage_id": "cn-evidence", "contains": ["图像"], "page": 2},
+      {"uid": "cn-body", "passage_id": "cn-body-evidence", "contains": ["图像"], "page": null}
+    ]},
+    {"id": "longer-chinese", "query": "异常检测", "relevant_uids": ["cn-title"], "expected_first": "cn-title", "evidence": [
+      {"uid": "cn-title", "passage_id": "cn-evidence", "contains": ["异常检测"], "page": 2}
+    ]},
+    {"id": "two-character-latin", "query": "xy", "relevant_uids": ["notation-source"], "expected_first": "notation-source", "evidence": [
+      {"uid": "notation-source", "passage_id": "xy-evidence", "contains": ["XY"], "page": 5}
+    ]},
+    {"id": "metadata-is-not-source-evidence", "query": "metadata only signal", "relevant_uids": ["metadata-only"], "expected_first": "metadata-only", "no_evidence": ["metadata-only"]},
+    {"id": "abstract-is-not-source-evidence", "query": "frozen ablation", "relevant_uids": ["abstract-only"], "expected_first": "abstract-only", "no_evidence": ["abstract-only"]},
+    {"id": "hyphenated-setting", "query": "few-shot adaptation", "relevant_uids": ["few-shot-source"], "expected_first": "few-shot-source", "evidence": [
+      {"uid": "few-shot-source", "passage_id": "few-shot-evidence", "contains": ["Few-shot adaptation"], "page": 8}
+    ]},
+    {"id": "case-insensitive-acronym", "query": "ppo", "relevant_uids": ["notation-source"], "expected_first": "notation-source", "evidence": [
+      {"uid": "notation-source", "passage_id": "ppo-evidence", "contains": ["PPO"], "page": 6}
+    ]},
+    {"id": "heading-alone-is-not-a-quote", "query": "appendixneedle", "relevant_uids": []},
+    {"id": "absent-query", "query": "unobtainiumzero", "relevant_uids": []},
+    {"id": "empty-query", "query": "   ", "relevant_uids": []}
+  ]
+}

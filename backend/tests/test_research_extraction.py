@@ -113,6 +113,93 @@ def _setting(sid: str, pid: str, name: str, quote: str, measurement: dict) -> di
     }
 
 
+@pytest.mark.parametrize("description,direction,expected", [
+    ("ROC score 87.", "higher_is_better", "unspecified"),
+    ("ROC score 87; higher is better.", "higher_is_better", "higher_is_better"),
+    ("ROC score 87; higher is not better.", "higher_is_better", "unspecified"),
+    ("ROC score 87; higher is better; differences were not significant.", "higher_is_better", "higher_is_better"),
+    ("Cost 12; lower values are preferred.", "lower_is_better", "lower_is_better"),
+    ("Cost 12; 越低越好。", "lower_is_better", "lower_is_better"),
+])
+def test_direction_requires_an_explicit_non_negated_source_statement(monkeypatch, description, direction, expected):
+    text = "We propose Willow on ToySet. " + description
+    metric = "Cost" if "Cost" in description else "ROC score"
+    measurement = _measurement("v1", "p1", metric, 12 if metric == "Cost" else 87, description)
+    measurement["direction"] = _claim(direction, "p1", description)
+    raw = {"methods": [{"local_id": "m1", "claim_role": "current_paper_method",
+                        "name": _claim("Willow", "p1", "We propose Willow on ToySet."),
+                        "experiment_settings": [_setting("s1", "p1", "ToySet", "We propose Willow on ToySet.", measurement)]}]}
+    monkeypatch.setattr("app.research_extraction.candidates.chat", lambda *a, **k: json.dumps(raw))
+    bundle = extract_candidates(_input([_passage("p1", text)]))
+    assert bundle.measurements[0].direction.value == expected
+    if expected == "unspecified":
+        assert any("direction_not_explicit" in item for item in bundle.warnings)
+
+
+@pytest.mark.parametrize("quote,upper,accepted", [
+    ("ToySet score is up to 87.", None, False),
+    ("ToySet score is up to 87.", 87, True),
+    ("ToySet score 87 was not measured.", None, False),
+    ("ToySet score is 87.", None, True),
+])
+def test_numeric_qualifiers_do_not_become_unqualified_results(monkeypatch, quote, upper, accepted):
+    measurement = _measurement("v1", "p1", "score", 87, quote)
+    measurement["value"]["value"]["upper"] = upper
+    raw = {"methods": [{"local_id": "m1", "claim_role": "current_paper_method",
+                        "name": _claim("Willow", "p1", "We propose Willow."),
+                        "experiment_settings": [_setting("s1", "p1", "ToySet", quote, measurement)]}]}
+    monkeypatch.setattr("app.research_extraction.candidates.chat", lambda *a, **k: json.dumps(raw))
+    bundle = extract_candidates(_input([_passage("p1", "We propose Willow. " + quote)]))
+    assert (bundle.measurements[0].value is not None) == accepted
+    if not accepted:
+        assert bundle.measurements[0].finding_status == FindingStatus.NOT_PARSED
+
+
+@pytest.mark.parametrize("token,value,accepted", [
+    ("1e-3", 0.001, True), ("1e-3", 1, False), ("1e-3", -3, False),
+    (".5", 0.5, True), (".5", 5, False),
+    ("1.2E+3", 1200, True), ("1.2E+3", 1.2, False),
+    ("1,234.5", 1234.5, True), ("-0.5", -0.5, True),
+    ("1e-13", 0, False), ("1e-13", 1e-13, True),
+    ("95.2, other score 92.1", 95.2, True), ("87, 88 and 89", 87, True),
+    ("0,5", 5, False), ("F1", 1, False),
+])
+def test_numeric_tokens_are_matched_as_whole_numbers(monkeypatch, token, value, accepted):
+    quote = f"ToySet score is {token}."
+    measurement = _measurement("v1", "p1", "score", value, quote)
+    raw = {"methods": [{"local_id": "m1", "claim_role": "current_paper_method",
+                        "name": _claim("Willow", "p1", "We propose Willow."),
+                        "experiment_settings": [_setting("s1", "p1", "ToySet", quote, measurement)]}]}
+    monkeypatch.setattr("app.research_extraction.candidates.chat", lambda *a, **k: json.dumps(raw))
+    bundle = extract_candidates(_input([_passage("p1", "We propose Willow. " + quote)]))
+    assert (bundle.measurements[0].value is not None) == accepted
+    if accepted:
+        assert bundle.measurements[0].value.value == value
+    else:
+        assert bundle.measurements[0].finding_status == FindingStatus.NOT_PARSED
+
+
+@pytest.mark.parametrize("change", ["project", "document_version"])
+def test_extraction_identifiers_do_not_collide_across_frozen_sources(monkeypatch, change):
+    quote = "We propose Willow on ToySet, score 87."
+    raw = {"methods": [{"local_id": "m1", "claim_role": "current_paper_method",
+                        "name": _claim("Willow", "p1", quote),
+                        "experiment_settings": [_setting("s1", "p1", "ToySet", quote,
+                            _measurement("v1", "p1", "score", 87, quote))]}]}
+    monkeypatch.setattr("app.research_extraction.candidates.chat", lambda *a, **k: json.dumps(raw))
+    first = _input([_passage("p1", quote), _passage("t1", "Original table", kind="table")])
+    second = first.model_copy(deep=True)
+    if change == "project":
+        second.project_id = second.paper_link.project_id = "project-2"
+        second.paper_link.id = second.document.paper_link_id = "link-2"
+    else:
+        second.document.document_version = second.paper_link.linked_document_version = "v2"
+    bundles = [extract_candidates(value) for value in (first, second)]
+    for group in ("methods", "experiment_settings", "measurements", "evidence"):
+        ids = [{item.id for item in getattr(bundle, group)} for bundle in bundles]
+        assert ids[0] and ids[1] and ids[0].isdisjoint(ids[1]), group
+
+
 def test_multiple_settings_same_name_methods_and_other_author_result(monkeypatch):
     text = (
         "We propose AtlasNet. On MVTec, AtlasNet obtains image AUROC 95.2. "

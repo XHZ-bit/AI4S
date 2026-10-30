@@ -2,6 +2,7 @@
 import math
 import re
 from app.assistant.models import Check, CandidateChecks, Reference
+from app.research.field_bindings import evidence_ids_for, matching_bindings
 
 
 def norm(value):
@@ -14,7 +15,7 @@ def status(checks):
 
 
 def resource(setting, aliases):
-    if any(f.finding_status != "reported" and ("resources" in f.field_path or any(norm(a) in norm(f.field_path) for a in aliases)) for f in setting.field_evidence):
+    if any(f.finding_status != "reported" for f in matching_bindings(setting, aliases)):
         return None
     values = [r for r in setting.resources if norm(r.name) in {norm(a) for a in aliases}]
     if not values or any(r.finding_status != "reported" for r in values):
@@ -68,19 +69,25 @@ def evaluate_constraints(project, methods, settings, measurements):
         if setting.status == "withdrawn" or setting.method_id not in methods:
             continue
         refs = [Reference(kind="evidence", id=eid) for eid in sorted({e for f in setting.field_evidence for e in f.evidence_ids})]
+        def field_refs(*fields):
+            return [Reference(kind="evidence", id=eid) for eid in evidence_ids_for(setting, fields)]
         checks = []
         dataset = norm(setting.dataset)
         excluded = {norm(x) for x in constraints.excluded_datasets}
         allowed = {norm(x) for x in constraints.allowed_datasets}
         state = "not_applicable" if not excluded and not allowed else "unknown" if not dataset else "conflict" if dataset in excluded or (allowed and dataset not in allowed) else "match"
-        if state != "not_applicable" and any(f.field_path == "dataset" and f.finding_status != "reported" for f in setting.field_evidence):
+        if state != "not_applicable" and any(f.finding_status != "reported" for f in matching_bindings(setting, ["dataset"])):
             state = "unknown"
         checks.append(Check(dimension="dataset_policy", status=state, actual=setting.dataset,
-                            reason="排除列表 excluded_datasets 优先；按规范化名称匹配允许列表", references=refs))
+                            reason="排除列表 excluded_datasets 优先；按规范化名称匹配允许列表", references=field_refs("dataset")))
         found = {norm(m.metric_name) for m in measurements if m.experiment_setting_id == setting.id and m.status != "withdrawn" and m.finding_status == "reported" and m.value is not None}
         missing = [m for m in constraints.required_metrics if norm(m) not in found]
+        metric_evidence = sorted({eid for m in measurements if m.experiment_setting_id == setting.id
+                                 and m.status != "withdrawn" and m.finding_status == "reported" and m.value is not None
+                                 for eid in evidence_ids_for(m, ["metric_name", "value"])})
         checks.append(Check(dimension="required_metrics", status="unknown" if missing else "match" if constraints.required_metrics else "not_applicable",
-                            actual=", ".join(sorted(found)), reason=f"未找到有值测量: {', '.join(missing)}" if missing else "仅表示存在测量记录，不表示指标达标", references=refs))
+                            actual=", ".join(sorted(found)), reason=f"未找到有值测量: {', '.join(missing)}" if missing else "仅表示存在测量记录，不表示指标达标",
+                            references=[Reference(kind="evidence", id=eid) for eid in metric_evidence]))
         alternatives = []
         for device in constraints.compute:
             local = []
@@ -90,13 +97,13 @@ def evaluate_constraints(project, methods, settings, measurements):
             for dim, reported, available in (("device_kind", kind, device.device_kind), ("device_model", model, device.device_model)):
                 if available:
                     local.append(Check(dimension=dim, status="unknown" if reported is None else "match" if norm(reported.value) == norm(available) else "conflict",
-                                       actual=str(reported.value) if reported else None, limit=available, reason=f"需求设备 {reported.value if reported else '未知'}；可用 {available}", references=refs))
+                                       actual=str(reported.value) if reported else None, limit=available, reason=f"需求设备 {reported.value if reported else '未知'}；可用 {available}", references=field_refs(dim, "device") if dim == "device_kind" else field_refs(dim)))
             if device.device_count is not None:
                 n = number(count)
                 local.append(Check(dimension="device_count", status="unknown" if n is None else "match" if n <= device.device_count else "conflict",
-                                   actual=n, limit=float(device.device_count), reason=f"需求设备数 {n:g}" if n is not None else "设备数量未报告", references=refs))
+                                   actual=n, limit=float(device.device_count), reason=f"需求设备数 {n:g}" if n is not None else "设备数量未报告", references=field_refs("device_count")))
             if device.memory is not None:
-                local.append(bounded("memory", resource(setting, {"memory", "gpu_memory", "vram"}), device.memory, MEMORY, refs))
+                local.append(bounded("memory", resource(setting, {"memory", "gpu_memory", "vram"}), device.memory, MEMORY, field_refs("memory", "gpu_memory", "vram")))
             alternatives.append(local or [Check(dimension="compute", status="unknown", reason="设备配置没有可计算的字段")])
         if alternatives:
             # Each compute entry is a complete alternative; never mix CPU memory with GPU count.
@@ -107,10 +114,10 @@ def evaluate_constraints(project, methods, settings, measurements):
             ("time_budget", {"training_time", "runtime", "time"}, constraints.time_budget, TIME),
             ("cost_budget", {"training_cost", "cost"}, constraints.cost_budget, {}),
         ):
-            checks.append(bounded(dimension, resource(setting, aliases), budget, factors, refs))
+            checks.append(bounded(dimension, resource(setting, aliases), budget, factors, field_refs(*aliases)))
         if constraints.data_access:
             checks.append(Check(dimension="data_access", status="unknown", actual=setting.dataset,
-                                reason="访问说明不证明已取得数据使用权限或实际可访问", references=refs))
+                                reason="访问说明不证明已取得数据使用权限或实际可访问", references=field_refs("dataset")))
         if setting.status == "disputed" or setting.finding_status == "conflicting" or methods[setting.method_id].status == "disputed" or methods[setting.method_id].finding_status == "conflicting":
             checks.append(Check(dimension="source_state", status="unknown", reason="来源存在争议或冲突", references=refs))
         result.append(CandidateChecks(id=setting.id, method_id=setting.method_id,

@@ -6,15 +6,31 @@
 
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
+from threading import Lock
 
 logger = logging.getLogger(__name__)
 
-_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="atlas-task")
+_executor = None
+_executor_lock = Lock()
 
 
-def submit_task(fn, *args) -> None:
-    _executor.submit(fn, *args)
+def submit_task(fn, *args):
+    global _executor
+    # A request's workspace scope must survive execution in another thread.
+    context = copy_context()
+    with _executor_lock:
+        if _executor is None:
+            from app.config import get_settings
+            workers = 1 if get_settings().access_mode == "multiuser" else 4
+            _executor = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="atlas-task")
+        return _executor.submit(context.run, fn, *args)
 
 
 def shutdown_executor(wait: bool = False) -> None:
-    _executor.shutdown(wait=wait, cancel_futures=True)
+    global _executor
+    with _executor_lock:
+        executor = _executor
+        _executor = None
+    if executor is not None:
+        executor.shutdown(wait=wait, cancel_futures=True)

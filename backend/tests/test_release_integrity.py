@@ -1,4 +1,5 @@
 import json
+from contextlib import closing
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
@@ -108,6 +109,39 @@ def test_queue_deduplication_and_restart_recovery(monkeypatch):
         jobs._slots.release()
 
 
+def test_interrupted_legacy_worker_does_not_run_after_restart(monkeypatch):
+    import app.jobs as jobs
+
+    submitted = []
+    monkeypatch.setattr(jobs, "submit_task", lambda *args: submitted.append(args))
+    tid = jobs.enqueue("guide", {"uid": "p1"})
+    with closing(connect()) as conn:
+        assert reset_running_tasks(conn) == 1
+    monkeypatch.setattr("app.guidance.generate_guide",
+                        lambda *_args: pytest.fail("stale worker executed"))
+    jobs.run(tid)
+    with closing(connect()) as conn:
+        assert conn.execute("SELECT status FROM tasks WHERE id=?", (tid,)).fetchone()[0] == "failed"
+
+
+def test_repeated_legacy_retry_returns_same_attempt(monkeypatch):
+    import app.jobs as jobs
+
+    monkeypatch.setattr(jobs, "submit_task", lambda *_args: None)
+    prior = jobs.enqueue("guide", {"uid": "p1"})
+    try:
+        with closing(connect()) as conn:
+            assert reset_running_tasks(conn) == 1
+        attempt = jobs.enqueue("guide", {"uid": "p1"}, retry_of=prior)
+        with closing(connect()) as conn:
+            conn.execute("UPDATE tasks SET status='failed' WHERE id=?", (attempt,))
+            conn.commit()
+        assert jobs.enqueue("guide", {"uid": "p1"}, retry_of=prior) == attempt
+    finally:
+        jobs._slots.release()
+        jobs._slots.release()
+
+
 def test_download_rejects_unsupported_host_before_http(monkeypatch):
     from app.fulltext import fetch_pdf
 
@@ -206,8 +240,9 @@ def test_partial_success_job_can_be_retried(monkeypatch):
     conn.close()
     calls = []
     monkeypatch.setattr(
-        "app.jobs.enqueue", lambda kind, params: calls.append((kind, params)) or 99
+        "app.jobs.enqueue", lambda kind, params, *, retry_of=None:
+        calls.append((kind, params, retry_of)) or 99
     )
     response = TestClient(app).post(f"/api/learning/tasks/{tid}/retry")
     assert response.status_code == 202 and response.json()["task_id"] == 99
-    assert calls == [("ingest", {"uid": "p1"})]
+    assert calls == [("ingest", {"uid": "p1"}, tid)]

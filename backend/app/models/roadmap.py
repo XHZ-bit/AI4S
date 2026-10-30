@@ -43,7 +43,7 @@ class InnovationSuggestion(BaseModel):
 class RoadmapResult(BaseModel):
     version: int = 1
     stale: bool = False
-    knowledge_ids: list[int] = []
+    knowledge_ids: list[int | str] = []
     id: int | None = None
     goal: str
     phases: list[RoadmapPhase]

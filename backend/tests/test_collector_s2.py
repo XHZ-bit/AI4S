@@ -6,7 +6,7 @@ from app.collector.s2 import fetch_citations
 
 @respx.mock
 def test_fetch_citations_extracts_arxiv_ids():
-    route = respx.get("https://api.semanticscholar.org/graph/v1/paper/arXiv:2401.12345/citations")
+    route = respx.get("https://api.semanticscholar.org/graph/v1/paper/arXiv:2401.12345/references")
     route.mock(
         return_value=httpx.Response(
             200,
@@ -28,7 +28,7 @@ def test_fetch_citations_extracts_arxiv_ids():
 @respx.mock
 def test_fetch_citations_retries_on_429(monkeypatch):
     monkeypatch.setattr("app.collector.s2._INITIAL_DELAY", 0)
-    route = respx.get("https://api.semanticscholar.org/graph/v1/paper/arXiv:2401.1/citations")
+    route = respx.get("https://api.semanticscholar.org/graph/v1/paper/arXiv:2401.1/references")
     route.side_effect = [
         httpx.Response(429),
         httpx.Response(200, json={"data": [{"citedPaper": {"externalIds": {"ArXiv": "1111.1"}}}]}),

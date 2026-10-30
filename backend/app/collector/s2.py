@@ -26,7 +26,9 @@ def _get_with_retry(client: httpx.Client, url: str, params: dict) -> httpx.Respo
 def fetch_citations(client: httpx.Client, arxiv_id: str) -> list[str]:
     from app.config import get_settings
 
-    url = f"{get_settings().s2_api_base}/paper/arXiv:{arxiv_id}/citations"
+    # /references returns citedPaper; /citations returns citingPaper and has
+    # the opposite direction. The caller stores source -> referenced paper.
+    url = f"{get_settings().s2_api_base}/paper/arXiv:{arxiv_id}/references"
     resp = _get_with_retry(client, url, params={"fields": "externalIds", "limit": 1000})
     if resp.status_code != 200:
         logger.warning("citation fetch failed for arXiv:%s (status %s)", arxiv_id, resp.status_code)

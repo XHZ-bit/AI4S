@@ -55,6 +55,8 @@ def _facts(input: PlanBuildInput):
         if item.experiment_setting_id in selected_setting_ids
         and item.status != RecordStatus.WITHDRAWN
     ]
+    if any(item.project_id != input.project.id for item in selected_measurements):
+        raise ValueError("selected measurement belongs to another project")
     return method, selected_settings, selected_measurements
 
 
@@ -73,6 +75,7 @@ def _source_label(source_kind: SourceKind) -> str:
         SourceKind.LITERATURE_REPORT: "文献报告",
         SourceKind.USER_INPUT: "用户设定",
         SourceKind.MODEL_SUGGESTION: "AI建议",
+        SourceKind.SYSTEM_TEMPLATE: "系统模板",
     }[source_kind]
 
 
@@ -237,10 +240,13 @@ def build_plan_draft(
         evidence = evidence_by_id.get(evidence_id)
         if evidence and evidence.finding_status == FindingStatus.CONFLICTING:
             unknowns.append(f"证据 {evidence_id} 的来源内容相互冲突")
+    if referenced_evidence_ids - set(evidence_by_id):
+        raise ValueError("fact references evidence outside the plan input")
     if not measurements:
         unknowns.append("所选实验设置没有已关联测量，目标指标与范围待用户填写")
 
     steps = _template_steps(input, method, settings, measurements)
+    has_model_steps = False
     if suggestion_provider is None:
         unknowns.append("未调用生成模型；当前为明确标记的结构化待填模板")
     else:
@@ -253,6 +259,7 @@ def build_plan_draft(
                 suggestions, set(evidence_by_id)
             )
             steps.extend(accepted)
+            has_model_steps = bool(accepted)
             unknowns.extend(rejected)
 
     return ValidationPlan(
@@ -270,7 +277,7 @@ def build_plan_draft(
         steps=steps,
         target_measurements=[item.id for item in measurements],
         risks=list(dict.fromkeys(risks)),
-        source_kind=SourceKind.MODEL_SUGGESTION,
+        source_kind=SourceKind.MODEL_SUGGESTION if has_model_steps else SourceKind.SYSTEM_TEMPLATE,
         review_status=ReviewStatus.CURRENT,
         review_reasons=[],
     )
@@ -278,6 +285,11 @@ def build_plan_draft(
 
 def build_snapshot_content(input: SnapshotBuildInput) -> ProjectSnapshot:
     """Freeze exact dependency versions without mutating the supplied models."""
+
+    if input.decision.project_id != input.project.id or input.decision.project_version != input.project.version:
+        raise ValueError("snapshot decision belongs to another project or project version")
+    if input.decision.status != DecisionStatus.ACTIVE:
+        raise ValueError("only an active decision can form a snapshot")
 
     if input.plan.id is None or input.plan.status != PlanStatus.SAVED:
         raise ValueError("only a user-confirmed saved plan can form a snapshot")
@@ -303,7 +315,7 @@ def build_snapshot_content(input: SnapshotBuildInput) -> ProjectSnapshot:
             raise ValueError(f"snapshot dependency is missing or belongs elsewhere: {fact_id}")
         dependencies.append(VersionRef(id=fact.id, version=fact.version))
 
-    document_ids = {item.document_id for item in input.frozen_documents}
+    document_versions = {(item.document_id, item.document_version, item.paper_uid) for item in input.frozen_documents}
     evidence_by_id = {item.id: item for item in input.evidence}
     plan_evidence_ids = {
         evidence_id for step in input.plan.steps for evidence_id in step.evidence_ids
@@ -316,7 +328,7 @@ def build_snapshot_content(input: SnapshotBuildInput) -> ProjectSnapshot:
         evidence = evidence_by_id[evidence_id]
         if (
             evidence.source_kind == SourceKind.LITERATURE_REPORT
-            and evidence.document_id not in document_ids
+            and (evidence.document_id, evidence.document_version, evidence.paper_uid) not in document_versions
         ):
             raise ValueError(
                 f"literature evidence {evidence_id} is outside frozen documents"

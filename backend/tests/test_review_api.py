@@ -8,6 +8,7 @@ GRAPH = []
 
 
 def _patch(monkeypatch, conn):
+    GRAPH.clear()
     monkeypatch.setattr("app.api.review._connect", lambda: connect())
     monkeypatch.setattr("app.graphsvc.entities.merge_entity", lambda t, u, n: GRAPH.append(("E", t, u, n)))
     monkeypatch.setattr("app.graphsvc.entities.merge_relation", lambda r, s, d: GRAPH.append(("R", r, s, d)))
@@ -25,7 +26,9 @@ def test_review_queue_and_approve_entity(tmp_path, monkeypatch):
     resp = client.post(f"/api/review/{pid}/decision", json={"action": "approve"})
     assert resp.status_code == 200
     assert get_proposal(conn, pid)["status"] == "approved"
-    assert ("E", "method", "method:ppo", "PPO") in GRAPH
+    from app.knowledge.unified import ledger
+    assert any(r['payload'].get('name') == 'PPO' for r in ledger(conn))
+    assert GRAPH == []
 
 
 def test_approve_relation_resolves_uids(tmp_path, monkeypatch):
@@ -36,7 +39,10 @@ def test_approve_relation_resolves_uids(tmp_path, monkeypatch):
                          "dst_name": "PPO", "dst_type": "method", "evidence": "e"}, 0.9)
     client = TestClient(app)
     client.post(f"/api/review/{rid}/decision", json={"action": "approve"})
-    assert ("R", "USES", "method:diffusion-policy", "method:ppo") in GRAPH
+    from app.knowledge.unified import ledger
+    relation = next(r for r in ledger(conn) if r['kind'] == 'relation')
+    assert (relation['payload']['rel_type'], relation['payload']['src_uid'], relation['payload']['dst_uid']) == ('USES', 'method:diffusion-policy', 'method:ppo')
+    assert GRAPH == []
 
 
 def test_reject_and_edit(tmp_path, monkeypatch):
@@ -50,7 +56,10 @@ def test_reject_and_edit(tmp_path, monkeypatch):
     client.post(f"/api/review/{r2}/decision",
                 json={"action": "edit", "payload": {"type": "concept", "name": "clip objective", "evidence": "e2"}})
     assert get_proposal(conn, r2)["status"] == "approved"
-    assert ("E", "concept", "concept:clip-objective", "clip objective") in GRAPH
+    from app.knowledge.unified import ledger, graph
+    assert any(r['payload'].get('name') == 'clip objective' for r in ledger(conn))
+    assert not any(n['label'] == 'Bad' for n in graph(conn)['nodes'])
+    assert GRAPH == []
 
 
 def test_invalid_rel_type_rejected_400(tmp_path, monkeypatch):

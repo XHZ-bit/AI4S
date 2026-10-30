@@ -1,0 +1,16 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Python practice runtime</title></head><body><script type="module">
+// Runs in an opaque origin: no access to the application's cookies or storage.
+const base = new URL('/python-runtime/', location.href).href;
+let worker;
+window.addEventListener('message', event => {
+  if (event.source === parent && event.data?.type === 'execute' && worker) worker.postMessage(event.data);
+});
+try {
+  const source = await (await fetch(new URL('/python-worker.js', location.href), {credentials:'omit'})).text();
+  const url = 'data:text/javascript;charset=utf-8,'+encodeURIComponent('const RUNTIME_BASE = '+JSON.stringify(base)+';\n'+source);
+  worker = new Worker(url, {type:'module'});
+  worker.onmessage = event => parent.postMessage(event.data, '*');
+  worker.onerror = event => {console.error('Python worker:',event.message,event.filename,event.lineno);parent.postMessage({type:'error',output:'Python 工作线程加载失败，请重试。'}, '*');};
+  window.addEventListener('pagehide',()=>worker.terminate());
+} catch(error) { parent.postMessage({type:'error',output:'Python 环境加载失败：'+String(error)}, '*'); }
+</script></body></html>

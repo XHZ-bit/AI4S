@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Card, Form, Input, Select, Space, message } from "antd";
-import type { ResearchProject, ResearchProjectPatch } from "../../api/project-types";
+import type { ResearchProject, ResearchProjectPatch, DomainId, ProjectStage } from "../../api/project-types";
+import {PROJECT_STAGES} from '../../api/project-types';
 import { isVersionConflict, updateProject } from "../../api/projects";
 
+import ResearchDomainInput,{parseResearchDomain,researchDomainValue} from "./ResearchDomainInput";
+
 type FormValues = {
+  domain_input: string;
+  domain: DomainId;
+  custom_domain?: string;
+  stage: ProjectStage;
   title: string;
   research_question: string;
   objective: string;
@@ -28,10 +35,12 @@ export default function ProjectSettingsPanel({
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState(false);
   const submitting = useRef(false);
+  const stage=Form.useWatch('stage',form);
 
   useEffect(() => {
     if (form.isFieldsTouched()) return;
     form.setFieldsValue({
+      domain:project.domain,domain_input:researchDomainValue(project.domain,project.custom_domain),custom_domain:project.custom_domain||'',stage:project.stage||'validating',
       title: project.title,
       research_question: project.research_question,
       objective: project.constraints.objective,
@@ -51,6 +60,7 @@ export default function ProjectSettingsPanel({
     setConflict(false);
     const body: ResearchProjectPatch = {
       expected_version: project.version,
+      ...parseResearchDomain(values.domain_input),stage:values.stage,
       title: values.title,
       research_question: values.research_question,
       status: null,
@@ -84,8 +94,10 @@ export default function ProjectSettingsPanel({
     {error && <Alert style={{ marginBottom: 16 }} type="error" showIcon message="保存失败" description={error} />}
     <Form form={form} layout="vertical" onFinish={save}>
       <Form.Item name="title" label="课题名称" rules={[{ required: true, whitespace: true }]}><Input maxLength={300} /></Form.Item>
-      <Form.Item name="research_question" label="研究问题" rules={[{ required: true, whitespace: true }]}><Input.TextArea rows={3} maxLength={4000} /></Form.Item>
-      <Form.Item name="objective" label="首轮验证目标" rules={[{ required: true, whitespace: true }]}><Input.TextArea rows={3} /></Form.Item>
+      <Form.Item name="stage" label="当前研究阶段"><Select options={Object.entries(PROJECT_STAGES).map(([value,label])=>({value,label}))}/></Form.Item>
+      <Form.Item name="domain_input" label="研究领域"><ResearchDomainInput/></Form.Item>
+      <Form.Item name="research_question" label="研究问题" rules={stage==='validating'?[{required:true,whitespace:true}]:[]} extra="探索阶段可以留空；研究问题形成后仍可调整。"><Input.TextArea rows={3} maxLength={4000} /></Form.Item>
+      <Form.Item name="objective" label={stage==='validating'?'首轮验证目标':'当前想做的事'} rules={stage==='validating'?[{required:true,whitespace:true}]:[]}><Input.TextArea rows={3} maxLength={4000}/></Form.Item>
       <Form.Item name="allowed_datasets" label="允许的数据集"><Select mode="tags" tokenSeparators={[",", "，"]} placeholder="未填写表示未知，不代表无限制" /></Form.Item>
       <Form.Item name="excluded_datasets" label="排除的数据集"><Select mode="tags" tokenSeparators={[",", "，"]} placeholder="未填写" /></Form.Item>
       <Form.Item name="required_metrics" label="必须测量的指标"><Select mode="tags" tokenSeparators={[",", "，"]} placeholder="未填写表示尚未确定" /></Form.Item>

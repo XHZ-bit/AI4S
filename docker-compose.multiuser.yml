@@ -1,0 +1,60 @@
+name: research-atlas-multiuser
+
+services:
+  backend:
+    build: ./backend
+    environment:
+      ACCESS_MODE: multiuser
+      DATA_DIR: /app/data
+      RUNTIME_MODE: docker
+      ATLAS_ENV_FILE: /app/no-env
+      SESSION_SECURE_COOKIE: ${ATLAS_MULTIUSER_SECURE_COOKIE:-true}
+      REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-true}
+      AUTH_PUBLIC_URL: ${AUTH_PUBLIC_URL:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      SMTP_SECURITY: ${SMTP_SECURITY:-starttls}
+      SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-10}
+      PASSWORD_RESET_MINUTES: ${PASSWORD_RESET_MINUTES:-30}
+      MAX_USERS: 20
+      USER_PDF_MAX_BYTES: 5242880
+      USER_PDF_MAX_PAGES: 50
+      USER_MAX_PAPERS: 20
+      USER_STORAGE_MAX_BYTES: 104857600
+    volumes:
+      - multiuser_data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 768m
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:15173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    mem_limit: 128m
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    restart: unless-stopped
+
+volumes:
+  multiuser_data:

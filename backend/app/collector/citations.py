@@ -28,6 +28,14 @@ def backfill_citations(conn: sqlite3.Connection, uids: list[str]) -> int:
                 # 引用回填是尽力而为的增强步骤，任何单篇失败都不应让采集任务失败
                 logger.warning("citation fetch failed for %s: %s", uid, exc)
                 continue
-            merge_cites_batch([(uid, ref) for ref in refs])
+            pairs = [(uid, ref) for ref in refs]
+            conn.executemany("INSERT OR IGNORE INTO paper_citations(src_uid,dst_uid) VALUES(?,?)", pairs)
+            from app.knowledge.unified import sync_metadata
+            sync_metadata(conn, uid=uid)
+            conn.commit()
+            try:
+                merge_cites_batch(pairs)
+            except Exception:
+                logger.warning("Independent graph unavailable; citation metadata saved locally")
             added += len(refs)
     return added

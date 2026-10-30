@@ -1,0 +1,16 @@
+
+ RUN  v5.0.3 D:/storage/Codex_program/AI4S/frontend
+
+ ✓ src/__tests__/research/next-step.test.tsx (1 test) 1934ms
+   ✓ manual evidence, comparison and plan workflows remain reachable without automatic processing or completion 1932ms
+ ✓ src/__tests__/research/decision-overview.test.tsx (5 tests) 1340ms
+   ✓ content corrections save through the API and preserve input on version conflict 805ms
+
+ Test Files  2 passed (2)
+      Tests  6 passed (6)
+   Start at  12:35:51
+   Duration  12.21s (import 54%, tests 28%, environment 10%, transform 7%, setup 2%)
+
+    Isolate  2 workers spawned · ~715ms startup each (spawn + environment, per file)
+             at least ~715ms faster with isolate: false — reuses workers across files instead of one per file
+

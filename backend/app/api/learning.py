@@ -1,6 +1,9 @@
 """Evidence-backed reading, experiment records, research questions and quality operations."""
 
 import json
+import math
+import re
+from collections import Counter
 from contextlib import closing
 from typing import Literal
 
@@ -27,6 +30,10 @@ def workspace(uid: str):
         paper = require_paper(conn, uid)
         docs = document_view(conn, uid)
         knowledge = knowledge_list(conn, uid)
+        from app.graphsvc.resources import access_links
+        for item in knowledge:
+            payload=item.get('payload') or {}
+            item['access_links']=access_links(payload.get('name',''),payload.get('type'),{**payload,'evidence':item.get('quote') or payload.get('evidence','')}) if item.get('kind')=='entity' else []
         protocol_row = conn.execute(
             "SELECT data_json FROM protocols WHERE paper_uid=?", (uid,)
         ).fetchone()
@@ -34,16 +41,26 @@ def workspace(uid: str):
         if protocol and not protocol.get("verified"):
             protocol = None
         passages = docs[0]["passages"] if docs else []
-        tasks = [
-            {
+        page_counts = Counter(p["page"] for p in passages if p.get("page"))
+        page_indices = Counter()
+        tasks = []
+        for p in passages:
+            page = p.get("page")
+            page_indices[page] += 1
+            heading = p["heading"]
+            if page and re.fullmatch(r"(?:PDF\s+)?Page\s+\d+", heading, re.IGNORECASE):
+                heading = f"第 {page} 页"
+            if page and page_counts[page] > 1:
+                heading += f" · 片段 {page_indices[page]}/{page_counts[page]}"
+            words = len(re.findall(r"[A-Za-z]{2,}|[\u4e00-\u9fff]", p["text"]))
+            tasks.append({
                 "id": f"read:{p['id']}",
                 "heading": p["heading"],
+                "display_heading": heading,
                 "passage_id": p["id"],
-                "minutes": max(5, len(p["text"]) // 150),
+                "minutes": max(3, min(15, math.ceil(words / 180))),
                 "criterion": "用自己的话说明本段的问题、方法或证据，并指出仍不理解的地方。",
-            }
-            for p in passages
-        ]
+            })
         return {
             "paper": paper,
             "protocol": protocol,
@@ -177,6 +194,7 @@ def compare(uids: str = Query(max_length=2000)):
 @router.get("/quality")
 def quality():
     with closing(connect()) as conn:
+        from app.knowledge.unified import quality_history
         return {
             "items": knowledge_list(conn),
             "feedback": [
@@ -185,12 +203,7 @@ def quality():
                     "SELECT * FROM feedback ORDER BY id DESC LIMIT 200"
                 )
             ],
-            "audit": [
-                dict(r)
-                for r in conn.execute(
-                    "SELECT * FROM audit_events ORDER BY id DESC LIMIT 200"
-                )
-            ],
+            "audit": quality_history(conn),
         }
 
 
@@ -198,85 +211,16 @@ class QualityDecision(BaseModel):
     action: Literal["verify", "dispute", "withdraw", "restore"]
     actor: str = Field(min_length=1, max_length=100)
     reason: str = Field(min_length=1, max_length=4000)
+    expected_version: int | None = Field(default=None, ge=1)
 
 
 @router.post("/quality/{kid}")
-def quality_decision(kid: int, req: QualityDecision):
-    from app.api.review import _approve_entity, _approve_relation
-    from app.db.proposals import get_proposal
-    from app.graphsvc.entities import set_relation_quality
-
+def quality_decision(kid: str, req: QualityDecision):
+    from app.knowledge.unified import review_record
     with closing(connect()) as conn:
-        row = conn.execute("SELECT * FROM knowledge WHERE id=?", (kid,)).fetchone()
-        if not row:
-            raise HTTPException(404, "知识不存在")
-        before = dict(row)
-        proposal = get_proposal(conn, kid)
-        status = {
-            "verify": "human_verified",
-            "dispute": "disputed",
-            "withdraw": "withdrawn",
-            "restore": "candidate",
-        }[req.action]
-        if req.action == "verify":
-            checks = json.loads(row["checks_json"])
-            if not checks.get("evidence_located") or not checks.get("structure"):
-                raise HTTPException(
-                    422, "必须先具备可定位原文和合法结构，旧知识请重新抽取"
-                )
-            try:
-                if proposal["kind"] == "entity":
-                    _approve_entity(conn, proposal, proposal["payload"])
-                else:
-                    _approve_relation(conn, proposal, proposal["payload"])
-            except ValueError as exc:
-                raise HTTPException(422, str(exc)) from exc
-        if proposal["kind"] == "relation":
-            try:
-                set_relation_quality(conn, proposal, status)
-            except Exception as exc:
-                raise HTTPException(503, "图谱同步失败，状态未变更，请重试") from exc
-        conn.execute(
-            "UPDATE knowledge SET status=?,updated_at=datetime('now') WHERE id=?",
-            (status, kid),
-        )
-        conn.execute(
-            "UPDATE extraction_proposals SET status=? WHERE id=?",
-            ("approved" if status == "human_verified" else "pending", kid),
-        )
-        conn.execute(
-            "INSERT INTO audit_events(knowledge_id,action,actor,reason,before_json,after_json) VALUES(?,?,?,?,?,?)",
-            (
-                kid,
-                req.action,
-                req.actor,
-                req.reason,
-                json.dumps(before, ensure_ascii=False),
-                json.dumps({"status": status}, ensure_ascii=False),
-            ),
-        )
-        # Saved recommendations are marked stale, never silently rewritten.
-        if status != "human_verified":
-            guide = conn.execute(
-                "SELECT result_json FROM guides WHERE paper_uid=?", (row["paper_uid"],)
-            ).fetchone()
-            if guide:
-                content = json.loads(guide["result_json"])
-                content["stale"] = True
-                conn.execute(
-                    "UPDATE guides SET result_json=? WHERE paper_uid=?",
-                    (json.dumps(content, ensure_ascii=False), row["paper_uid"]),
-                )
-            for saved in conn.execute("SELECT id,result_json FROM roadmaps").fetchall():
-                data = json.loads(saved["result_json"])
-                if kid in data.get("knowledge_ids", []):
-                    data["stale"] = True
-                    conn.execute(
-                        "UPDATE roadmaps SET result_json=? WHERE id=?",
-                        (json.dumps(data, ensure_ascii=False), saved["id"]),
-                    )
+        result = review_record(conn, str(kid), req.action, req.actor, req.reason, expected_version=req.expected_version)
         conn.commit()
-        return {"status": status}
+        return result
 
 
 @router.get("/tasks")
@@ -313,12 +257,12 @@ def retry(tid: int):
         partial = row["status"] == "done" and bool(
             json.loads(row["result_json"] or "{}").get("warnings")
         )
-        if row["status"] != "failed" and not partial:
+        if row["status"] not in ("failed", "cancelled") and not partial:
             raise HTTPException(409, "只能重试失败或部分成功任务")
         kind = row["type"]
         params = json.loads(row["params_json"])
     try:
-        return {"task_id": enqueue(kind, params)}
+        return {"task_id": enqueue(kind, params, retry_of=tid)}
     except RuntimeError as exc:
         raise HTTPException(429, str(exc)) from exc
 
@@ -326,6 +270,8 @@ def retry(tid: int):
 @router.post("/papers/{uid}/guide", status_code=202)
 def start_guide(uid: str):
     from app.jobs import enqueue
+    from app.api.tutoring import require_feature
+    require_feature("paper_guidance")
 
     with closing(connect()) as conn:
         require_paper(conn, uid)

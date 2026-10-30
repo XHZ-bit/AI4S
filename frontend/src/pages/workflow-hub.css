@@ -1,0 +1,183 @@
+.atlas-workflow-page {
+  display: grid;
+  gap: 20px;
+  width: min(100%, 1200px);
+  margin: 0 auto;
+  color: var(--atlas-ink);
+}
+
+.atlas-workflow-page .workflow-page-head {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 6px;
+}
+.atlas-workflow-page .workflow-page-head h2.ant-typography {
+  margin: 0;
+  color: var(--atlas-ink);
+  font-size: clamp(28px, 2.5vw, 34px);
+  font-weight: 700;
+  letter-spacing: -.035em;
+  line-height: 1.3;
+}
+.atlas-workflow-page .workflow-page-head .atlas-page-lead {
+  margin: 0;
+  color: var(--atlas-muted);
+  font-size: 16px;
+  line-height: 1.55;
+}
+.atlas-workflow-page .workflow-page-head > a {
+  width: fit-content;
+  margin-top: 4px;
+  color: var(--atlas-accent);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.atlas-workflow-page .workflow-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(300px, .7fr);
+  gap: 16px;
+  align-items: stretch;
+}
+.atlas-interface .atlas-workflow-page .ant-card {
+  min-width: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--atlas-surface);
+  box-shadow: none;
+}
+.atlas-interface .atlas-workflow-page .ant-card-head {
+  min-height: 0;
+  padding: 20px 22px 0;
+  border: 0;
+}
+.atlas-interface .atlas-workflow-page .ant-card-head-wrapper {
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+.atlas-interface .atlas-workflow-page .ant-card-head-title {
+  padding: 0;
+  color: var(--atlas-ink);
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.4;
+  white-space: normal;
+}
+.atlas-interface .atlas-workflow-page .ant-card-extra { padding: 0; }
+.atlas-interface .atlas-workflow-page .ant-card-body {
+  padding: 16px 22px 22px;
+  color: var(--atlas-ink);
+  font-size: 16px;
+  line-height: 1.6;
+}
+.atlas-workflow-page .workflow-agenda-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 0 10px;
+}
+.atlas-workflow-page .workflow-agenda-item a {
+  min-width: 0;
+  color: var(--atlas-accent);
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.atlas-workflow-page .workflow-agenda-item span {
+  flex: none;
+  color: var(--atlas-muted);
+  font-size: 14px;
+}
+.atlas-workflow-page .workflow-agenda-notice {
+  margin: 10px 0 0;
+  color: var(--atlas-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.atlas-workflow-page .workflow-counts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  font-size: 14px;
+}
+.atlas-workflow-page .workflow-counts > span {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  color: var(--atlas-muted);
+  white-space: nowrap;
+}
+.atlas-workflow-page .workflow-counts strong {
+  color: var(--atlas-ink);
+  font-size: 23px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.atlas-workflow-page .workflow-overview .ant-card-body > p {
+  margin: 17px 0 0;
+  color: var(--atlas-muted);
+  font-size: 14px;
+}
+
+.atlas-interface .atlas-workflow-page .ant-card .atlas-list-row {
+  padding: 13px 4px;
+  border: 0;
+  border-radius: 7px;
+}
+.atlas-interface .atlas-workflow-page .ant-card .atlas-list-row + .atlas-list-row { margin-top: 3px; }
+.atlas-interface .atlas-workflow-page .ant-card .atlas-list-row:hover { background: var(--atlas-selected); }
+.atlas-workflow-page .atlas-list-row .ant-space { row-gap: 4px !important; }
+.atlas-workflow-page .atlas-list-row a {
+  color: var(--atlas-accent);
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.atlas-workflow-page .atlas-list-row-detail {
+  margin-top: 4px;
+  color: var(--atlas-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.atlas-workflow-page .workflow-recommendations .ant-typography {
+  color: var(--atlas-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.atlas-workflow-page .workflow-recommendations .ant-card-body > .ant-typography:last-child { margin-bottom: 0; }
+.atlas-workflow-page .workflow-activities .ant-tag,
+.atlas-workflow-page .workflow-recommendations .ant-tag {
+  margin-inline-end: 0;
+  padding: 0 2px;
+  border: 0;
+  color: var(--atlas-muted);
+  background: transparent;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.atlas-workflow-page .workflow-activities .ant-card-body > p { font-size: 16px; }
+.atlas-workflow-page .workflow-mastery .ant-card-body > .ant-space { max-width: 760px; }
+.atlas-workflow-page .workflow-mastery .ant-card-body > .ant-space > .ant-space-item { width: 100%; }
+.atlas-workflow-page .workflow-mastery .ant-select { width: min(100%, 560px); }
+.atlas-workflow-page .workflow-mastery .ant-typography { color: var(--atlas-muted); font-size: 14px; line-height: 1.6; }
+.atlas-workflow-page .workflow-mastery textarea { font-size: 16px; }
+.atlas-workflow-page .workflow-mastery .ant-btn-primary { width: fit-content; }
+
+@media (max-width: 850px) {
+  .atlas-workflow-page .workflow-summary-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .atlas-workflow-page { gap: 14px; }
+  .atlas-workflow-page .workflow-page-head { margin-bottom: 7px; }
+  .atlas-workflow-page .workflow-page-head h2.ant-typography { font-size: 28px; }
+  .atlas-interface .atlas-workflow-page .ant-card-head { padding: 18px 17px 0; }
+  .atlas-interface .atlas-workflow-page .ant-card-body { padding: 14px 17px 18px; }
+  .atlas-workflow-page .workflow-counts { gap: 11px; }
+  .atlas-workflow-page .workflow-agenda-item { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .atlas-workflow-page .atlas-list-row .ant-space { gap: 5px 8px !important; }
+  .atlas-workflow-page .workflow-mastery .ant-select { width: 100%; }
+}
+
+.workflow-unified{max-width:1240px;margin:auto;min-width:0}.workflow-unified-head h1{font-size:26px;margin:0 0 8px}.workflow-unified-head p{color:var(--atlas-muted);margin-bottom:22px}.workflow-unified>.ant-segmented{margin-bottom:24px}.workflow-system{min-width:0;overflow:hidden}.workflow-system>h2{font-size:20px!important}.workflow-system>p{max-width:75ch;color:var(--atlas-muted)}.workflow-mastery-disclosure{margin:28px 0}.workflow-mastery-disclosure>summary{cursor:pointer;font-weight:600;padding:12px 0;color:var(--atlas-accent)}.workflow-unified .workflow-page-head{margin:0 0 20px}.workflow-unified .workflow-summary-grid{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}@media(max-width:767px){.workflow-unified .workflow-summary-grid{grid-template-columns:1fr}}

@@ -74,6 +74,8 @@ def strict_schema(value):
 
 def structured_chat(messages: list[dict], *, schema: dict, prompt_version: str,
                     schema_version: str) -> str:
+    from app.task_control import check_active
+    check_active()
     settings = get_settings()
     if not settings.research_model_enabled:
         raise ResearchModelError("model_not_authorized")
@@ -89,16 +91,21 @@ def structured_chat(messages: list[dict], *, schema: dict, prompt_version: str,
     response_format = {"type": settings.research_model_response_format}
     if settings.research_model_response_format == "json_schema":
         response_format["json_schema"] = {
-            "name": "research_output", "strict": True, "schema": strict_schema(schema),
+            "name": "research_output", "strict": True,
+            "schema": strict_schema(schema) if settings.research_model_schema_require_all else schema,
         }
     payload = {
         "model": settings.llm_model, "messages": messages,
         "response_format": response_format, "temperature": 0,
         "max_tokens": settings.research_model_max_output_tokens,
     }
+    if settings.research_model_enable_thinking is not None:
+        payload["enable_thinking"] = settings.research_model_enable_thinking
     trace = {
         "call_id": uuid4().hex, "task_id": budget.task_id if budget else None,
         "model": settings.llm_model, "prompt_version": prompt_version,
+        "response_format": settings.research_model_response_format,
+        "schema_require_all": settings.research_model_schema_require_all,
         "schema_version": schema_version, "usage": None, "status": "failed",
     }
     started = time.monotonic()
@@ -118,6 +125,7 @@ def structured_chat(messages: list[dict], *, schema: dict, prompt_version: str,
                     )
                 chunks = bytearray()
                 for chunk in response.iter_bytes():
+                    check_active()
                     if time.monotonic() - started > settings.research_model_timeout_seconds:
                         raise ResearchModelError("model_timeout", retryable=True)
                     chunks.extend(chunk)
@@ -148,6 +156,7 @@ def structured_chat(messages: list[dict], *, schema: dict, prompt_version: str,
         content = choice["message"]["content"]
         if not isinstance(content, str) or not content.strip():
             raise ResearchModelError("model_empty_response")
+        check_active()
         trace["status"] = "transport_succeeded"  # Not a scientific quality judgment.
         return content
     except ResearchModelError as exc:

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Card, Checkbox, Descriptions, Empty, Input, Modal, Space, Spin, Table, Tag, Typography, message } from "antd";
+import { Link } from "react-router-dom";
 import type { ComparisonResult, EvidenceRef, ExperimentSetting, ProjectFactsResponse, ResearchProject } from "../../api/project-types";
-import { compareProjectCandidates, getProjectFacts, isVersionConflict, saveProjectDecision } from "../../api/projects";
+import { compareProjectCandidates, getComparisonReadiness, getProjectFacts, isVersionConflict, saveProjectDecision, type ComparisonReadiness } from "../../api/projects";
 import EvidenceDrawer from "./EvidenceDrawer";
 import { FindingStatusTag, RecordStatusTag, displayKnown } from "./StatusLabels";
 
@@ -9,11 +10,26 @@ import { getInsights, statusLabels, type Report } from "../../api/assistant";
 import { useInspector } from "../workspace/InspectorContext";
 
 type Candidate = { key: string; methodId: string; methodName: string; setting: ExperimentSetting };
+const fieldLabel: Record<string, string> = {
+  dataset: "数据集", dataset_version: "数据集版本", subset: "子集", split: "划分",
+  evaluation_protocol: "评估协议", preprocessing: "预处理", reported_measurement: "已报告测量",
+  metric_name: "指标名称", metric_scope: "指标范围", metric_direction: "指标方向",
+  metric_scale: "指标尺度", metric_unit: "指标单位", metric_aggregation: "聚合方式",
+  sample_size: "样本量", unique_reported_measurement: "唯一测量记录",
+};
+const labelFields = (fields: string[]) => fields.map(field => fieldLabel[field] ?? field).join("、");
 
 export default function ComparisonPanel({ project }: { project: ResearchProject }) {
   const inspector = useInspector();
   const [report, setReport] = useState<Report>();
+  const [readiness, setReadiness] = useState<ComparisonReadiness>();
+  const [refreshEpoch, setRefreshEpoch] = useState(0);
   useEffect(() => { const c = new AbortController(); getInsights("project", project.id, null, c.signal).then(r=>{if(!c.signal.aborted)setReport(r);}).catch(()=>{}); return ()=>c.abort(); }, [project.id, project.version]);
+  useEffect(() => {
+    const c = new AbortController();
+    getComparisonReadiness(project.id, c.signal).then(value => { if (!c.signal.aborted) setReadiness(value); }).catch(() => {});
+    return () => c.abort();
+  }, [project.id, project.version, project.constraints.version, refreshEpoch]);
   const [facts, setFacts] = useState<ProjectFactsResponse | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [comparison, setComparison] = useState<ComparisonResult | null>(null);
@@ -51,7 +67,7 @@ export default function ComparisonPanel({ project }: { project: ResearchProject 
       if (!controller.signal.aborted && !(caught instanceof DOMException && caught.name === "AbortError")) setError(caught instanceof Error ? caught.message : "候选加载失败");
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => { controller.abort(); ++requestEpoch.current; };
-  }, [project.id, project.version, project.constraints.version]);
+  }, [project.id, project.version, project.constraints.version, refreshEpoch]);
 
   const candidates = useMemo<Candidate[]>(() => {
     if (!facts) return [];
@@ -125,6 +141,29 @@ export default function ComparisonPanel({ project }: { project: ResearchProject 
 
   return <Space direction="vertical" size="large" style={{ width: "100%" }}>
     <Alert type="info" showIcon message="先检查条件，再查看数值" description="课题约束匹配和文献实验条件可比性是两件事。不同数据集、划分、协议或指标范围不会被合并排名。" />
+    {readiness && <Card title="比较准备度 · 自动核查" extra={<Space><Tag>已检查 {readiness.pairs.length} 组 · 其中 {readiness.pairs.filter(pair => pair.status === "comparable").length} 组有共同指标</Tag><Button size="small" onClick={() => setRefreshEpoch(value => value + 1)}>刷新比较依据</Button></Space>}>
+      <Typography.Paragraph type="secondary">{readiness.notice}</Typography.Paragraph>
+      {readiness.candidates.filter(candidate => candidate.missing_fields.length || candidate.constraint_gaps.length || candidate.source_gaps?.length || candidate.evidence_gaps?.length).map(candidate =>
+        <div key={candidate.setting_id} style={{ marginBottom: 8 }}><strong>{candidate.label}</strong>：
+          {candidate.missing_fields.length ? `待补齐 ${labelFields(candidate.missing_fields)}` : "关键条件已记录"}
+          {candidate.constraint_gaps.length > 0 && `；课题约束仍有 ${candidate.constraint_gaps.length} 项冲突或未知`}
+          {!!candidate.evidence_gaps?.length && `；关键字段缺少来源绑定 ${candidate.evidence_gaps.length} 项`}
+          {!!candidate.source_gaps?.length && <>；<Link to="?tab=audit">阻断级来源问题 {candidate.source_gaps.length} 项</Link></>}</div>)}
+      {readiness.pairs.slice(0, 20).map(pair => <div key={`${pair.left_setting_id}:${pair.right_setting_id}`} style={{ marginBottom: 6 }}>
+        <Tag color={pair.status === "comparable" ? "green" : pair.status === "conflict" ? "red" : "gold"}>{pair.status === "comparable" ? "可比较" : pair.status === "conflict" ? "条件冲突" : "信息不足"}</Tag>
+        {pair.left_setting_id} / {pair.right_setting_id} · {pair.next_action}
+        {[...pair.conflicting_fields, ...pair.missing_fields].length > 0 && `（${labelFields([...pair.conflicting_fields, ...pair.missing_fields])}）`}
+        {!!pair.evidence_gaps?.length && ` · 逐字段来源缺口：${pair.evidence_gaps.join("、")}`}
+        {!!pair.source_gaps?.length && <> · <Link to="?tab=audit">查看来源问题</Link></>}
+        {!!pair.shared_metrics?.length && <div style={{ marginLeft: 8, color: "#58656e" }}>共同指标仅限：{pair.shared_metrics.map(metric => `${metric.metric_name} / ${metric.metric_scope}${metric.aggregation ? ` / ${metric.aggregation}` : ""}`).join("；")}</div>}
+        {!![...(pair.condition_checks ?? []), ...(pair.metric_checks ?? [])].length && <details style={{ marginLeft: 8 }}><summary>查看逐项条件与指标检查</summary>
+          {[...(pair.condition_checks ?? []), ...(pair.metric_checks ?? [])].map(check =>
+            <div key={check.field}><Tag color={check.status === "match" ? "green" : check.status === "conflict" ? "red" : "gold"}>{check.status === "match" ? "一致" : check.status === "conflict" ? "冲突" : "缺失"}</Tag>
+              {fieldLabel[check.field] ?? check.field}：{check.left_value ?? "未记录"} / {check.right_value ?? "未记录"} · {check.reason}</div>)}</details>}
+      </div>)}
+      {readiness.pairs.length > 20 && <Typography.Text type="secondary">页面展示已检查的前 20 组；接口共检查 {readiness.pairs.length} 组。</Typography.Text>}
+      {readiness.truncated && <Typography.Paragraph type="secondary">组合共 {readiness.total_pairs} 组，接口只检查前 {readiness.pairs.length} 组；未检查的组合不作判断。</Typography.Paragraph>}
+    </Card>}
     {error && <Alert type="error" showIcon message="比较或保存失败" description={error} />}
     <div className="research-card-grid">{candidates.map(candidate => <Card key={candidate.key} title={<Checkbox disabled={busy} checked={selected.includes(candidate.key)} onChange={event => { setComparison(null); setDecisionOpen(false); setSelected(current => event.target.checked ? [...current, candidate.key] : current.filter(key => key !== candidate.key)); }}>{candidate.methodName} / {candidate.setting.name}</Checkbox>}>
       <Space wrap><RecordStatusTag status={candidate.setting.status} /><FindingStatusTag status={candidate.setting.finding_status} /></Space>

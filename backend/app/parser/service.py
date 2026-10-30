@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 def parse_pdf(
     uid: str, pdf_bytes: bytes, filename: str = "paper.pdf", grobid_base: str | None = None
 ) -> ParsedPaper:
+    from app.config import get_settings
+    if get_settings().access_mode == "multiuser":
+        return ParsedPaper(uid=uid, **fallback.parse_with_pymupdf(pdf_bytes))
     base = grobid_base
     if base is None:
         from app.config import get_settings

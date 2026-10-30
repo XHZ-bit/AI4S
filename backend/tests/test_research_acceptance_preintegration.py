@@ -708,7 +708,7 @@ def test_json_export_contains_frozen_versions_sources_and_review_state(conn):
     result = seed_complete_flow(conn)
     payload = json.loads(service.snapshot_json(result["snapshot"]))
 
-    assert payload["contract_version"] == "research-v1.1"
+    assert payload["contract_version"] == "research-v1.2"
     assert payload["frozen_project_version"] == result["project"].version
     assert payload["frozen_constraint_version"] == result["project"].constraints.version
     assert payload["frozen_domain_profile_version"]

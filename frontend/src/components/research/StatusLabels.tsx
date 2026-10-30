@@ -1,5 +1,5 @@
 import { Tag, Tooltip } from "antd";
-import type { FindingStatus, RecordStatus, ReviewStatus, SourceKind, TaskStatus } from "../../api/project-types";
+import type { FindingStatus, NumericValue, RecordStatus, ReviewStatus, SourceKind, TaskStatus } from "../../api/project-types";
 
 const recordLabels: Record<RecordStatus, { label: string; color: string }> = {
   candidate: { label: "候选·待确认", color: "gold" },
@@ -20,6 +20,7 @@ const sourceLabels: Record<SourceKind, string> = {
   literature_report: "文献报告",
   user_input: "用户输入",
   model_suggestion: "AI建议",
+  system_template: "系统模板",
 };
 
 export function RecordStatusTag({ status }: { status: RecordStatus }) {
@@ -53,3 +54,12 @@ export function TaskStatusTag({ status }: { status: TaskStatus }) {
 
 export const displayKnown = (value: string | number | boolean | null | undefined) =>
   value === null || value === undefined || value === "" ? "未知/未填写" : String(value);
+
+export function displayMeasurement(value: NumericValue | null): string {
+  if (!value) return "未知/未报告";
+  const suffix = `${value.unit ?? ""} (${value.scale})`;
+  if (value.upper != null && value.lower == null && value.value === value.upper) return `上界 ≤ ${value.upper}${suffix}`;
+  if (value.lower != null && value.upper == null && value.value === value.lower) return `下界 ≥ ${value.lower}${suffix}`;
+  const range = value.lower != null || value.upper != null ? `；范围 ${value.lower ?? "未知"} — ${value.upper ?? "未知"}` : "";
+  return `${value.value}${suffix}${range}`;
+}

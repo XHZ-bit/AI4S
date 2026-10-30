@@ -10,6 +10,7 @@ from app.db.proposals import save_proposal
 from app.models.paper import ParsedPaper
 from app.models.roadmap import LearnerProfile
 from app.roadmap.generate import generate_roadmap
+from app.knowledge.unified import migrate
 
 
 def setup_trusted():
@@ -86,6 +87,7 @@ def setup_trusted():
         "INSERT INTO knowledge(id,paper_uid,status,layer,passage_id) VALUES(?,'paper:0','human_verified','teaching',?)",
         (kid, passage_id),
     )
+    migrate(conn)
     conn.commit()
     return conn
 
@@ -129,6 +131,7 @@ def test_generate_roadmap_persists():
 def test_unverified_graph_does_not_create_route():
     conn = setup_trusted()
     conn.execute("UPDATE knowledge SET status='withdrawn'")
+    migrate(conn)
     conn.commit()
     with pytest.raises(ValueError):
         generate_roadmap(
@@ -150,6 +153,7 @@ def test_ambiguous_known_concept_requires_confirmation():
 def test_unpublished_preview_uses_same_planner_without_saving():
     conn = setup_trusted()
     conn.execute("UPDATE knowledge SET status='demo_curated'")
+    migrate(conn)
     conn.commit()
     profile = LearnerProfile(goal="target", target_uid="method:target", known_concepts=["basics"])
     preview = generate_roadmap(profile, conn, status="demo_curated", persist=False)
@@ -171,15 +175,18 @@ def test_automatic_gate_rejects_broken_source_quote():
             "UPDATE knowledge SET status='demo_curated',document_id=?,quote=?,start_offset=0,end_offset=6 WHERE id=?",
             (row["document_id"], row["text"][:6], row["id"]),
         )
+    migrate(conn)
     conn.commit()
     profiles = {"new": [], "prepared": ["basics"]}
     good = evaluate_candidates(conn, "method:target", profiles)
     assert good["passed"] and good["checked_relations"] == 3
     conn.execute("UPDATE knowledge SET quote='fabricated' WHERE id=1")
+    migrate(conn)
     conn.commit()
     bad = evaluate_candidates(conn, "method:target", profiles)
     assert not bad["passed"]
     assert any("evidence quote" in failure for failure in bad["failures"])
+    assert not any("profiles produced no route difference" in failure for failure in bad["failures"])
 
 
 def test_auto_checked_preview_is_read_only_and_blocks_broken_quote(tmp_path, monkeypatch):
@@ -193,6 +200,7 @@ def test_auto_checked_preview_is_read_only_and_blocks_broken_quote(tmp_path, mon
             "start_offset=0,end_offset=6 WHERE id=?",
             (row["document_id"], row["text"][:6], row["id"]),
         )
+    migrate(conn)
     conn.commit()
     path = tmp_path / "candidate-route.db"
     with sqlite3.connect(path) as target:
@@ -208,6 +216,37 @@ def test_auto_checked_preview_is_read_only_and_blocks_broken_quote(tmp_path, mon
     with connect(str(path)) as stored:
         assert stored.execute("SELECT count(*) FROM roadmaps").fetchone()[0] == 0
         stored.execute("UPDATE knowledge SET quote='fabricated' WHERE id=(SELECT min(id) FROM knowledge)")
+        migrate(stored)
         stored.commit()
     rejected = client.post("/api/roadmap/auto-preview", json=body)
     assert rejected.status_code == 422
+
+
+def test_demo_preview_rechecks_evidence_after_seed(tmp_path, monkeypatch):
+    conn = setup_trusted()
+    for row in conn.execute(
+        "SELECT k.id,pa.document_id,pa.text FROM knowledge k "
+        "JOIN passages pa ON pa.id=k.passage_id"
+    ).fetchall():
+        conn.execute(
+            "UPDATE knowledge SET status='demo_curated',document_id=?,quote=?,"
+            "start_offset=0,end_offset=6 WHERE id=?",
+            (row["document_id"], row["text"][:6], row["id"]),
+        )
+    migrate(conn)
+    conn.commit()
+    path = tmp_path / "demo-preview.db"
+    with sqlite3.connect(path) as target:
+        conn.backup(target)
+    conn.close()
+    monkeypatch.setattr("app.api.roadmap._connect", lambda: connect(str(path)))
+    client = TestClient(app)
+    body = {"profile": {"goal": "target", "target_uid": "method:target", "known_concepts": ["basics"]}}
+    assert client.post("/api/roadmap/preview", json=body).status_code == 200
+    with connect(str(path)) as stored:
+        stored.execute("UPDATE knowledge SET quote='fabricated' WHERE id=(SELECT min(id) FROM knowledge)")
+        migrate(stored)
+        stored.commit()
+    rejected = client.post("/api/roadmap/preview", json=body)
+    assert rejected.status_code == 422
+    assert "evidence quote" in str(rejected.json()["detail"])

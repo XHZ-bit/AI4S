@@ -21,7 +21,7 @@ def test_chat_json_mode_and_retry(monkeypatch):
     import json
     body = json.loads(route.calls.last.request.content)
     assert body["response_format"] == {"type": "json_object"}
-    assert body["model"] == "qwen3.7-flash"
+    assert body["model"] == "qwen3.8-flash"
 
 
 @respx.mock

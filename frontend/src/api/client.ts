@@ -1,3 +1,5 @@
+import { authenticatedFetch } from "./session";
+
 const BASE = import.meta.env.VITE_API_BASE ?? "";
 
 function detailToMessage(detail: unknown, fallback: string): string {
@@ -28,25 +30,25 @@ export async function apiGet<T>(
 ): Promise<T> {
   const url = new URL(BASE + path, window.location.origin);
   if (params) for (const [k, v] of Object.entries(params)) if (v != null) url.searchParams.set(k, String(v));
-  const resp = await fetch(url, { signal });
+  const resp = await authenticatedFetch(url, { signal });
   if (!resp.ok) throw await errorFrom(resp);
   return resp.json() as Promise<T>;
 }
 
 export async function apiPost<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
-  const resp = await fetch(BASE + path, {
+  const resp = await authenticatedFetch(BASE + path, {
     method: "POST",
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
     signal,
   });
   if (!resp.ok) throw await errorFrom(resp);
-  if (!/\/assistant\/|\/scenarios\//.test(path)) window.dispatchEvent(new CustomEvent("atlas:data-change", { detail: { path } }));
+  if (!/\/assistant\/|\/scenarios\/|\/workbench\/records|\/scene|\/stride\//.test(path)) window.dispatchEvent(new CustomEvent("atlas:data-change", { detail: { path } }));
   return resp.json() as Promise<T>;
 }
 
 export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
-  const resp = await fetch(BASE + path, {
+  const resp = await authenticatedFetch(BASE + path, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

@@ -15,6 +15,7 @@ from app.models.research import (
     DecisionListResponse,
     DomainId,
     ExtractionStartRequest,
+    FactRevisionRequest,
     ExperimentSetting,
     GraphQuery,
     GraphQueryResult,
@@ -175,9 +176,14 @@ def papers(project_id: str):
 def add_paper(project_id: str, request: PaperLinkCreate):
     with closing(_connect()) as conn:
         try:
-            return store.link_paper(
+            result = store.link_paper(
                 conn, project_id, request.expected_project_version, request
             )
+            from app.knowledge.unified import sync_metadata, sync_legacy
+            sync_metadata(conn, uid=request.paper_uid, project_id=project_id)
+            sync_legacy(conn, uid=request.paper_uid, project_id=project_id)
+            conn.commit()
+            return result
         except Exception as exc:
             _translate(exc)
 
@@ -222,6 +228,15 @@ def facts(
                 status=status.value if status else None,
                 paper_link_id=paper_link_id,
             )
+        except Exception as exc:
+            _translate(exc)
+
+
+@router.patch("/{project_id}/facts/{fact_id}", response_model=MethodCard | ExperimentSetting | Measurement)
+def patch_fact_content(project_id: str, fact_id: str, request: FactRevisionRequest):
+    with closing(_connect()) as conn:
+        try:
+            return store.revise_fact(conn, project_id, fact_id, request)
         except Exception as exc:
             _translate(exc)
 

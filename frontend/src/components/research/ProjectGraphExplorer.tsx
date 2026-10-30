@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Button, Card, Checkbox, Descriptions, Empty, List, Select, Space, Tag, Typography } from "antd";
+import { Alert, Button, Card, Checkbox, Descriptions, Empty, List, Select, Space, Tag, Typography, theme as antdTheme } from "antd";
 import ForceGraph2D from "react-force-graph-2d";
 import type { EvidenceRef, GraphQueryResult } from "../../api/project-types";
 import { graphView, initialFocus, neighborhood, nodeTypeColors, nodeTypeLabels, type ProjectGraphMode } from "./project-graph-utils";
@@ -8,8 +8,25 @@ import { useInspector } from "../workspace/InspectorContext";
 import { useSearchParams } from "react-router-dom";
 
 type CanvasNode = { id: string; name: string; kind: string; color: string; x?: number; y?: number; fx?: number; fy?: number };
+const darkNodeTypeColors: Record<string, string> = {
+  project: "#a8b2ff", paper: "#80d9d1", document: "#9be5e2", method: "#8ab8ff",
+  experiment_setting: "#c3a4f1", measurement: "#f3a0ce", evidence: "#f4c27b",
+  decision: "#a2db91", plan: "#f19da3",
+};
+const isDarkColor = (color: string) => {
+  const match = /^#([\da-f]{6})$/i.exec(color);
+  if (!match) return false;
+  const hex = match[1];
+  const red = parseInt(hex.slice(0, 2), 16);
+  const green = parseInt(hex.slice(2, 4), 16);
+  const blue = parseInt(hex.slice(4, 6), 16);
+  return .2126 * red + .7152 * green + .0722 * blue < 128;
+};
 
 export default function ProjectGraphExplorer({ data, evidence, mode, requestedNodeId }: { data: GraphQueryResult; evidence: EvidenceRef[]; mode: ProjectGraphMode; requestedNodeId?: string | null }) {
+  const { token } = antdTheme.useToken();
+  const dark = isDarkColor(token.colorBgLayout);
+  const nodeTypeColor = (kind: string) => (dark ? darkNodeTypeColors : nodeTypeColors)[kind] ?? token.colorPrimary;
   const [selectedId, setSelectedId] = useState<string | null>(() => initialFocus(data.nodes, requestedNodeId));
   const [focusId, setFocusId] = useState<string | null>(() => initialFocus(data.nodes, requestedNodeId));
   const [localView,setLocalView]=useState(data.snapshot_id!=="current");
@@ -19,6 +36,7 @@ export default function ProjectGraphExplorer({ data, evidence, mode, requestedNo
   const host = useRef<HTMLDivElement>(null);
   const graph = useRef<any>(null);
   const nodes = useRef(new Map<string, CanvasNode>());
+  useEffect(() => { graph.current?.refresh?.(); }, [dark, token.colorPrimary]);
   const inspector = useInspector(); const [, setParams] = useSearchParams();
   const storageKey = `atlas:graph:${data.project_id}:${data.snapshot_id}`;
   const select = (id: string) => {
@@ -66,11 +84,11 @@ export default function ProjectGraphExplorer({ data, evidence, mode, requestedNo
   return <Space direction="vertical" size="middle" style={{ width: "100%" }}>
     {mode === "impact" && <Alert type="warning" showIcon message="影响范围表示需要复核，不表示方案已经错误" description="红色节点位于该证据与决策/方案之间的依赖路径上；系统不会自动改写已保存成果。" />}
     <Space wrap><Select mode="multiple" allowClear value={types} onChange={setTypes} placeholder="按节点类型筛选" style={{ minWidth: 280 }} options={availableTypes.map(kind => ({ value: kind, label: nodeTypeLabels[kind] ?? kind }))} /><Button onClick={() => graph.current?.zoomToFit(400, 40)}>适配画布</Button><Button onClick={() => { setLocalView(true); setExpanded(new Set()); setFocusId(initialFocus(data.nodes, requestedNodeId)); }}>收起到任务子图</Button>{localView && <Button onClick={()=>setLocalView(false)}>返回全图</Button>}<Button disabled={!selectedId} onClick={()=>{const n=nodes.current.get(selectedId!);if(n?.x!==undefined&&n.y!==undefined)graph.current?.centerAt(n.x,n.y,window.matchMedia?.("(prefers-reduced-motion: reduce)").matches?0:200);}}>返回焦点</Button><Typography.Text type="secondary">显示 {visibleNodes.length}/{data.nodes.length} 个节点</Typography.Text></Space>
-    <Space wrap>{availableTypes.map(kind => <Checkbox key={kind} checked={!types.length || types.includes(kind)} onChange={event => setTypes(current => event.target.checked ? Array.from(new Set([...current, kind])) : (current.length ? current.filter(item => item !== kind) : availableTypes.filter(item => item !== kind)))}><Tag color={nodeTypeColors[kind]}>{nodeTypeLabels[kind] ?? kind}</Tag></Checkbox>)}</Space>
+    <Space wrap>{availableTypes.map(kind => <Checkbox key={kind} checked={!types.length || types.includes(kind)} onChange={event => setTypes(current => event.target.checked ? Array.from(new Set([...current, kind])) : (current.length ? current.filter(item => item !== kind) : availableTypes.filter(item => item !== kind)))}><Tag color={nodeTypeColor(kind)}>{nodeTypeLabels[kind] ?? kind}</Tag></Checkbox>)}</Space>
     <div className="research-graph-layout">
-      <div ref={host} className="research-graph-canvas"><ForceGraph2D ref={graph} width={width} height={440} graphData={canvas} cooldownTicks={70} onEngineStop={() => { canvas.nodes.forEach(n => { n.fx = n.x; n.fy = n.y; }); persist(); }} onNodeDragEnd={(node: CanvasNode) => { node.fx = node.x; node.fy = node.y; persist(); }} onZoomEnd={persist} nodeId="id" nodeLabel={(node: CanvasNode) => `${nodeTypeLabels[node.kind] ?? node.kind} · ${node.name}`} nodeColor={(node: CanvasNode) => node.id === selectedId ? "#087f8c" : related.has(node.id) ? node.color : "#cedbe0"} linkLabel={(link: { name: string }) => link.name} linkColor={(link:any)=>related.has(typeof link.source==="object"?link.source.id:link.source)&&related.has(typeof link.target==="object"?link.target.id:link.target)?"#73abb1":"#dce6ea"} nodeCanvasObject={(node:CanvasNode,ctx:CanvasRenderingContext2D,zoom:number)=>{if(node.x===undefined||node.y===undefined)return;ctx.beginPath();ctx.arc(node.x,node.y,node.id===selectedId?6:4,0,Math.PI*2);ctx.fillStyle=node.id===selectedId?"#087f8c":related.has(node.id)?node.color:"#cedbe0";ctx.fill();ctx.font=`${Math.max(3,11/zoom)}px sans-serif`;ctx.textAlign="center";ctx.fillStyle=related.has(node.id)?"#243d4b":"#90a4af";ctx.fillText(node.name.slice(0,22),node.x,node.y+12/zoom);}} linkDirectionalArrowLength={4} onNodeClick={(node: CanvasNode) => select(node.id)} /></div>
+      <div ref={host} className="research-graph-canvas"><ForceGraph2D ref={graph} width={width} height={440} backgroundColor={token.colorBgContainer} graphData={canvas} cooldownTicks={70} onEngineStop={() => { canvas.nodes.forEach(n => { n.fx = n.x; n.fy = n.y; }); persist(); }} onNodeDragEnd={(node: CanvasNode) => { node.fx = node.x; node.fy = node.y; persist(); }} onZoomEnd={persist} nodeId="id" nodeLabel={(node: CanvasNode) => `${nodeTypeLabels[node.kind] ?? node.kind} · ${node.name}`} nodeColor={(node: CanvasNode) => node.id === selectedId ? token.colorPrimary : related.has(node.id) ? nodeTypeColor(node.kind) : token.colorTextTertiary} linkLabel={(link: { name: string }) => link.name} linkColor={(link:any)=>related.has(typeof link.source==="object"?link.source.id:link.source)&&related.has(typeof link.target==="object"?link.target.id:link.target)?token.colorTextSecondary:token.colorBorder} nodeCanvasObject={(node:CanvasNode,ctx:CanvasRenderingContext2D,zoom:number)=>{if(node.x===undefined||node.y===undefined)return;ctx.beginPath();ctx.arc(node.x,node.y,node.id===selectedId?6:4,0,Math.PI*2);ctx.fillStyle=node.id===selectedId?token.colorPrimary:related.has(node.id)?nodeTypeColor(node.kind):token.colorTextTertiary;ctx.fill();ctx.font=`${Math.max(4,13/zoom)}px "Segoe UI", "Microsoft YaHei", sans-serif`;ctx.textAlign="center";ctx.fillStyle=related.has(node.id)?token.colorText:token.colorTextSecondary;ctx.fillText(node.name.slice(0,22),node.x,node.y+14/zoom);}} linkDirectionalArrowLength={4} onNodeClick={(node: CanvasNode) => select(node.id)} /></div>
       <Space direction="vertical" style={{ width: "100%" }}>
-        <Card title="节点详情" size="small">{!selected ? <Empty description="请选择节点" /> : <><Space wrap><Tag color={nodeTypeColors[selected.kind]}>{nodeTypeLabels[selected.kind] ?? selected.kind}</Tag><Typography.Text copyable>{selected.id}</Typography.Text></Space><Typography.Title level={5}>{selected.label}</Typography.Title><Descriptions size="small" column={1} items={Object.entries(selected.properties).map(([key, value]) => ({ key, label: key, children: displayKnown(value) }))} />{selected.properties.source_kind && <SourceKindTag source={selected.properties.source_kind as any} />}{selected.properties.finding_status && <FindingStatusTag status={selected.properties.finding_status as any} />}<p><Button onClick={() => { setLocalView(true); setFocusId(selected.id); setExpanded(current => new Set([...current, selected.id])); }}>局部展开并定位</Button></p></>}</Card>
+        <Card title="节点详情" size="small">{!selected ? <Empty description="请选择节点" /> : <><Space wrap><Tag color={nodeTypeColor(selected.kind)}>{nodeTypeLabels[selected.kind] ?? selected.kind}</Tag><Typography.Text copyable>{selected.id}</Typography.Text></Space><Typography.Title level={5}>{selected.label}</Typography.Title><Descriptions size="small" column={1} items={Object.entries(selected.properties).map(([key, value]) => ({ key, label: key, children: displayKnown(value) }))} />{selected.properties.source_kind && <SourceKindTag source={selected.properties.source_kind as any} />}{selected.properties.finding_status && <FindingStatusTag status={selected.properties.finding_status as any} />}<p><Button onClick={() => { setLocalView(true); setFocusId(selected.id); setExpanded(current => new Set([...current, selected.id])); }}>局部展开并定位</Button></p></>}</Card>
         {selectedEvidence && <Card title="原文证据" size="small"><Space wrap><SourceKindTag source={selectedEvidence.source_kind} /><FindingStatusTag status={selectedEvidence.finding_status} /></Space><Typography.Paragraph style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>{selectedEvidence.quote || "当前没有可显示的原文片段"}</Typography.Paragraph><p>位置：{displayKnown(selectedEvidence.locator?.heading)} / {selectedEvidence.locator?.page ? `第 ${selectedEvidence.locator.page} 页` : "页码未知"}</p><Button onClick={() => inspector.inspect({ kind: "evidence", id: selectedEvidence.id })}>侧栏定位原文</Button></Card>}
       </Space>
     </div>

@@ -6,6 +6,7 @@ backend/data/
 node_modules/
 dist/
 *.egg-info/
+backend/build/
 
 .pytest_tmp*/
 
@@ -14,6 +15,8 @@ dist/
 .local-backups/
 .codeartsdoer/
 .tmp/
+.demo/
+.releases/
 
 # Regenerable test/compiler caches, never source or release evidence.
 .pytest_cache/
@@ -22,3 +25,9 @@ dist/
 *.tsbuildinfo
 
 frontend/public/pdf-assets/
+frontend/public/python-runtime/
+
+# Local competition deliverables and design previews.
+reports/
+aic_review/
+design-previews/

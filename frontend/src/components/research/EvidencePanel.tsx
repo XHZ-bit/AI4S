@@ -8,6 +8,7 @@ import type {
   EvidenceRef,
   ExperimentSetting,
   MethodCard,
+  Measurement,
   PaperLink,
   PaperRole,
   ProjectFactsResponse,
@@ -26,7 +27,8 @@ import {
   transitionFact,
 } from "../../api/projects";
 import EvidenceDrawer from "./EvidenceDrawer";
-import { FindingStatusTag, RecordStatusTag, SourceKindTag, TaskStatusTag, displayKnown } from "./StatusLabels";
+import FactEditor from "./FactEditor";
+import { FindingStatusTag, RecordStatusTag, SourceKindTag, TaskStatusTag, displayKnown, displayMeasurement } from "./StatusLabels";
 
 type ExistingPaper = { uid: string; title: string; year?: number | null };
 type TransitionTarget = { id: string; version: number; status: RecordStatus; label: string };
@@ -103,6 +105,24 @@ export default function EvidencePanel({ project, onProjectReload }: { project: R
   const evidenceById = useMemo(() => new Map(facts.evidence.map(item => [item.id, item])), [facts.evidence]);
   const settingsByMethod = (methodId: string) => facts.experiment_settings.filter(item => item.method_id === methodId);
   const measurementsBySetting = (settingId: string) => facts.measurements.filter(item => item.experiment_setting_id === settingId);
+  const revisionEvidence = (item: MethodCard | ExperimentSetting) => {
+    const linkedDocument = links.find(link => link.id === item.paper_link_id)?.linked_document_id;
+    const ids = new Set(item.field_evidence.flatMap(field => field.evidence_ids));
+    const documents = new Set(facts.evidence.filter(ref => ids.has(ref.id)).map(ref => ref.document_id));
+    if (linkedDocument) documents.add(linkedDocument);
+    // A fully revised record may have no current bindings. The server still
+    // checks the original source before accepting any selected evidence.
+    return documents.size ? facts.evidence.filter(ref => documents.has(ref.document_id)) : facts.evidence;
+  };
+  const attributionLabel = (item: MethodCard) => {
+    for (const field of item.field_evidence) {
+      try {
+        const role = JSON.parse(field.note || "{}").claim_role;
+        if (role) return ({ current_paper_method: "本文方法", cited_method: "文中引用的方法", comparison_method: "对比方法", unclear: "作者归属待核对" } as Record<string, string>)[role] || "作者归属待核对";
+      } catch { /* Human correction notes are plain text. */ }
+    }
+    return "作者归属待核对";
+  };
 
   const runOnce = async (operation: () => Promise<void>) => {
     if (actionLock.current) return;
@@ -120,7 +140,7 @@ export default function EvidencePanel({ project, onProjectReload }: { project: R
     children: <Space direction="vertical"><Typography.Text>{field.note || "没有额外说明"}</Typography.Text>{sourceButtons(field.evidence_ids)}</Space>,
   }))} /> : <Alert type="warning" message="此记录没有逐字段来源绑定" />;
 
-  const beginTransition = (item: MethodCard | ExperimentSetting, label: string) => {
+  const beginTransition = (item: MethodCard | ExperimentSetting | Measurement, label: string) => {
     setTransitionTarget({ id: item.id, version: item.version, status: item.status, label });
     setTransitionStatus(item.status === "withdrawn" ? "candidate" : "user_confirmed");
     setTransitionReason("");
@@ -131,7 +151,8 @@ export default function EvidencePanel({ project, onProjectReload }: { project: R
     const current = localStorage.getItem(key) ?? ("summary" in item ? item.summary ?? "" : item.notes.join("\n"));
     return <Card size="small" title="人工修正草稿（仅保存在本机）" extra={<Tag color="orange">未保存到服务端</Tag>}>
       <Input.TextArea defaultValue={current} rows={3} onChange={event => localStorage.setItem(key, event.target.value)} />
-      <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>公共契约尚无事实内容修订接口。此草稿刷新后保留，但不会伪装成已保存或文献报告。</Typography.Paragraph>
+      <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>此处暂存笔记不会改变事实。点击“修订内容”，选择方法说明或实验说明，可载入这份草稿并保存新版本。</Typography.Paragraph>
+      <FactEditor fact={item} evidence={revisionEvidence(item)} onSaved={() => reload()} />
     </Card>;
   };
 
@@ -145,7 +166,7 @@ export default function EvidencePanel({ project, onProjectReload }: { project: R
       { key: "preprocess", label: "预处理", children: setting.preprocessing.length ? setting.preprocessing.join("；") : "未知/未报告" },
     ]} />
     <Typography.Title level={5}>测量结果</Typography.Title>
-    {measurementsBySetting(setting.id).length ? measurementsBySetting(setting.id).map(measurement => <div key={measurement.id} className="research-measurement-row"><Space wrap><strong>{measurement.metric_name}</strong><span>{measurement.value ? `${measurement.value.value}${measurement.value.unit ?? ""} (${measurement.value.scale})` : "未知/未报告"}</span><RecordStatusTag status={measurement.status} /><FindingStatusTag status={measurement.finding_status} /></Space></div>) : <Typography.Text type="secondary">没有测量候选；不能按 0 处理。</Typography.Text>}
+    {measurementsBySetting(setting.id).length ? measurementsBySetting(setting.id).map(measurement => <div key={measurement.id} className="research-measurement-row"><Space wrap><strong>{measurement.metric_name}</strong><span>{displayMeasurement(measurement.value)}</span><RecordStatusTag status={measurement.status} /><FindingStatusTag status={measurement.finding_status} /><FactEditor fact={measurement} evidence={revisionEvidence(setting)} onSaved={() => reload()} /><Button onClick={() => beginTransition(measurement, measurement.metric_name)}>审核状态</Button></Space></div>) : <Typography.Text type="secondary">没有测量候选；不能按 0 处理。</Typography.Text>}
     <div style={{ marginTop: 12 }}>{fieldEvidence(setting)}</div><div style={{ marginTop: 12 }}>{localDraft(setting)}</div>
   </Card>;
 
@@ -193,12 +214,13 @@ export default function EvidencePanel({ project, onProjectReload }: { project: R
         <Typography.Text type="secondary">固定文档：{link.linked_document_id ? `${link.linked_document_id} · ${displayKnown(link.linked_document_version)}` : "未知/尚未解析"}</Typography.Text>
       </Card>)}</Space>}
     </Card>
-    {Object.values(tasks).length > 0 && <Card title="本次任务状态"><Space direction="vertical" style={{ width: "100%" }}>{Object.values(tasks).map(task => <Card size="small" key={task.id}><Space wrap><Typography.Text copyable>{task.id}</Typography.Text><TaskStatusTag status={task.status} />{task.progress !== null && <span>{Math.round(task.progress * 100)}%</span>}{task.error && <Typography.Text type="danger">{task.error.message}</Typography.Text>}{["failed", "interrupted"].includes(task.status) && <Button onClick={() => void runOnce(async () => { const retried = await retryProjectTask(task.id); setTasks(current => ({ ...current, [retried.id]: retried })); })}>重试为新任务</Button>}</Space></Card>)}</Space></Card>}
+    {Object.values(tasks).length > 0 && <Card title="本次任务状态"><Space direction="vertical" style={{ width: "100%" }}>{Object.values(tasks).map(task => <Card size="small" key={task.id}><Space wrap><Typography.Text copyable>{task.id}</Typography.Text><TaskStatusTag status={task.status} />{task.progress !== null && <span>{Math.round(task.progress * 100)}%</span>}{Array.isArray(task.result?.warnings) && task.result.warnings.length > 0 && <Alert type="warning" message={`有 ${task.result.warnings.length} 条抽取提示，部分信息可能被保留为未知或未能提取`} description={<Link to="/tasks">查看任务详情并核对原文</Link>} />}{task.error && <Typography.Text type="danger">{task.error.message}</Typography.Text>}{["failed", "interrupted"].includes(task.status) && <Button onClick={() => void runOnce(async () => { const retried = await retryProjectTask(task.id); setTasks(current => ({ ...current, [retried.id]: retried })); })}>重试为新任务</Button>}</Space></Card>)}</Space></Card>}
     <Card title="方法、实验条件与来源">
       {loading ? <Spin /> : facts.methods.length === 0 ? <Empty description="尚无方法候选；历史资料仍可浏览，新的抽取失败时不会生成假数据。" /> : <>
         {(facts.experiment_settings.length === 0 || facts.measurements.length === 0) && <Alert style={{ marginBottom: 16 }} type="warning" message="抽取结果可能不完整" description="已有方法候选，但实验设置或测量候选为空。请查看任务错误和来源，不要把缺失解释为 0 或无条件。" />}
         <Space direction="vertical" style={{ width: "100%" }}>{facts.methods.map(method => <Card key={method.id} title={<Space wrap><span>{method.name}</span><RecordStatusTag status={method.status} /><FindingStatusTag status={method.finding_status} /><SourceKindTag source={method.source_kind} /></Space>} extra={<Space><Link to={`/research/${project.id}/graph?mode=method&node_id=${encodeURIComponent(method.id)}`}>查看实验设置</Link><Button onClick={() => beginTransition(method, method.name)}>审核状态</Button></Space>}>
           <Typography.Paragraph>{method.summary || "摘要未知/未报告"}</Typography.Paragraph>
+          <Tag>{attributionLabel(method)}</Tag>
           {fieldEvidence(method)}<div style={{ marginTop: 12 }}>{localDraft(method)}</div>
           <Typography.Title level={5} style={{ marginTop: 20 }}>实验设置</Typography.Title>
           <Space direction="vertical" style={{ width: "100%" }}>{settingsByMethod(method.id).length ? settingsByMethod(method.id).map(renderSetting) : <Typography.Text type="secondary">尚无实验设置，不能推断默认条件。</Typography.Text>}</Space>

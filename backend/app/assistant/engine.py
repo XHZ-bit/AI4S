@@ -18,6 +18,18 @@ def action(key, title, reason, impact, scope, identity, view, priority=2, refs=N
                   target=Target(scope=scope, id=identity, view=view, focus=focus), references=refs or [])
 
 
+def knowledge_input(conn, identity):
+    """Current scoped knowledge and audit versions; historical snapshots stay frozen."""
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE name='kw_nodes'").fetchone():
+        return {"nodes": [], "edges": [], "sources": [], "evidence": []}
+    result = {}
+    for key, table in (("nodes", "kw_nodes"), ("edges", "kw_edges"),
+                       ("sources", "kw_sources"), ("evidence", "kw_evidence")):
+        result[key] = [json.loads(row[0]) for row in conn.execute(
+            f"SELECT data FROM {table} WHERE project_id=? ORDER BY id", (identity,))]
+    return result
+
+
 def project_input(conn, identity):
     project = store.get_project(conn, identity)
     if project is None:
@@ -31,7 +43,8 @@ def project_input(conn, identity):
     inputs = {"project": project.model_dump(mode="json"), "facts": facts.model_dump(mode="json"),
               "links": [x.model_dump(mode="json") for x in links], "documents": documents,
               "plans": [x.model_dump(mode="json") for x in plans],
-              "snapshots": [x.model_dump(mode="json") for x in snapshots], "rules": "atlas-actions-1"}
+              "snapshots": [x.model_dump(mode="json") for x in snapshots],
+              "knowledge": knowledge_input(conn, identity), "rules": "paperstride-unified-actions-2"}
     return project, facts, links, plans, snapshots, fingerprint(inputs)
 
 
@@ -42,11 +55,31 @@ def project_report(conn, identity):
     settings = [s for s in facts.experiment_settings if not s.paper_link_id or s.paper_link_id in live_links]
     candidates = evaluate_constraints(project, live_methods, settings, facts.measurements)
     actions = []
+    knowledge = knowledge_input(conn, identity)
+    live_sources = {item['id'] for item in knowledge['sources'] if not item.get('removed')}
+    live_nodes = [item for item in knowledge['nodes'] if item['source_id'] in live_sources
+                  and not item.get('hidden') and item.get('quality_status') not in {'rejected', 'withdrawn'}
+                  and not item.get('metadata', {}).get('source_withdrawn')]
+    for node in live_nodes:
+        if node.get('kind') == 'paper':
+            continue
+        if node.get('quality_status') in {'candidate', 'needs_review'}:
+            actions.append(action('knowledge-review:' + node['id'], '核对知识：' + node['label'],
+                                  '当前知识尚待核对，关联来源可在节点中查看', '核验当前图谱的内容与依据',
+                                  'project', identity, 'graph', 2, focus=node['id']))
+            if sum(a.id.startswith('knowledge-review:') for a in actions) >= 5:
+                break
+    if live_nodes:
+        focus = next((item for item in live_nodes if item.get('kind') == 'method'), live_nodes[0])
+        actions.append(action('knowledge-explore', '从图谱继续研究',
+                              f'当前空间包含 {len(live_nodes)} 个有效知识节点',
+                              '在节点中追踪关系、定位原文、学习和提问', 'project', identity,
+                              'graph', 3, focus=focus['id']))
     evidence = {x.id: x for x in facts.evidence}
     passages = {r["id"]: (r["document_id"], r["paper_uid"]) for r in conn.execute(
         "SELECT p.id,p.document_id,d.paper_uid FROM passages p JOIN documents d ON p.document_id=d.id WHERE d.paper_uid IN "
         "(SELECT paper_uid FROM research_paper_link_versions WHERE project_id=?)", (identity,))}
-    if not live_links:
+    if not live_links and not live_sources:
         actions.append(action("add-paper", "为课题关联资料", "当前没有有效论文关联", "方法和实验设置缺少资料输入", "project", identity, "evidence", 1))
     all_facts = [*facts.methods, *settings, *facts.measurements]
     covered, total = 0, 0
@@ -85,9 +118,17 @@ def project_report(conn, identity):
     for snapshot in snapshots:
         if snapshot.review_status == "needs_review":
             actions.append(action(f"snapshot:{snapshot.id}", "追踪快照影响范围", "；".join(snapshot.review_reasons), "旧成果保留，但引用依据已变化", "project", identity, "changes", 1, [Reference(kind="snapshot", id=snapshot.id)], snapshot.id))
-    return Report(input_fingerprint=digest, candidates=candidates,
+    active_ids = {item['id'] for item in live_nodes}
+    return Report(input_fingerprint=digest, candidates=candidates, rule_version='paperstride-unified-actions-2',
+                  knowledge_context={
+                      'nodes': [{key: item.get(key) for key in ('id', 'label', 'kind', 'summary', 'version', 'quality_status', 'evidence_ids')} for item in live_nodes[:24]],
+                      'edges': [item for item in knowledge['edges'] if item['source'] in active_ids and item['target'] in active_ids
+                                and not item.get('hidden') and item.get('quality_status') not in {'withdrawn', 'rejected'}][:48],
+                      'truncated': len(live_nodes) > 24,
+                  },
                   actions=sorted(actions, key=lambda a: (a.priority, a.id)),
-                  coverage={"fields": total, "bound_fields": covered, "candidates": len(candidates), "issues": len(actions)})
+                  coverage={"fields": total, "bound_fields": covered, "candidates": len(candidates), "issues": len(actions),
+                            'knowledge_nodes': len(live_nodes), 'knowledge_sources': len(live_sources)})
 
 
 def paper_report(conn, uid):
@@ -201,10 +242,31 @@ def resource_list(conn, scope, identity):
         uids = [identity]
     for uid in uids:
         paper = get_paper(conn, uid)
-        for doc in document_view(conn, uid):
-            resources.append(Resource(id=doc["id"], kind="pdf", title=paper["title"], origin="literature", version=doc["content_hash"],
-                                      paper_uid=uid, document_id=doc["id"], url=f"/api/papers/{uid}/documents/{doc['id']}/file",
+        docs = document_view(conn, uid)
+        if not docs:
+            from app.tenancy import data_dir
+            import re
+            path = data_dir() / 'pdfs' / f'{uid}.pdf'
+            if re.fullmatch(r'[A-Za-z0-9._-]+',uid) and path.is_file():
+                resources.append(Resource(id='pending:'+uid,kind='pdf',title=paper['title'],origin='literature',version='pending',paper_uid=uid,url=f'/api/papers/{uid}/file',tasks=['原文阅读；文本解析进行中']))
+        from app.knowledge.source_files import DocumentFileError, resolve_document_file
+        paper_resources, hashes = [], {}
+        for doc in docs:
+            file_hash = None
+            try:
+                file_hash = resolve_document_file(conn, uid, doc["id"], hashes=hashes).sha256
+            except DocumentFileError:
+                pass
+            file_url = f"/api/papers/{uid}/documents/{doc['id']}/file"
+            if file_hash:
+                file_url += "?file_sha256=" + file_hash
+            paper_resources.append(Resource(id=doc["id"], kind="pdf", title=paper["title"], origin="literature", version=doc["content_hash"],
+                                      paper_uid=uid, document_id=doc["id"], url=file_url, source_file_sha256=file_hash,
+                                      file_available=bool(file_hash), current_file_url=f"/api/papers/{uid}/file",
                                       passages=[{"id": p["id"], "heading": p["heading"], "text": p["text"], "page": p["page"]} for p in doc["passages"]], tasks=["原文阅读", "引用追溯"]))
+        # Keep the latest readable representation first. Historical evidence links
+        # can still request unavailable versions explicitly; they never substitute.
+        resources.extend(sorted(paper_resources, key=lambda item: not item.file_available))
     resources.append(Resource(id="evidence-chain", kind="diagram", title="从资料到研究行动", origin="illustrative", version="1"))
     return resources
 

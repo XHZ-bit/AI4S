@@ -93,7 +93,7 @@ def add_source(req: SourceCandidate):
         payload.update(document_id=did, passage_id=passage["id"], evidence=req.quote)
         if req.src_type == "paper" and req.src_name == req.title:
             payload["src_uid"] = uid
-        kid = save_proposal(conn, uid, "relation", payload, 0)
+        kid = save_proposal(conn, uid, "relation", payload, 0, commit=False)
         loc = check_quote(passage["text"], req.quote)
         checks = {
             "structure": True,
@@ -119,6 +119,8 @@ def add_source(req: SourceCandidate):
             "INSERT INTO audit_events(knowledge_id,action,actor,reason,before_json,after_json) VALUES(?,'create',?,'source candidate','{}',?)",
             (kid, req.actor, json.dumps(payload, ensure_ascii=False)),
         )
+        from app.knowledge.unified import sync_legacy
+        sync_legacy(conn, kid=kid)
         conn.commit()
         return {"id": kid, "paper_uid": uid, "status": "candidate"}
 

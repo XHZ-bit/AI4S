@@ -1,0 +1,236 @@
+
+ RUN  v5.0.1 D:/storage/Codex_program/AI4S/frontend
+
+ ✓ src/__tests__/PaperLibrary.test.tsx (8 tests) 7441ms
+   ✓ library views preserve server query and parse filters while resetting pagination 1527ms
+   ✓ starred and read later are independent persisted flags 381ms
+   ✓ a failed marker update keeps the previous state and permits another attempt 331ms
+   ✓ removing the last item of a filtered last page returns to a valid page 359ms
+   ✓ a response from an old library view cannot overwrite the latest view 805ms
+   ✓ filter feedback and clearing preserve unrelated URL state and reset server pagination 1812ms
+   ✓ desktop papers show Chinese source and parse state with a direct reading action 767ms
+   ✓ switching to mobile renders one accessible card and preserves selection and markers 1457ms
+ ✓ src/__tests__/KnowledgeWorkspace.test.tsx (17 tests) 11732ms
+   ✓ four-source workspace opens the whole graph and node learning never calls a model on page load 1485ms
+   ✓ comparison to learning and source evidence retain a return path and exact source page 2473ms
+   ✓ selected report block offers its own linked knowledge without per-block footers 751ms
+   ✓ source to learning returns to its selected block and PDF evidence target remains stable while scrolling 879ms
+   ✓ formula correction submits versioned LaTeX for the current space without rewriting source text 563ms
+   ✓ learning correction and section hide use successive saved revisions without model calls 1338ms
+   ✓ learning revision conflict preserves the draft and explains how to read the latest saved version 1136ms
+   ✓ a material click updates the real workspace URL once and opens its methods without a competing clear navigation 993ms
+   ✓ node practice expands from the graph and returns to its selected node and canvas position 1069ms
+ ✓ src/__tests__/SessionGate.test.tsx (10 tests) 6109ms
+   ✓ children receive only the verified access mode and unmount when the session expires 475ms
+   ✓ multiuser login gates the workspace and logout clears only Atlas drafts 864ms
+   ✓ changing the password forces a fresh login and clears browser drafts 659ms
+   ✓ administrators create and disable accounts with authenticated requests 3683ms
+ ✓ src/__tests__/AccountRecovery.test.tsx (10 tests) 4572ms
+   ✓ registration checks confirmation before creating an account and forwards optional email 960ms
+   ✓ email recovery shows a neutral receipt and offers the offline recovery path 590ms
+   ✓ a reset link works in local mode, removes its token from the URL, and returns to sign-in 650ms
+   ✓ a verification link waits for confirmation and preserves the signed-in workspace 576ms
+   ✓ recovery without mail explains the fallback and invalid code leaves the form retryable 673ms
+   ✓ registration stays hidden when disabled, including after signing out 532ms
+   ✓ an expired local account stays at sign-in until explicitly leaving that account 329ms
+ ✓ src/__tests__/research/projects-list.test.tsx (4 tests) 4078ms
+   ✓ StrictMode double interaction creates a project once 1579ms
+   ✓ an exploratory workspace does not require a specific question or validation objective 1687ms
+   ✓ a workspace can be created by entering only its temporary name 719ms
+stderr | src/__tests__/PdfReader.test.tsx > a 21-page paper opens evidence page 14 without saving a different reading position
+Warning: Please use the `legacy` build in Node.js environments.
+
+ ✓ src/__tests__/research/research-domain.test.tsx (3 tests) 1647ms
+   ✓ project settings accept a new domain directly and send it in custom_domain 644ms
+   ✓ choosing a recognized domain clears an obsolete custom label on save 851ms
+ ✓ src/__tests__/PdfReader.test.tsx (19 tests) 4624ms
+   ✓ a version mismatch shows one recoverable error without repeated reading advice 560ms
+   ✓ fixed zoom keeps its accurate label and scale through resizes until fit width is selected 856ms
+   ✓ fit width uses the actual dimensions of landscape and portrait pages 776ms
+   ✓ full text search finds unrendered pages and navigates matching pages 562ms
+   ✓ PDF outline resolves named destinations and navigates nested chapters 394ms
+   ✓ parsed section headings provide navigation when the PDF has no embedded outline 327ms
+ ✓ src/__tests__/research/space-experience.test.tsx (5 tests) 1727ms
+   ✓ nonrobotics research never mounts the diffusion practice 518ms
+   ✓ changing outcomes tool loads just the selected workflow 698ms
+ ✓ src/__tests__/research/next-step.test.tsx (1 test) 2503ms
+   ✓ manual evidence, comparison and plan workflows remain reachable without automatic processing or completion 2501ms
+stderr | src/__tests__/research/project-graph.test.tsx > older request cannot overwrite a newly navigated project
+Warning: An update to RouterProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at RouterProvider (file:///D:/storage/Codex_program/AI4S/frontend/node_modules/react-router/dist/development/chunk-OB3PAWPO.mjs:6794:3)
+    at RouterProvider2
+
+ ✓ src/__tests__/research/project-graph.test.tsx (9 tests) 5767ms
+   ✓ shows node details and readable evidence with a document jump 2122ms
+   ✓ method view keeps same method experiment settings separate 1495ms
+   ✓ shows service failure while preserving return links 397ms
+   ✓ older request cannot overwrite a newly navigated project 1389ms
+ ✓ src/__tests__/research/workspace-panels.test.tsx (9 tests) 5904ms
+   ✓ comparison readiness explains missing conditions without ranking 1294ms
+   ✓ partial extraction stays visible and manual correction remains a local draft 350ms
+   ✓ comparison separates project constraints from literature comparability 2380ms
+   ✓ 409 keeps settings form values instead of clearing the draft 695ms
+   ✓ model failure can fall back to an empty user-input draft and save through the existing API 386ms
+stderr | src/__tests__/AssistantInteractions.test.tsx > four scenarios are the limit and drafts survive a project version refresh
+Warning: An update to ScenarioPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenarioPanel (D:/storage/Codex_program/AI4S/frontend/src/components/workspace/ScenarioPanel.tsx:51:26)
+
+stderr | src/__tests__/AssistantInteractions.test.tsx > four scenarios are the limit and drafts survive a project version refresh
+Warning: An update to ScenarioPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenarioPanel (D:/storage/Codex_program/AI4S/frontend/src/components/workspace/ScenarioPanel.tsx:51:26)
+Warning: An update to ScenarioPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenarioPanel (D:/storage/Codex_program/AI4S/frontend/src/components/workspace/ScenarioPanel.tsx:51:26)
+
+ ✓ src/__tests__/AssistantInteractions.test.tsx (4 tests) 4388ms
+   ✓ tensor feedback follows the numeric control and windows support single step/reset 471ms
+   ✓ scenarios cancel old requests and keep only the latest response 673ms
+   ✓ four scenarios are the limit and drafts survive a project version refresh 2661ms
+   ✓ practice conflict preserves the answer and reload enables a versioned retry 582ms
+ ✓ src/__tests__/Actions.test.tsx (3 tests) 4213ms
+   ✓ switching lists clears the previous list before loading the next one 1182ms
+   ✓ a pending replan cannot attach its preview to another list 1416ms
+   ✓ changing the budget invalidates a preview that is still loading 1613ms
+ ✓ src/__tests__/App.test.tsx (1 test) 424ms
+   ✓ home starts with research spaces and two clear entry paths while retaining diagnostics and tasks 355ms
+ ✓ src/__tests__/ManageLibrary.test.tsx (6 tests) 4130ms
+   ✓ multiuser explains unavailable collection and extraction with actual configured upload limits 775ms
+   ✓ quota load failure leaves uploading available and can be retried 489ms
+   ✓ local mode keeps collection and model extraction available without a quota request 990ms
+   ✓ legacy add link keeps the project and imports directly into its reading workspace 618ms
+   ✓ existing library paper can retry project binding and then reads inside the same workspace 610ms
+   ✓ batch binding skips existing project papers 645ms
+ ✓ src/__tests__/QuickLauncher.test.tsx (6 tests) 3020ms
+   ✓ global shortcut opens focused keyboard navigation without any background search 303ms
+   ✓ metadata results support keyboard opening and safely encode the paper ID 351ms
+   ✓ query changes cancel work and ignore old responses even when a transport ignores abort 657ms
+   ✓ failure can retry; escape cancels pending requests and restores trigger focus 1056ms
+   ✓ global and workspace shortcuts open only their own dialog 307ms
+   ✓ knowledge search names its space and opens the exact unified node 344ms
+ ✓ src/__tests__/ReadingWorkspaceContext.test.tsx (9 tests) 2895ms
+   ✓ new selected text clears an older session and sends the exact source context only on request 306ms
+   ✓ a slow note save cannot replace another record opened through a deep link 771ms
+   ✓ recovering an editor draft decodes its content and saves to the original record with source metadata 1222ms
+ ✓ src/__tests__/LearningFocus.test.tsx (6 tests) 428ms
+ ✓ src/__tests__/research/stale-state.test.tsx (6 tests) 2822ms
+   ✓ changing selection invalidates an existing comparison 1417ms
+   ✓ a comparison arriving after project version change is ignored 1179ms
+ ✓ src/__tests__/PlatformExecution.test.tsx (6 tests) 2554ms
+   ✓ one failed workflow section preserves successful activity and suggestions 709ms
+   ✓ task polling does not overlap slow requests and aborts on unmount 315ms
+   ✓ runtime and PDF coverage show their precise available scope 408ms
+   ✓ processing task view only loads system tasks 756ms
+ ✓ src/__tests__/roadmap.test.tsx (2 tests) 1967ms
+   ✓ saved roadmap reloads and progress uses stable id and version 803ms
+   ✓ generation requires explicit target selection 1163ms
+ ✓ src/__tests__/KnowledgeComparisonAuto.test.tsx (4 tests) 1888ms
+   ✓ typing a custom comparison dimension automatically displays its new table row without generation 348ms
+   ✓ a per-cell PATCH records the expected revision and survives automatic preview refresh 869ms
+   ✓ an items refresh for the same comparison ID cannot overwrite a context-selected D2 method 479ms
+ ✓ src/__tests__/research/decision-overview.test.tsx (5 tests) 1680ms
+   ✓ overview shows saved rationale, unknowns and immutable snapshot links 405ms
+   ✓ content corrections save through the API and preserve input on version conflict 963ms
+ ✓ src/__tests__/automatic-roadmap-preview.test.tsx (1 test) 1356ms
+   ✓ machine checked route remains a read-only preview 1354ms
+ ✓ src/__tests__/ReadingWorkspaceStrictMode.test.tsx (2 tests) 1208ms
+   ✓ StrictMode effect replay preserves an initial selected-text draft and its saved source 625ms
+   ✓ switching papers drops the previous source and lesson context before opening the next reader 581ms
+ ✓ src/__tests__/LearningDependencies.test.tsx (7 tests) 976ms
+stderr | src/__tests__/Workspace.test.tsx > one paper links reading, reproduction and research without claiming verification
+Warning: [antd: Input] `addonBefore` is deprecated. Please use `Space.Compact` instead.
+Warning: [antd: Input] `addonBefore` is deprecated. Please use `Space.Compact` instead.
+Warning: [antd: Input] `addonBefore` is deprecated. Please use `Space.Compact` instead.
+Warning: [antd: Input] `addonBefore` is deprecated. Please use `Space.Compact` instead.
+
+ ✓ src/__tests__/Workspace.test.tsx (1 test) 1163ms
+   ✓ one paper links reading, reproduction and research without claiming verification 1161ms
+ ✓ src/__tests__/Graph.test.tsx (2 tests) 953ms
+   ✓ an empty search retains the explicit project scope instead of loading the account overview 682ms
+ ✓ src/__tests__/PaperDetailContinuity.test.tsx (4 tests) 978ms
+   ✓ a slow save preserves newer typing and advances the next save version 321ms
+   ✓ multiuser reading exposes named fields and explains unavailable processing before clicking 348ms
+ ✓ src/__tests__/Pages.test.tsx (2 tests) 753ms
+   ✓ paper list uses server pagination 749ms
+ ✓ src/__tests__/CaseStudy.test.tsx (4 tests) 722ms
+ ✓ src/__tests__/EvidenceMatrixNavigation.test.tsx (1 test) 810ms
+   ✓ the editor waits for delayed source navigation before restoring an unsaved cell draft 808ms
+ ✓ src/__tests__/KnowledgeExperience.test.tsx (9 tests) 581ms
+ ✓ src/__tests__/NextPhase.test.tsx (1 test) 711ms
+   ✓ workflow shows an evidence-bound review action without changing mastery 709ms
+ ✓ src/__tests__/PdfUploadQueue.test.tsx (14 tests) 678ms
+ ✓ src/__tests__/PaperSearchPanel.test.tsx (4 tests) 566ms
+ ✓ src/__tests__/GraphConvenience.test.tsx (1 test) 451ms
+   ✓ search preserves a group of matching datasets and source context after selecting one 449ms
+ ✓ src/__tests__/PersonalizedRoadmapDemo.test.tsx (1 test) 441ms
+   ✓ the complete demo is available immediately and changes prerequisites with the learner 439ms
+ ✓ src/__tests__/PaperReaderPosition.test.tsx (7 tests) 373ms
+ ✓ src/__tests__/KnowledgeLearningContent.test.tsx (11 tests) 278ms
+ ✓ src/__tests__/research/project-audit.test.tsx (2 tests) 339ms
+ ✓ src/__tests__/KnowledgeGraphLayout.test.ts (9 tests) 286ms
+ ✓ src/__tests__/RuntimeStatus.test.tsx (7 tests) 348ms
+ ✓ src/__tests__/TopicExplorer.test.tsx (2 tests) 344ms
+ ✓ src/__tests__/KnowledgePractice.test.tsx (7 tests) 295ms
+ ✓ src/__tests__/Home.test.tsx (6 tests) 290ms
+ ✓ src/__tests__/research/project-routing.test.tsx (7 tests) 261ms
+ ✓ src/__tests__/ShellNavigation.test.tsx (3 tests) 278ms
+ ✓ src/__tests__/WorkflowLoop.test.tsx (1 test) 224ms
+ ✓ src/__tests__/ReadLaterPreview.test.tsx (4 tests) 225ms
+ ✓ src/__tests__/MathTextRendering.test.tsx (7 tests) 231ms
+ ✓ src/__tests__/research/print.test.tsx (2 tests) 194ms
+ ✓ src/__tests__/GraphDraft.test.ts (4 tests) 85ms
+ ✓ src/__tests__/GraphFlatNavigation.test.tsx (4 tests) 253ms
+ ✓ src/__tests__/KnowledgePathPanel.test.tsx (2 tests) 94ms
+ ✓ src/__tests__/ProjectFeatures.test.tsx (8 tests) 36ms
+ ✓ src/__tests__/RecentProjects.test.tsx (2 tests) 26ms
+ ✓ src/__tests__/KnowledgeApi.test.ts (5 tests) 13ms
+ ✓ src/__tests__/ReadingPositionApi.test.ts (1 test) 4ms
+ ✓ src/__tests__/research/projects-api.test.ts (2 tests) 5ms
+ ✓ src/__tests__/UploadApi.test.ts (2 tests) 5ms
+ ✓ src/__tests__/LibraryApi.test.ts (1 test) 5ms
+ ✓ src/__tests__/SearchApi.test.ts (1 test) 3ms
+ ✓ src/__tests__/QuickFindApi.test.ts (1 test) 3ms
+
+ Test Files  64 passed (64)
+      Tests  315 passed (315)
+   Start at  10:09:02
+   Duration  161.98s (import 50%, tests 33%, environment 13%, setup 2%, transform 1%)
+
+     Import  234 modules were evaluated 817 times · 156.92s total, 50% of tracked time
+             ~42.45s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+

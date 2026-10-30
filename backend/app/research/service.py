@@ -140,6 +140,8 @@ def build_plan(conn, project_id: str, request: PlanGenerateRequest):
     project = store.get_project(conn, project_id)
     if project is None:
         raise store.NotFoundError("项目不存在")
+    if project.stage != 'validating':
+        raise store.ValidationError('请先在课题探索中明确问题，再进入验证阶段生成正式实验方案')
     store._check_version(project.version, request.expected_project_version, "项目")
     decision = store.get_decision(conn, request.decision_id)
     if (
@@ -378,6 +380,8 @@ def enqueue_plan_generation(
     project = store.get_project(conn, project_id)
     if project is None:
         raise store.NotFoundError("项目不存在")
+    if project.stage != 'validating':
+        raise store.ValidationError('请先明确研究问题与验证目标；探索阶段不会调用实验方案模型')
     store._check_version(project.version, request.expected_project_version, "项目")
     decision = store.get_decision(conn, request.decision_id)
     if (
@@ -466,6 +470,9 @@ def enqueue_graph_projection(
 
 
 def _task_failure(conn, task_id: str, exc: Exception):
+    current = store.get_task(conn, task_id)
+    if current and current.status == TaskStatus.INTERRUPTED:
+        return current
     from app.research.model_runtime import ResearchModelError
     if isinstance(exc, ResearchModelError):
         code, retryable = exc.code, exc.retryable
@@ -475,7 +482,8 @@ def _task_failure(conn, task_id: str, exc: Exception):
     elif isinstance(exc, store.ProjectStoreError):
         code, retryable = exc.code, exc.retryable
     else:
-        code, retryable = "task_failed", False
+        from app.task_control import error_code
+        code, retryable = error_code(exc), False
     return store.update_task(
         conn,
         task_id,
@@ -500,7 +508,15 @@ def run_extraction_task(conn, task_id: str):
             from app.research.extraction import extract_candidates
         except ImportError as exc:
             raise CapabilityUnavailable("extraction", "候选抽取模块尚未接入") from exc
-        bundle = extract_candidates(value)
+        existing_ids = {fact.id for fact in store.list_facts(conn, value.project_id,
+                        paper_link_id=value.paper_link.id)}
+        existing_ids.update(identity for evidence in store.list_evidence(conn, value.project_id)
+                            if evidence.document_id == value.document.document_id
+                            and evidence.document_version == value.document.document_version
+                            for identity in (evidence.id, evidence.conflict_group_id) if identity)
+        bundle = extract_candidates(value, existing_ids=existing_ids) if existing_ids else extract_candidates(value)
+        from app.task_control import check_active
+        check_active(conn)
         store.save_candidate_bundle(conn, bundle)
         return store.update_task(
             conn,
@@ -531,6 +547,8 @@ def run_plan_generation_task(conn, task_id: str):
     try:
         request = PlanGenerateRequest.model_validate(params["request"])
         plan = build_plan(conn, params["project_id"], request)
+        from app.task_control import check_active
+        check_active(conn)
         return store.update_task(
             conn,
             task_id,

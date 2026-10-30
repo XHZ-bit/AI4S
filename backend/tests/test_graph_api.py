@@ -29,26 +29,16 @@ def test_neighbors(monkeypatch):
     assert len(resp["nodes"]) == 3
     assert resp["links"][0]["rel_type"] == "USES"
 
-def test_neighbors_uses_literal_bounded_depth_and_entity_label(monkeypatch):
+def test_neighbors_uses_bounded_canonical_graph_without_external_driver(monkeypatch):
     calls = []
 
-    class Session:
-        def __enter__(self): return self
-        def __exit__(self, *args): return None
-        def run(self, query, **params):
-            calls.append((query, params))
-            if "RETURN DISTINCT node.uid" in query:
-                return [{"uid": "method:ppo", "name": "PPO", "type": "method"}]
-            return []
-
-    class Driver:
-        def session(self): return Session()
-
-    monkeypatch.setattr("app.graphsvc.queries.get_driver", lambda: Driver())
+    def snapshot(project_id=None):
+        calls.append(project_id)
+        nodes = [{'uid': str(i), 'name': str(i), 'type': 'concept'} for i in range(8)]
+        return {'nodes': nodes, 'links': [{'source': str(i), 'target': str(i+1)} for i in range(7)]}
+    monkeypatch.setattr('app.graphsvc.local.snapshot', snapshot)
     from app.graphsvc.queries import neighbors
 
-    result = neighbors("method:ppo", depth=99)
-    assert result["nodes"][0]["uid"] == "method:ppo"
-    assert all("$depth" not in query for query, _ in calls)
-    assert all(":Entity" in query for query, _ in calls)
-    assert "[*0..3]" in calls[0][0]
+    result = neighbors('0', depth=99)
+    assert [node['uid'] for node in result['nodes']] == ['0', '1', '2', '3']
+    assert calls == [None]

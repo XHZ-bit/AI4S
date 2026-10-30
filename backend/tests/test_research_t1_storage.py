@@ -539,6 +539,30 @@ def test_duplicate_tasks_are_idempotent_and_extraction_handler_uses_t2_substitut
     assert service.run_research_task(conn, first.id).id == first.id
 
 
+def test_research_task_can_be_claimed_only_once(conn):
+    project = make_project(conn)
+    task = store.create_task(conn, TaskKind.PLAN_GENERATION, project.id, {"project_id": project.id})
+    claimed = store.update_task(conn, task.id, TaskStatus.RUNNING, progress=0.1)
+    assert claimed.status == TaskStatus.RUNNING
+    with pytest.raises(store.InvalidStateError):
+        store.update_task(conn, task.id, TaskStatus.RUNNING, progress=0.2)
+    assert store.get_task(conn, task.id).progress == 0.1
+
+
+def test_repeated_research_retry_returns_same_attempt(conn):
+    project = make_project(conn)
+    params = {"project_id": project.id}
+    prior = store.create_task(conn, TaskKind.PLAN_GENERATION, project.id, params)
+    store.update_task(conn, prior.id, TaskStatus.INTERRUPTED)
+    attempt, created = store.get_or_create_task(
+        conn, TaskKind.PLAN_GENERATION, project.id, params, retry_of=prior.id)
+    assert created
+    store.update_task(conn, attempt.id, TaskStatus.INTERRUPTED)
+    repeated, created = store.get_or_create_task(
+        conn, TaskKind.PLAN_GENERATION, project.id, params, retry_of=prior.id)
+    assert not created and repeated.id == attempt.id
+
+
 def test_t3_comparison_decision_and_plan_orchestration(conn, monkeypatch):
     project = make_project(conn)
     link = link_paper(conn, project)

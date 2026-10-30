@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import math
+import re
 import sqlite3
 from datetime import UTC, datetime
 from typing import Iterable
@@ -16,6 +18,8 @@ from app.models.research import (
     DOMAIN_PROFILES,
     ErrorDetail,
     EvidenceRef,
+    FactRevisionRequest,
+    FieldEvidence,
     ExperimentSetting,
     MethodCard,
     Measurement,
@@ -90,6 +94,8 @@ CREATE TABLE IF NOT EXISTS research_async_tasks (
  updated_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_research_tasks_active_request
  ON research_async_tasks(kind, project_id, params_json, status);
+CREATE INDEX IF NOT EXISTS idx_research_tasks_retry_of
+ ON research_async_tasks(retry_of);
 CREATE TABLE IF NOT EXISTS research_projection_outbox (
  snapshot_id TEXT PRIMARY KEY, project_id TEXT NOT NULL,
  status TEXT NOT NULL DEFAULT 'pending', attempt_count INTEGER NOT NULL DEFAULT 0,
@@ -127,6 +133,9 @@ class ValidationError(ProjectStoreError):
 
 def init_research_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+    from app.db.dependencies import init_dependency_index
+
+    init_dependency_index(conn)
     conn.commit()
 
 
@@ -194,6 +203,8 @@ def create_project(conn, request: ResearchProjectCreate) -> ResearchProject:
         title=request.title,
         research_question=request.research_question,
         domain=request.domain,
+        custom_domain=request.custom_domain,
+        stage=request.stage,
         domain_profile_version=DOMAIN_PROFILES[request.domain].version,
         constraints=request.constraints,
         created_at=now,
@@ -242,6 +253,13 @@ def update_project(
             raise ProjectStoreError("约束更新必须将 constraints.version 递增 1")
         if request.constraints is not None:
             changes["constraints"] = request.constraints
+        if request.domain is not None:
+            changes['domain_profile_version'] = DOMAIN_PROFILES[request.domain].version
+        if changes.get('stage', current.stage) == 'validating' and (
+            not changes.get('research_question', current.research_question) or
+            not changes.get('constraints', current.constraints).objective
+        ):
+            raise ValidationError('进入验证阶段前，请先明确研究问题和验证目标')
         updated = ResearchProject.model_validate(
             current.model_copy(
                 update={**changes, "version": current.version + 1, "updated_at": _now()}
@@ -253,6 +271,8 @@ def update_project(
             reasons.append("项目约束已更新")
         if "research_question" in changes:
             reasons.append("研究问题已更新")
+        if any(key in changes for key in ('domain','custom_domain','stage')):
+            reasons.append('课题领域或研究阶段已更新')
         _mark_snapshots(
             conn, [VersionRef(id=project_id, version=current.version)], reasons
         )
@@ -397,6 +417,9 @@ def update_paper_link(
                     else "论文关联状态已变化"
                 ],
             )
+        from app.db.dependencies import refresh_live_plan_edges
+
+        refresh_live_plan_edges(conn, project_id)
         conn.commit()
     except Exception:
         conn.rollback()
@@ -464,8 +487,29 @@ def list_facts(conn, project_id: str, *, kind=None, status=None, paper_link_id=N
     return [
         f
         for f in facts
-        if paper_link_id is None or getattr(f, "paper_link_id", None) == paper_link_id
+        if paper_link_id is None or paper_link_id in _fact_source_links(conn, f)
     ]
+
+
+def _fact_source_links(conn, fact) -> set[str]:
+    """Source documents are distinct from the authorship claim in paper_link_id."""
+    row = conn.execute(
+        "SELECT payload_json FROM research_fact_versions WHERE fact_id=? AND project_id=? ORDER BY version LIMIT 1",
+        (fact.id, fact.project_id),
+    ).fetchone()
+    original = json.loads(row[0]) if row else fact.model_dump(mode="json")
+    evidence_ids = {eid for field in original.get("field_evidence", []) for eid in field.get("evidence_ids", [])}
+    links = {original["paper_link_id"]} if original.get("paper_link_id") else set()
+    if evidence_ids:
+        links.update(row["paper_link_id"] for row in conn.execute(
+            "SELECT evidence_id,paper_link_id FROM research_evidence WHERE project_id=?", (fact.project_id,)
+        ) if row["evidence_id"] in evidence_ids)
+    return links
+
+
+def _content_field(path: str) -> str:
+    path = re.sub(r"^(?:(?:methods|experiment_settings|measurements)\[\d+\]\.)+", "", path)
+    return path.split(".")[0].split("[")[0]
 
 
 def list_evidence(conn, project_id: str) -> list[EvidenceRef]:
@@ -527,6 +571,10 @@ def save_candidate_bundle(conn, bundle: CandidateBundle) -> CandidateBundle:
                 (bundle.project_id,),
             ).fetchall()
         }
+        source_evidence = {row["evidence_id"] for row in conn.execute(
+            "SELECT evidence_id FROM research_evidence WHERE project_id=? AND paper_link_id=?",
+            (bundle.project_id, bundle.paper_link_id),
+        )}
         all_facts = [*bundle.methods, *bundle.experiment_settings, *bundle.measurements]
         if len({f.id for f in all_facts}) != len(all_facts):
             raise InvalidStateError("候选包内事实 ID 重复")
@@ -539,14 +587,17 @@ def save_candidate_bundle(conn, bundle: CandidateBundle) -> CandidateBundle:
                 raise InvalidStateError(
                     "新抽取事实必须属于当前项目并保持 candidate 状态"
                 )
-            if (
-                getattr(fact, "paper_link_id", bundle.paper_link_id)
-                != bundle.paper_link_id
-            ):
+            if getattr(fact, "paper_link_id", bundle.paper_link_id) not in {None, bundle.paper_link_id}:
                 raise InvalidStateError("候选事实属于其他论文关联")
             refs = {eid for b in fact.field_evidence for eid in b.evidence_ids}
             if not refs.issubset(known_evidence):
                 raise InvalidStateError("字段来源引用了当前项目之外的证据")
+            if not refs.issubset(source_evidence):
+                raise InvalidStateError("抽取事实不能引用其他论文关联的证据")
+            if getattr(fact, "paper_link_id", bundle.paper_link_id) is None:
+                source_ids = {e.id for e in bundle.evidence if e.document_id == bundle.document_id}
+                if not refs or not refs.issubset(source_ids):
+                    raise InvalidStateError("归属不明或引用方法必须保留当前来源文档的逐字段证据")
             current = get_fact(conn, fact.id)
             encoded = _dump(fact)
             if current:
@@ -556,6 +607,8 @@ def save_candidate_bundle(conn, bundle: CandidateBundle) -> CandidateBundle:
                     raise InvalidStateError("事实 ID 已属于其他项目或类型")
                 if fact.version == current.version and encoded == _dump(current):
                     continue
+                if current.status != RecordStatus.CANDIDATE or current.source_kind.value == 'user_input':
+                    raise InvalidStateError("已审核、争议或撤回事实不能被自动抽取覆盖，请使用显式修订流程")
                 if fact.version != current.version + 1:
                     raise VersionConflictError(
                         "事实已更新，请重新加载", current_version=current.version
@@ -564,20 +617,104 @@ def save_candidate_bundle(conn, bundle: CandidateBundle) -> CandidateBundle:
             elif fact.version != 1:
                 raise VersionConflictError("新事实必须从版本 1 开始", current_version=1)
             _insert_fact(conn, fact)
-        method_ids = {f.id for f in list_facts(conn, bundle.project_id, kind="method")}
+        method_ids = {f.id for f in list_facts(conn, bundle.project_id, kind="method",
+                      paper_link_id=bundle.paper_link_id) if f.status != RecordStatus.WITHDRAWN}
         if any(s.method_id not in method_ids for s in bundle.experiment_settings):
             raise InvalidStateError("实验设置引用了不存在的方法")
         setting_ids = {
-            f.id for f in list_facts(conn, bundle.project_id, kind="experiment_setting")
+            f.id for f in list_facts(conn, bundle.project_id, kind="experiment_setting",
+                                    paper_link_id=bundle.paper_link_id) if f.status != RecordStatus.WITHDRAWN
         }
         if any(m.experiment_setting_id not in setting_ids for m in bundle.measurements):
             raise InvalidStateError("测量引用了不存在的实验设置")
         _mark_snapshots(conn, changed, ["引用事实已产生新版本"])
+        from app.db.dependencies import refresh_live_plan_edges
+
+        refresh_live_plan_edges(conn, bundle.project_id)
+        from app.knowledge.unified import sync_research_facts
+        sync_research_facts(conn, bundle.project_id)
         conn.commit()
     except Exception:
         conn.rollback()
         raise
     return bundle
+
+
+def revise_fact(conn, project_id: str, fact_id: str, request: FactRevisionRequest):
+    """Append a human correction; preserve provenance, history and frozen plans."""
+    from pydantic import ValidationError as ModelValidationError
+
+    editable = {
+        "method": {"name", "task", "summary", "inputs", "outputs", "mechanisms", "assumptions", "limitations"},
+        "experiment_setting": {"name", "dataset", "dataset_version", "subset", "split", "evaluation_protocol", "preprocessing", "hyperparameters", "resources", "random_seed", "notes"},
+        "measurement": {"metric_name", "metric_scope", "value", "direction", "aggregation", "uncertainty", "sample_size"},
+    }
+    _begin(conn)
+    try:
+        _require_project(conn, project_id)
+        current = get_fact(conn, fact_id)
+        if current is None or current.project_id != project_id:
+            raise NotFoundError("事实不存在")
+        _check_version(current.version, request.expected_version, "事实")
+        if current.status == RecordStatus.WITHDRAWN:
+            raise InvalidStateError("请先恢复为候选，再修订内容")
+        if set(request.changes) - editable[_fact_kind(current)]:
+            raise ValidationError("只能修订内容字段，不能改变身份、归属、版本或审核状态")
+        evidence = {item.id: item for item in list_evidence(conn, project_id)}
+        owner = current
+        if isinstance(current, Measurement):
+            owner = get_fact(conn, current.experiment_setting_id)
+        source_links = _fact_source_links(conn, owner) if owner else set()
+        source_documents = {link.linked_document_id for link_id in source_links
+                            if (link := get_paper_link(conn, link_id)) is not None}
+        for evidence_id in request.evidence_ids:
+            ref = evidence.get(evidence_id)
+            if ref is None or ref.document_id not in source_documents:
+                raise ValidationError("修订证据必须属于此事实的来源文档")
+        payload = current.model_dump(mode="json")
+        changes = {key: value for key, value in request.changes.items() if payload[key] != value}
+        if not changes:
+            return current
+        now = _now()
+        bindings = [b for b in current.field_evidence if _content_field(b.field_path) not in changes]
+        for key, value in changes.items():
+            bindings.append(FieldEvidence(
+                field_path=key, source_kind="user_input",
+                finding_status="unknown" if value is None or value == [] or value == "" else "reported",
+                evidence_ids=request.evidence_ids if value is not None and value != [] and value != "" else [],
+                note=f"人工修订：{request.reason}",
+            ))
+        payload.update(changes)
+        payload.update(version=current.version + 1, status="candidate", source_kind="user_input",
+                       updated_at=now, field_evidence=[b.model_dump() for b in bindings])
+        if isinstance(current, Measurement) and "value" in changes:
+            payload["finding_status"] = "reported" if payload["value"] is not None else "unknown"
+        try:
+            updated = type(current).model_validate(payload)
+        except ModelValidationError as exc:
+            raise ValidationError("修订字段格式不正确，请检查数值、单位及必填内容") from exc
+        _insert_fact(conn, updated)
+        conn.execute(
+            "INSERT INTO research_fact_audit(project_id,fact_id,from_version,to_version,action,actor,reason,before_json,after_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+            (project_id, fact_id, current.version, updated.version, "content_revision",
+             request.actor, request.reason, _dump(current), _dump(updated), now.isoformat()),
+        )
+        _mark_snapshots(conn, [VersionRef(id=fact_id, version=current.version)],
+                        [f"引用事实 {fact_id} 内容已修订，请复核方案依据"])
+        from app.db.dependencies import refresh_live_plan_edges
+
+        refresh_live_plan_edges(conn, project_id)
+        from app.knowledge.unified import sync_research_facts
+        sync_research_facts(conn, project_id)
+        conn.commit()
+        return updated
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        # A no-op must release BEGIN IMMEDIATE as well.
+        if conn.in_transaction:
+            conn.rollback()
 
 
 def transition_fact(
@@ -628,6 +765,11 @@ def transition_fact(
             [VersionRef(id=fact_id, version=current.version)],
             [f"引用事实 {fact_id} 已产生新版本并变为 {updated.status.value}"],
         )
+        from app.db.dependencies import refresh_live_plan_edges
+
+        refresh_live_plan_edges(conn, project_id)
+        from app.knowledge.unified import sync_research_facts
+        sync_research_facts(conn, project_id)
         conn.commit()
     except Exception:
         conn.rollback()
@@ -791,6 +933,13 @@ def save_plan(conn, project_id: str, request: PlanSaveRequest) -> ValidationPlan
                 or setting.method_id != method.id
             ):
                 raise InvalidStateError("方案实验设置与方法不一致")
+        for mid in request.plan.target_measurements:
+            measurement = _require_live_fact(conn, project_id, mid)
+            if not isinstance(measurement, Measurement) or measurement.experiment_setting_id not in request.plan.selected_experiment_setting_ids:
+                raise InvalidStateError("方案测量必须属于所选实验设置")
+        evidence_ids = {e.id for e in list_evidence(conn, project_id)}
+        if any(not set(step.evidence_ids).issubset(evidence_ids) for step in request.plan.steps):
+            raise InvalidStateError("方案步骤引用了不存在或其他课题的证据")
         plan_id = request.plan.id or _new_id("plan")
         current = get_plan(conn, plan_id)
         if current is not None and current.project_id != project_id:
@@ -817,6 +966,9 @@ def save_plan(conn, project_id: str, request: PlanSaveRequest) -> ValidationPlan
                 _now().isoformat(),
             ),
         )
+        from app.db.dependencies import index_plan
+
+        index_plan(conn, saved)
         if current:
             _mark_snapshots(
                 conn,
@@ -961,6 +1113,9 @@ def save_snapshot(conn, snapshot: ProjectSnapshot) -> ProjectSnapshot:
             "INSERT INTO research_snapshot_dependencies VALUES(?,?,?,?)",
             [(snapshot.id, kind, ref, version) for kind, ref, version in deps],
         )
+        from app.db.dependencies import index_snapshot
+
+        index_snapshot(conn, snapshot)
         conn.execute(
             "INSERT INTO research_projection_outbox(snapshot_id,project_id,status,attempt_count,last_error,created_at,updated_at) VALUES(?,?,'pending',0,NULL,?,?)",
             (snapshot.id, snapshot.project_id, now, now),
@@ -1085,6 +1240,17 @@ def get_or_create_task(
     _begin(conn)
     try:
         _require_project(conn, project_id)
+        if retry_of is not None:
+            prior_retry = conn.execute(
+                "SELECT * FROM research_async_tasks WHERE retry_of=? "
+                "ORDER BY created_at,task_id LIMIT 1", (retry_of,),
+            ).fetchone()
+            if prior_retry:
+                if (prior_retry["kind"] != kind.value or prior_retry["project_id"] != project_id
+                        or prior_retry["params_json"] != encoded):
+                    raise InvalidStateError("重试标识已用于其他任务请求")
+                conn.rollback()
+                return _task_from_row(prior_retry), False
         row = conn.execute(
             "SELECT * FROM research_async_tasks WHERE kind=? AND project_id=? AND params_json=? AND status IN ('queued','running') ORDER BY created_at LIMIT 1",
             (kind.value, project_id, encoded),
@@ -1135,39 +1301,45 @@ def create_task(
 def update_task(
     conn, task_id: str, status: TaskStatus, *, progress=None, result=None, error=None
 ) -> AsyncTask:
-    current = get_task(conn, task_id)
-    if current is None:
-        raise NotFoundError("任务不存在")
-    if current.status in {
-        TaskStatus.SUCCEEDED,
-        TaskStatus.FAILED,
-        TaskStatus.INTERRUPTED,
-    }:
-        if current.status == status:
-            return current
-        raise InvalidStateError("终态任务不可再次变更")
-    allowed = {
-        TaskStatus.QUEUED: {
-            TaskStatus.RUNNING,
-            TaskStatus.FAILED,
-            TaskStatus.INTERRUPTED,
-        },
-        TaskStatus.RUNNING: {
+    if progress is not None and (type(progress) not in {int, float} or not math.isfinite(progress) or not 0 <= progress <= 1):
+        raise ValidationError("任务进度必须是 0 到 1 之间的有限数值")
+    _begin(conn)
+    try:
+        if status == TaskStatus.SUCCEEDED:
+            from app.task_control import check_active
+            check_active(conn)
+        current = get_task(conn, task_id)
+        if current is None:
+            raise NotFoundError("任务不存在")
+        if current.status in {
             TaskStatus.SUCCEEDED,
             TaskStatus.FAILED,
             TaskStatus.INTERRUPTED,
-        },
-    }
-    if status not in allowed[current.status]:
-        raise InvalidStateError("不允许的任务状态转换")
-    if status == TaskStatus.SUCCEEDED and result is None:
-        raise InvalidStateError("成功任务必须包含结果")
-    if status == TaskStatus.FAILED and error is None:
-        raise InvalidStateError("失败任务必须包含错误")
-    if status != TaskStatus.FAILED and error is not None:
-        raise InvalidStateError("只有失败任务可以包含错误")
-    _begin(conn)
-    try:
+        }:
+            if current.status == status:
+                conn.rollback()
+                return current
+            raise InvalidStateError("终态任务不可再次变更")
+        allowed = {
+            TaskStatus.QUEUED: {
+                TaskStatus.RUNNING,
+                TaskStatus.FAILED,
+                TaskStatus.INTERRUPTED,
+            },
+            TaskStatus.RUNNING: {
+                TaskStatus.SUCCEEDED,
+                TaskStatus.FAILED,
+                TaskStatus.INTERRUPTED,
+            },
+        }
+        if status not in allowed[current.status]:
+            raise InvalidStateError("不允许的任务状态转换")
+        if status == TaskStatus.SUCCEEDED and result is None:
+            raise InvalidStateError("成功任务必须包含结果")
+        if status == TaskStatus.FAILED and error is None:
+            raise InvalidStateError("失败任务必须包含错误")
+        if status != TaskStatus.FAILED and error is not None:
+            raise InvalidStateError("只有失败任务可以包含错误")
         conn.execute(
             "UPDATE research_async_tasks SET status=?,progress=?,result_json=?,error_json=?,updated_at=? WHERE task_id=?",
             (
@@ -1179,6 +1351,8 @@ def update_task(
                 task_id,
             ),
         )
+        conn.execute("UPDATE task_controls SET progress=coalesce(?,progress),phase=?,heartbeat_at=? WHERE task_key=?",
+                     (progress, status.value, _now().timestamp(), f'research:{task_id}'))
         conn.commit()
     except Exception:
         conn.rollback()

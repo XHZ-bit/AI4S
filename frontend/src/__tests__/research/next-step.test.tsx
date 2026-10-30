@@ -1,23 +1,44 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { expect, test, vi } from "vitest";
-import ResearchProjectPage from "../../pages/research/ResearchProjectPage";
-import { project } from "./fixtures";
+import {fireEvent,render,screen} from '@testing-library/react';
+import {MemoryRouter,Route,Routes,useLocation} from 'react-router-dom';
+import {expect,test,vi} from 'vitest';
+import {LegacyResearchProjectPage as ResearchProjectPage} from '../../pages/research/ResearchProjectPage';
+import {project} from './fixtures';
+const api=vi.hoisted(()=>({compareProjectCandidates:vi.fn(),generateProjectPlan:vi.fn(),saveProjectDecision:vi.fn()}));
+vi.mock('../../api/projects',()=>({getProject:vi.fn(async()=>project),...api}));
+vi.mock('../../api/client',()=>({apiGet:vi.fn(async()=>({project,papers:[],records:[],sessions:[],features:{}})),apiPost:vi.fn()}));
+vi.mock('../../components/workbench/SceneSync',()=>({default:()=>null}));
+vi.mock('../../components/workbench/ProjectReading',()=>({default:()=> <div>reader-panel</div>}));
+vi.mock('../../components/workbench/EvidenceMatrix',()=>({default:()=> <div>matrix-panel</div>}));
+vi.mock('../../components/workbench/ProjectWorkbench',()=>({default:()=> <div>records-panel</div>}));
+vi.mock('../../components/research/EvidencePanel',()=>({default:()=> <div>evidence-panel</div>}));
+vi.mock('../../components/research/ComparisonPanel',()=>({default:()=> <div>comparison-panel</div>}));
+vi.mock('../../components/research/PlansPanel',()=>({default:()=> <div>plans-panel</div>}));
+vi.mock('../../components/research/ProjectSettingsPanel',()=>({default:()=> <div>settings-panel</div>}));
+function Location(){return <output data-testid="location">{useLocation().search}</output>}
 
-vi.mock("../../api/projects", () => ({ getProject: vi.fn(async () => project) }));
-vi.mock("../../components/research/EvidencePanel", () => ({ default: () => <div>evidence-panel</div> }));
-vi.mock("../../components/research/ComparisonPanel", () => ({ default: () => <div>comparison-panel</div> }));
-vi.mock("../../components/research/PlansPanel", () => ({ default: () => <div>plans-panel</div> }));
-vi.mock("../../components/research/ProjectSettingsPanel", () => ({ default: () => <div>settings-panel</div> }));
-
-test("next actions explain manual review and navigate without claiming completion", async () => {
-  render(<MemoryRouter initialEntries={["/research/project-1?tab=evidence"]}><Routes><Route path="/research/:projectId" element={<ResearchProjectPage />} /></Routes></MemoryRouter>);
-  expect(await screen.findByText("第 1 步：关联资料并确认事实")).toBeTruthy();
-  fireEvent.click(screen.getByText("前往条件比较"));
-  expect(await screen.findByText("第 2 步：比较条件，再由你选择路线")).toBeTruthy();
-  fireEvent.click(screen.getByText("前往方案编辑"));
-  expect(await screen.findByText("第 3 步：审核方案，保存并冻结版本")).toBeTruthy();
-  expect(screen.getByText(/模型建议不是实验结果/)).toBeTruthy();
-  fireEvent.click(screen.getByText("返回核对证据"));
-  expect(await screen.findByText("第 1 步：关联资料并确认事实")).toBeTruthy();
+test('manual evidence, comparison and plan workflows remain reachable without automatic processing or completion',async()=>{
+ render(<MemoryRouter initialEntries={['/research/project-1?tab=evidence&paper=p1&page=3&ref=passage:s1']}><Routes><Route path="/research/:projectId" element={<><ResearchProjectPage/><Location/></>}/></Routes></MemoryRouter>);
+ expect(await screen.findByText('evidence-panel')).toBeTruthy();
+ fireEvent.click(screen.getByRole('tab',{name:'比较'}));
+ expect(await screen.findByText('matrix-panel')).toBeTruthy();
+ fireEvent.mouseDown(screen.getByRole('combobox',{name:'比较内容'}));
+ fireEvent.click(await screen.findByText('严格条件比较与路线选择'));
+ expect(await screen.findByText('comparison-panel')).toBeTruthy();
+ expect(screen.queryByText('matrix-panel')).toBeNull();
+ fireEvent.click(screen.getByRole('tab',{name:'成果'}));
+ expect(await screen.findByText('records-panel')).toBeTruthy();
+ fireEvent.mouseDown(screen.getByRole('combobox',{name:'成果内容'}));
+ fireEvent.click(await screen.findByText('正式方案与冻结历史'));
+ expect(await screen.findByText('plans-panel')).toBeTruthy();
+ fireEvent.click(screen.getByRole('tab',{name:'阅读'}));
+ expect(await screen.findByText('reader-panel')).toBeTruthy();
+ fireEvent.click(screen.getByText('核对方法与实验事实'));
+ expect(await screen.findByText('evidence-panel')).toBeTruthy();
+ expect(screen.getByTestId('location').textContent).toContain('paper=p1');
+ expect(screen.getByTestId('location').textContent).toContain('page=3');
+ expect(screen.getByTestId('location').textContent).toContain('ref=passage%3As1');
+ expect(api.compareProjectCandidates).not.toHaveBeenCalled();
+ expect(api.generateProjectPlan).not.toHaveBeenCalled();
+ expect(api.saveProjectDecision).not.toHaveBeenCalled();
+ expect(screen.queryByText(/已完成/)).toBeNull();
 });

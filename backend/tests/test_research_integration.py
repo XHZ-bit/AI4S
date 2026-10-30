@@ -91,7 +91,7 @@ def test_mounted_project_flow_exports_history_and_tracks_impacts(monkeypatch):
             "title": "人工复核", "purpose": "核对所选来源",
             "procedure": ["检查原文与所选设置，不运行命令"],
             "acceptance_criteria": ["用户确认来源；不确定时停止"],
-            "evidence_ids": [value.evidence[0].id],
+                "evidence_ids": [value.decision.evidence_ids[0]],
         }]},
     )
     monkeypatch.setattr(

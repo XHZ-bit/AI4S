@@ -8,7 +8,7 @@ from app.models.research import PlanBuildInput, RecordStatus
 from app.research.model_runtime import ResearchModelError, structured_chat
 from app.research.suggestion_validation import PlanSuggestions, validate_suggestion_steps
 
-PROMPT_VERSION = "research-plan-prompt-v1"
+PROMPT_VERSION = "research-plan-prompt-v2"
 SCHEMA_VERSION = "research-plan-suggestions-v1"
 
 
@@ -57,6 +57,14 @@ def suggest_plan(value: PlanBuildInput) -> dict:
             "stopping criteria when data/protocol/resources cannot be verified. No executable "
             "commands, automatic training, downloads or paper writing. Every step must cite "
             "supplied evidence IDs; citations indicate provenance, not proof of correctness. "
+            "Keep evidence identifiers in evidence_ids only; use readable names in prose. "
+            "Do not repeat numerical benchmark scores, including supplied scores, in steps. "
+            "Refer to the reported measurement for later human verification instead. "
+            "Plan concrete research preparation: verify dataset/split and evaluation protocol, "
+            "resolve unknown compute and seed requirements, design a small pilot and record "
+            "observations. Stop before execution if required conditions remain unknown. "
+            "Do not make the whole plan just checks that JSON field strings match. "
+            "Expected observations are proposed checks, never achieved outcomes. "
             "Return only JSON matching the schema. Output Chinese text; preserve identifiers."
         )},
         {"role": "user", "content": json.dumps({

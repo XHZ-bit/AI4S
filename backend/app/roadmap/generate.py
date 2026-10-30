@@ -75,6 +75,8 @@ def generate_roadmap(profile, conn=None, *, status="human_verified", persist=Tru
     if status not in ("human_verified", "demo_curated", "auto_checked") or (status != "human_verified" and persist):
         raise ValueError("自动核查或演示预览不得作为正式路线保存")
     skeleton = _build_skeleton(profile, conn, status)
+    from app.knowledge.unified import ledger
+    eligible = {r['id']: r for r in ledger(conn, project_id='library') if r['status'] == status}
     # Deterministic evidence-bound tasks: text generation cannot add unknown papers.
     phases = []
     kids = set()
@@ -83,20 +85,12 @@ def generate_roadmap(profile, conn=None, *, status="human_verified", persist=Tru
         for paper in skeleton["concept_papers"][uid]:
             evidence_ids = paper.get("evidence_ids", [])
             verified_ids = paper.get("knowledge_ids", [])
-            if not verified_ids or any(
-                not conn.execute(
-                    "SELECT 1 FROM knowledge WHERE id=? AND status=?",
-                    (kid, status),
-                ).fetchone()
-                for kid in verified_ids
-            ):
+            if not verified_ids or any(kid not in eligible for kid in verified_ids):
                 continue
             if not evidence_ids:
                 continue
             for pid in evidence_ids:
-                if not conn.execute(
-                    "SELECT 1 FROM passages WHERE id=?", (pid,)
-                ).fetchone():
+                if not conn.execute("SELECT 1 FROM passages WHERE id=?", (pid,)).fetchone() and not conn.execute("SELECT 1 FROM kw_evidence WHERE id=? AND project_id='library'", (pid,)).fetchone():
                     raise ValueError("推荐引用的原文不可用")
             kids.update(paper.get("knowledge_ids", []))
             items.append(
@@ -122,12 +116,11 @@ def generate_roadmap(profile, conn=None, *, status="human_verified", persist=Tru
             )
     if not phases:
         raise ValueError("没有证据完整的学习任务")
-    for row in conn.execute(
-        "SELECT id FROM knowledge WHERE status=? AND layer='teaching'", (status,)
-    ):
-        kids.add(row["id"])
+    for row in eligible.values():
+        if row['layer'] == 'teaching':
+            kids.add(row['id'])
     result = RoadmapResult(
-        goal=profile.goal, phases=phases, innovations=[], knowledge_ids=sorted(kids)
+        goal=profile.goal, phases=phases, innovations=[], knowledge_ids=sorted(kids, key=str)
     )
     if not persist:
         return result

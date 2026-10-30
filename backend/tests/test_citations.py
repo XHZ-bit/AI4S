@@ -31,7 +31,7 @@ def test_backfill_creates_edges(tmp_path, monkeypatch):
     edges = []
     monkeypatch.setattr("app.collector.citations.merge_cites_batch", lambda pairs: edges.extend(pairs))
 
-    respx.get("https://api.semanticscholar.org/graph/v1/paper/arXiv:2401.12345/citations").mock(
+    respx.get("https://api.semanticscholar.org/graph/v1/paper/arXiv:2401.12345/references").mock(
         return_value=httpx.Response(
             200,
             json={"data": [{"citedPaper": {"externalIds": {"ArXiv": "2013.12345"}}}]},

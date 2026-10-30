@@ -1,0 +1,82 @@
+{
+  "migration_revision": 2,
+  "idempotent_canonical_tables": [
+    "kw_nodes",
+    "kw_edges",
+    "kw_evidence",
+    "kw_sources",
+    "kw_legacy_map",
+    "kw_history",
+    "kw_model_calls"
+  ],
+  "second_run_changes": 0,
+  "model_calls": 0,
+  "legacy_quality_records_preserved": 406,
+  "library_papers": 14,
+  "accounts_and_local_scopes": [
+    {
+      "scope_index": 0,
+      "existing_nodes_and_edges_preserved": 2082,
+      "database_integrity": "ok",
+      "manual_fields_preserved": true,
+      "historical_records_preserved": true,
+      "asset_paths_isolated": true
+    },
+    {
+      "scope_index": 1,
+      "existing_nodes_and_edges_preserved": 127,
+      "database_integrity": "ok",
+      "manual_fields_preserved": true,
+      "historical_records_preserved": true,
+      "asset_paths_isolated": true
+    },
+    {
+      "scope_index": 2,
+      "existing_nodes_and_edges_preserved": 127,
+      "database_integrity": "ok",
+      "manual_fields_preserved": true,
+      "historical_records_preserved": true,
+      "asset_paths_isolated": true
+    },
+    {
+      "scope_index": 3,
+      "existing_nodes_and_edges_preserved": 0,
+      "database_integrity": "ok",
+      "manual_fields_preserved": true,
+      "historical_records_preserved": true,
+      "asset_paths_isolated": true
+    },
+    {
+      "scope_index": 4,
+      "existing_nodes_and_edges_preserved": 0,
+      "database_integrity": "ok",
+      "manual_fields_preserved": true,
+      "historical_records_preserved": true,
+      "asset_paths_isolated": true
+    },
+    {
+      "scope_index": 5,
+      "existing_nodes_and_edges_preserved": 3,
+      "database_integrity": "ok",
+      "manual_fields_preserved": true,
+      "historical_records_preserved": true,
+      "asset_paths_isolated": true
+    },
+    {
+      "scope_index": 6,
+      "existing_nodes_and_edges_preserved": 127,
+      "database_integrity": "ok",
+      "manual_fields_preserved": true,
+      "historical_records_preserved": true,
+      "asset_paths_isolated": true
+    },
+    {
+      "scope_index": 7,
+      "existing_nodes_and_edges_preserved": 127,
+      "database_integrity": "ok",
+      "manual_fields_preserved": true,
+      "historical_records_preserved": true,
+      "asset_paths_isolated": true
+    }
+  ]
+}

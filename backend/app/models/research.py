@@ -15,7 +15,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-CONTRACT_VERSION = "research-v1.1"
+CONTRACT_VERSION = "research-v1.2"
 
 
 class ContractModel(BaseModel):
@@ -23,6 +23,8 @@ class ContractModel(BaseModel):
 
 
 class DomainId(str, Enum):
+    CUSTOM = "custom"
+    ROBOT_POLICY_LEARNING = "robot_policy_learning"
     IMAGE_ANOMALY_DETECTION = "image_anomaly_detection"
     TIME_SERIES_FORECASTING = "time_series_forecasting"
 
@@ -31,6 +33,7 @@ class SourceKind(str, Enum):
     LITERATURE_REPORT = "literature_report"
     USER_INPUT = "user_input"
     MODEL_SUGGESTION = "model_suggestion"
+    SYSTEM_TEMPLATE = "system_template"
 
 
 class RecordStatus(str, Enum):
@@ -257,7 +260,7 @@ class ComputeConstraint(ContractModel):
 
 class ProjectConstraints(ContractModel):
     version: int = Field(ge=1)
-    objective: str = Field(min_length=1)
+    objective: str = Field(max_length=4000)
     allowed_datasets: list[str] = Field(default_factory=list)
     excluded_datasets: list[str] = Field(default_factory=list)
     required_metrics: list[str] = Field(default_factory=list)
@@ -270,15 +273,26 @@ class ProjectConstraints(ContractModel):
 
 class ResearchProjectCreate(ContractModel):
     title: str = Field(min_length=1, max_length=300)
-    research_question: str = Field(min_length=1, max_length=4000)
+    research_question: str = Field(max_length=4000)
     domain: DomainId
+    custom_domain: str | None = Field(default=None, max_length=150)
+    stage: Literal['exploring','framing','validating'] = 'validating'
     constraints: ProjectConstraints
+
+    @model_validator(mode='after')
+    def validate_stage(self):
+        if self.stage == 'validating' and (not self.research_question or not self.constraints.objective):
+            raise ValueError('进入验证阶段前，请明确研究问题和验证目标；尚未确定可选择探索阶段')
+        return self
 
 
 class ResearchProjectPatch(ContractModel):
     expected_version: int = Field(ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=300)
-    research_question: str | None = Field(default=None, min_length=1, max_length=4000)
+    research_question: str | None = Field(default=None, max_length=4000)
+    domain: DomainId | None = None
+    custom_domain: str | None = Field(default=None, max_length=150)
+    stage: Literal['exploring','framing','validating'] | None = None
     status: ProjectStatus | None = None
     constraints: ProjectConstraints | None = None
 
@@ -287,13 +301,21 @@ class ResearchProject(ContractModel):
     id: str = Field(min_length=1)
     version: int = Field(ge=1)
     title: str = Field(min_length=1)
-    research_question: str = Field(min_length=1)
+    research_question: str
     domain: DomainId
+    custom_domain: str | None = Field(default=None, max_length=150)
+    stage: Literal['exploring','framing','validating'] = 'validating'
     domain_profile_version: str = Field(min_length=1)
     status: ProjectStatus = ProjectStatus.ACTIVE
     constraints: ProjectConstraints
     created_at: datetime
     updated_at: datetime
+
+    @model_validator(mode='after')
+    def validate_stage(self):
+        if self.stage == 'validating' and (not self.research_question or not self.constraints.objective):
+            raise ValueError('验证阶段需要明确研究问题和验证目标')
+        return self
 
 
 class PaperLinkCreate(ContractModel):
@@ -384,7 +406,7 @@ class Measurement(FactBase):
 
 
 class CandidateBundle(ContractModel):
-    contract_version: Literal["research-v1.1"] = CONTRACT_VERSION
+    contract_version: Literal["research-v1.1", "research-v1.2"] = CONTRACT_VERSION
     project_id: str = Field(min_length=1)
     paper_link_id: str = Field(min_length=1)
     document_id: str = Field(min_length=1)
@@ -400,6 +422,14 @@ class CandidateBundle(ContractModel):
 class ExtractionStartRequest(ContractModel):
     expected_project_version: int = Field(ge=1)
     document_id: str = Field(min_length=1)
+
+
+class FactRevisionRequest(ContractModel):
+    expected_version: int = Field(ge=1)
+    changes: dict[str, Any] = Field(min_length=1, max_length=30)
+    evidence_ids: list[str] = Field(default_factory=list, max_length=100)
+    actor: str = Field(min_length=1, max_length=200)
+    reason: str = Field(min_length=1, max_length=4000)
 
 
 class StatusTransitionRequest(ContractModel):
@@ -447,7 +477,7 @@ class ComparisonGroup(ContractModel):
 
 
 class ComparisonResult(ContractModel):
-    contract_version: Literal["research-v1.1"] = CONTRACT_VERSION
+    contract_version: Literal["research-v1.1", "research-v1.2"] = CONTRACT_VERSION
     project_id: str
     project_version: int = Field(ge=1)
     dimensions: list[ComparisonDimension] = Field(default_factory=list)
@@ -532,7 +562,7 @@ class FrozenDocument(ContractModel):
 
 class ProjectSnapshot(ContractModel):
     id: str = Field(min_length=1)
-    contract_version: Literal["research-v1.1"] = CONTRACT_VERSION
+    contract_version: Literal["research-v1.1", "research-v1.2"] = CONTRACT_VERSION
     project_id: str = Field(min_length=1)
     snapshot_version: int = Field(ge=1)
     frozen_project_version: int = Field(ge=1)
@@ -554,7 +584,7 @@ class SnapshotCreateRequest(ContractModel):
 
 
 class ExtractionInput(ContractModel):
-    contract_version: Literal["research-v1.1"] = CONTRACT_VERSION
+    contract_version: Literal["research-v1.1", "research-v1.2"] = CONTRACT_VERSION
     project_id: str
     paper_link: PaperLink
     document: FrozenDocument
@@ -610,7 +640,7 @@ class GraphEdge(ContractModel):
 
 
 class GraphProjection(ContractModel):
-    contract_version: Literal["research-v1.1"] = CONTRACT_VERSION
+    contract_version: Literal["research-v1.1", "research-v1.2"] = CONTRACT_VERSION
     project_id: str
     snapshot_id: str
     snapshot_version: int = Field(ge=1)
@@ -713,6 +743,8 @@ class DomainProfile(ContractModel):
 
 
 DOMAIN_PROFILES: dict[DomainId, DomainProfile] = {
+    DomainId.CUSTOM: DomainProfile(id=DomainId.CUSTOM,version='custom-v1',label='自定义 / 暂未确定',comparison_dimensions=['dataset','dataset_version','split','evaluation_protocol','metric_name','metric_scope','aggregation'],common_metrics=[],incompatibility_rules=['先明确领域特有的实验条件；通用条件一致不代表科学上完全可比，不自动排名']),
+    DomainId.ROBOT_POLICY_LEARNING: DomainProfile(id=DomainId.ROBOT_POLICY_LEARNING,version="robot-policy-learning-v1",label="机器人策略学习",comparison_dimensions=['task', 'environment_version', 'observation_modality', 'action_space', 'demonstration_data', 'split', 'evaluation_episodes', 'evaluation_protocol', 'metric_name', 'aggregation'],common_metrics=["success_rate","mean_return"],incompatibility_rules=["任务、观测、动作与评估条件一致后方可比较；未知条件不视为一致"]),
     DomainId.IMAGE_ANOMALY_DETECTION: DomainProfile(
         id=DomainId.IMAGE_ANOMALY_DETECTION,
         version="image-anomaly-v1",

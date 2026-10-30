@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from app.db.sqlite import connect
 from app.db.workflow import mastery_version, put_mastery, put_step_record, step_record
 from app.roadmap.trusted_queries import resolve_target
-from app.workflow import activities, overview
+from app.workflow import activities, overview, recommendations
 
 router = APIRouter(prefix="/api/workflow/v1", tags=["workflow"])
 
@@ -18,6 +18,17 @@ router = APIRouter(prefix="/api/workflow/v1", tags=["workflow"])
 def get_overview():
     with closing(connect()) as conn:
         return overview(conn)
+
+
+@router.get("/recommendations")
+def get_recommendations():
+    with closing(connect()) as conn:
+        # Projection refresh writes disposable rows. Acquire the write lock before
+        # reading to avoid upgrading an obsolete WAL snapshot during page refresh.
+        conn.execute("BEGIN IMMEDIATE")
+        result = recommendations(conn)
+        conn.commit()
+        return result
 
 
 @router.get("/activities")
@@ -29,9 +40,34 @@ def get_activities(
     limit: int = Query(default=100, ge=1, le=500),
 ):
     with closing(connect()) as conn:
-        all_items = activities(conn, source_kind, source_id, project_id)
-        return {"items": all_items[offset:offset + limit], "total": len(all_items),
-                "offset": offset, "limit": limit}
+        from app.db.projections import activity_page
+        return activity_page(conn, source_kind, source_id, project_id, offset, limit)
+
+
+@router.get('/agenda')
+def agenda(minutes: int = Query(60, ge=5, le=480), source_id: str | None = None):
+    from app.db.projections import refresh_activities
+    import json
+    with closing(connect()) as conn:
+        refresh_activities(conn)
+        rows = conn.execute("SELECT payload_json FROM activity_projection WHERE status_order IN (1,2) "
+                            "AND (? IS NULL OR source_id=?) AND json_extract(payload_json,'$.estimated_minutes') IS NOT NULL "
+                            "ORDER BY status_order,source_kind,title,id", (source_id, source_id))
+        selected, used = [], 0
+        for row in rows:
+            item = json.loads(row[0])
+            duration = item['estimated_minutes']
+            if duration <= minutes - used:
+                selected.append(item)
+                used += duration
+            if used == minutes:
+                break
+        unknown = conn.execute("SELECT COUNT(*) FROM activity_projection WHERE status_order IN (1,2) "
+                               "AND (? IS NULL OR source_id=?) AND json_extract(payload_json,'$.estimated_minutes') IS NULL",
+                               (source_id, source_id)).fetchone()[0]
+        return {'items': selected, 'budget_minutes': minutes, 'estimated_minutes': used,
+                'unscheduled_count': unknown,
+                'notice': '优先继续进行中的活动，再安排待执行项；来源待复核项不进入排期。时长均为估算。'}
 
 
 @router.get("/mastery")

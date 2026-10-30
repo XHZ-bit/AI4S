@@ -30,6 +30,9 @@ services:
     env_file: .env
     environment:
       NEO4J_URI: bolt://neo4j:7687
+      RUNTIME_MODE: docker
+      ACCESS_MODE: local
+      OFFLINE_MODE: ${OFFLINE_MODE:-false}
       GROBID_BASE_URL: http://grobid:8070
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
       RESEARCH_MODEL_ENABLED: ${RESEARCH_MODEL_ENABLED:-false}

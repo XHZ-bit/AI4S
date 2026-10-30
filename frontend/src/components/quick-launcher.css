@@ -1,0 +1,10 @@
+.atlas-launcher-trigger kbd{margin-left:6px;font-size:10px;color:var(--atlas-muted)}
+.atlas-launcher-notice{min-height:34px;padding:10px 0;color:var(--atlas-muted);font-size:12px}
+.atlas-launcher-list{max-height:min(390px,55dvh);overflow:auto;margin:4px 0;border:1px solid var(--atlas-line);border-radius:10px}
+.atlas-launcher-option{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--atlas-line);color:var(--atlas-ink);overflow-wrap:anywhere}
+.atlas-launcher-option:last-child{border-bottom:0}
+.atlas-launcher-option[aria-selected=true]{background:#e8f6f6;box-shadow:inset 3px 0 #147d92}
+.atlas-launcher-option strong{display:block;font-size:13px;font-weight:600}
+.atlas-launcher-option small{display:block;color:var(--atlas-muted);margin-top:3px;font-size:11px}
+.atlas-launcher-help{font-size:11px;color:var(--atlas-muted);margin:12px 0 0}
+@media(max-width:767px){.atlas-launcher-trigger kbd{display:none}.atlas-global-header{gap:8px}.atlas-global-header>span:first-child{display:none}.atlas-launcher-list{max-height:50dvh}}

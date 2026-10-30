@@ -1,0 +1,95 @@
+FFF                                                                      [100%]
+================================== FAILURES ===================================
+_ test_prerequisite_paths_keep_converging_branches_without_repeating_cycles[False] _
+
+graph_fixture = (<starlette.testclient.TestClient object at 0x0000024FDF011D10>, 'project-8c6bdec356944cb4a398284e489bdcc1', 'project-...3fbc4e6a31'], 'explanation': 'A teaching dependency', 'hidden': False, 'id': 'daaf58b77167ed0fefa638590af59f7e', ...}])
+with_cycle = False
+
+    @pytest.mark.parametrize('with_cycle', [False, True])
+    def test_prerequisite_paths_keep_converging_branches_without_repeating_cycles(graph_fixture, with_cycle):
+        client, pid, _, src, nodes, _ = graph_fixture
+        target, intermediate, foundation = [node['id'] for node in nodes]
+        with store.connection(pid) as conn:
+            store.put_record(conn, 'kw_edges', extraction.edge(src, foundation, target, 'PREREQUISITE_OF', 'direct prerequisite', 'A second saved learning route', []))
+            if with_cycle:
+                cyclic = store.put_record(conn, 'kw_nodes', extraction.node(src, 'cyclic', 'concept', 'Cyclic branch', 'A cyclic dependency branch', []))
+                for source, destination in [(target, cyclic['id']), (cyclic['id'], target)]:
+                    store.put_record(conn, 'kw_edges', extraction.edge(src, source, destination, 'PREREQUISITE_OF', 'cycle', 'Synthetic test cycle', []))
+        base = f'/api/projects/{pid}/knowledge/paths'
+        response = client.get(base, params={'source': target, 'kind': 'prerequisites'})
+        assert response.status_code == 200
+        result = response.json()
+>       assert {tuple(path['node_ids']) for path in result['paths']} == {
+            (foundation, target), (foundation, intermediate, target),
+        }
+E       AssertionError: assert {('09d9cfcb25...47157ae8467')} == {('09d9cfcb25...47157ae8467')}
+E         
+E         Extra items in the right set:
+E         ('09d9cfcb253c6a4a2c0eae98b50889db', 'c437b155bcfb4f8aedd847aa94725fd8', 'db1c6b536797b9696e4a647157ae8467')
+E         Use -v to get more diff
+
+tests\test_knowledge_experience.py:61: AssertionError
+_ test_prerequisite_paths_keep_converging_branches_without_repeating_cycles[True] _
+
+graph_fixture = (<starlette.testclient.TestClient object at 0x0000024FDEEB1510>, 'project-4e0dc66e4a15484cb0a5933338c72fdb', 'project-...44bd61212c'], 'explanation': 'A teaching dependency', 'hidden': False, 'id': 'fb001338d11cbd83750447230fa952f5', ...}])
+with_cycle = True
+
+    @pytest.mark.parametrize('with_cycle', [False, True])
+    def test_prerequisite_paths_keep_converging_branches_without_repeating_cycles(graph_fixture, with_cycle):
+        client, pid, _, src, nodes, _ = graph_fixture
+        target, intermediate, foundation = [node['id'] for node in nodes]
+        with store.connection(pid) as conn:
+            store.put_record(conn, 'kw_edges', extraction.edge(src, foundation, target, 'PREREQUISITE_OF', 'direct prerequisite', 'A second saved learning route', []))
+            if with_cycle:
+                cyclic = store.put_record(conn, 'kw_nodes', extraction.node(src, 'cyclic', 'concept', 'Cyclic branch', 'A cyclic dependency branch', []))
+                for source, destination in [(target, cyclic['id']), (cyclic['id'], target)]:
+                    store.put_record(conn, 'kw_edges', extraction.edge(src, source, destination, 'PREREQUISITE_OF', 'cycle', 'Synthetic test cycle', []))
+        base = f'/api/projects/{pid}/knowledge/paths'
+        response = client.get(base, params={'source': target, 'kind': 'prerequisites'})
+        assert response.status_code == 200
+        result = response.json()
+>       assert {tuple(path['node_ids']) for path in result['paths']} == {
+            (foundation, target), (foundation, intermediate, target),
+        }
+E       AssertionError: assert {('1d67ba4e53...cb9ea3637ba')} == {('1d67ba4e53...cb9ea3637ba')}
+E         
+E         Extra items in the right set:
+E         ('1d67ba4e531679e744b586f083038995', 'e823cc7237e9e079837dcbb51b8e102f', '296181e482379598ca80acb9ea3637ba')
+E         Use -v to get more diff
+
+tests\test_knowledge_experience.py:61: AssertionError
+___ test_current_graph_paths_evidence_resources_and_artifacts_are_available ___
+
+prepared = (WindowsPath('D:/storage/Codex_program/AI4S/backend/.tmp/pytest-fk1bvw7q/tests/test_current_graph_paths_evide0/demo'),...nd\\.tmp\\pytest-fk1bvw7q\\tests\\test_current_graph_paths_evide0\\demo\\atlas.db', 'external_calls_made': False, ...})
+
+    def test_current_graph_paths_evidence_resources_and_artifacts_are_available(prepared):
+        target, marker = prepared
+        pid, demo = marker["project_id"], marker["unified_demo"]
+        with contextlib.closing(connect(str(target / "atlas.db"))) as conn:
+            project = projects.get_project(conn, pid)
+            assert "�ݶ����н�в�" in project.title
+            assert project.domain.value == "custom"
+            graph = unified.graph(conn, project_id=pid)
+            assert len(graph["nodes"]) >= 12
+            assert graph["edges"]
+            nid = demo["node_ids"]["bounded:method"]
+            detail = learning.detail(conn, pid, nid)
+            assert detail["prerequisites"]
+            paths = experience.paths(conn, pid, nid, kind="prerequisites")
+            assert paths["paths"] and not paths["cycle_detected"]
+            gradient = demo["node_ids"]["foundations:gradient"]
+            chain = demo["node_ids"]["foundations:chain"]
+>           assert {(gradient, nid), (gradient, chain, nid)} <= {
+                tuple(path["node_ids"]) for path in paths["paths"]
+            }
+E           AssertionError: assert {('19174413dd...e8d6b61c06b')} <= {('19174413dd...e8d6b61c06b')}
+E             
+E             Extra items in the left set:
+E             ('19174413dd7564c8fea6592fa6fe200a', 'cb3d9538a9cf71831bf57d68c1084734', '893728295dd22faf77f5fe8d6b61c06b')
+
+tests\test_unified_demo.py:52: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_knowledge_experience.py::test_prerequisite_paths_keep_converging_branches_without_repeating_cycles[False]
+FAILED tests/test_knowledge_experience.py::test_prerequisite_paths_keep_converging_branches_without_repeating_cycles[True]
+FAILED tests/test_unified_demo.py::test_current_graph_paths_evidence_resources_and_artifacts_are_available
+3 failed in 18.89s

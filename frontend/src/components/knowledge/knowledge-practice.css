@@ -1,0 +1,28 @@
+.kw-practice { max-width: 1500px; margin: 0 auto; }
+.kw-practice h2 { margin: 8px 0; }
+.kw-practice .ant-btn-primary:not(:disabled) { color: var(--atlas-bg); }
+.kw-practice-goal { display: grid; grid-template-columns: minmax(220px, 2fr) minmax(180px, 1fr); gap: 16px; padding: 20px 0; border-bottom: 1px solid var(--atlas-line); }
+.kw-practice-goal > label { display: flex; flex-direction: column; gap: 7px; font-weight: 600; }
+.kw-practice-goal > .ant-btn { align-self: end; justify-self: start; }
+.kw-practice-goal > p { grid-column: 1 / -1; margin: 0; font-size: 13px; }
+.kw-practice-version { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 18px 0; }
+.kw-practice-version label { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.kw-practice-version .ant-select { width: min(520px, 45vw); }
+.kw-practice-instructions { max-width: 90ch; margin-bottom: 24px; }
+.kw-practice-workspace { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.kw-practice-workspace-single { grid-template-columns: minmax(0, 1fr); }
+.kw-practice-editor { min-width: 0; }
+.kw-practice-editor > label { display: block; font-weight: 600; margin: 0 0 8px; }
+.kw-practice-editor > label > span { display: block; font-size: 12px; font-weight: 400; }
+.kw-practice-editor textarea { box-sizing: border-box; display: block; width: 100%; margin-bottom: 18px; padding: 12px; border: 1px solid var(--atlas-line); border-radius: 7px; background: var(--atlas-surface); color: var(--atlas-ink); font-family: Consolas, monospace; font-size: 14px; line-height: 1.65; tab-size: 4; resize: vertical; caret-color: var(--atlas-accent); }
+.kw-practice-editor textarea:first-of-type { min-height: 105px; }
+.kw-practice-editor .learning-code-editor { min-height: 410px; }
+.kw-practice-editor textarea:focus-visible { outline: 2px solid var(--atlas-focus); outline-offset: 2px; }
+.kw-practice-result { min-width: 0; padding: 18px; border: 1px solid var(--atlas-line); border-radius: 10px; }
+.kw-practice-result > h3 { margin-top: 0; }
+.kw-practice-result pre,.kw-practice-support pre { overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 520px; font-size: 13px; line-height: 1.65; }
+.kw-practice-result > pre { min-height: 235px; }
+.kw-practice-support { margin-top: 26px; border-top: 1px solid var(--atlas-line); padding-top: 12px; }
+.kw-practice-support details { padding: 12px 0; }
+.kw-practice-support blockquote { margin: 6px 0 18px; white-space: pre-wrap; max-width: 90ch; color: inherit; }
+@media (max-width: 900px) { .kw-practice-workspace { grid-template-columns: 1fr; } .kw-practice-goal { grid-template-columns: 1fr; } .kw-practice-version label { flex: 1 1 100%; flex-wrap: wrap; } .kw-practice-version .ant-select { width: 100%; min-width: 0; } .kw-practice-editor .learning-code-editor { min-height: 330px; } }

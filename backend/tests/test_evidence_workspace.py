@@ -253,7 +253,12 @@ def test_upload_file_survives_parser_failure(monkeypatch, tmp_path):
     from starlette.datastructures import UploadFile
     import io
 
-    uid = _store(UploadFile(filename="bad.pdf", file=io.BytesIO(b"%PDF-broken")))
+    import pymupdf
+
+    with pymupdf.open() as pdf:
+        pdf.new_page().insert_text((72, 72), "Readable original, parser temporarily unavailable")
+        raw = pdf.tobytes()
+    uid = _store(UploadFile(filename="paper.pdf", file=io.BytesIO(raw)))
     monkeypatch.setattr(
         "app.api.papers.parse_pdf",
         lambda *a, **k: (_ for _ in ()).throw(ValueError("bad file")),

@@ -53,6 +53,8 @@ def test_source_change_invalidates_preview_and_project_steps_are_versioned():
     route = generate_roadmap(LearnerProfile(goal="target", target_uid="method:target"), conn)
     preview = build_preview(conn, route.id, route.version)
     conn.execute("UPDATE knowledge SET status='withdrawn' WHERE layer='teaching'")
+    from app.knowledge.unified import migrate
+    migrate(conn)
     conn.commit()
     with pytest.raises(ValueError):
         save_replan(conn, route.id, route.version, preview["input_fingerprint"])

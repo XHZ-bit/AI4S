@@ -1,0 +1,9 @@
+.kw-source-formula{margin:18px 0;min-width:0;max-width:100%;overflow:auto}
+.kw-formula-image{max-width:100%;overflow:auto;overscroll-behavior:contain;background:#fff;border-radius:4px}
+.kw-formula-image img{display:block;max-width:100%;height:auto;padding:8px;box-sizing:border-box}
+.kw-formula-image-expanded img{max-width:none}
+.kw-source-formula figcaption{display:flex;align-items:center;gap:12px;flex-wrap:wrap;color:var(--atlas-muted);font-size:12px;margin-top:6px}
+.kw-source-formula details{margin-top:8px;font-size:12px;color:var(--atlas-accent)}
+.kw-source-formula summary{cursor:pointer}
+.kw-source-formula .learning-math-display{display:block;overflow:auto;padding:8px 0}
+.learning-math-source-needed{font-size:13px;color:var(--atlas-muted)}

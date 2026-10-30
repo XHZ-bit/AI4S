@@ -71,6 +71,14 @@ def auto_preview(req: GenerateRequest):
 def preview(req: GenerateRequest):
     """Unpublished curation preview; uses the same planner without saving a formal route."""
     with closing(_connect()) as conn:
+        if not req.profile.target_uid:
+            raise HTTPException(422, "请先选择明确的演示目标")
+        check = evaluate_candidates(
+            conn, req.profile.target_uid,
+            {"current": req.profile.known_concepts}, status="demo_curated",
+        )
+        if not check["passed"]:
+            raise HTTPException(422, {"message": "演示资料未通过自动核查", "failures": check["failures"]})
         try:
             return generate_roadmap(req.profile, conn, status="demo_curated", persist=False).model_dump()
         except (ValueError, ValidationError) as exc:

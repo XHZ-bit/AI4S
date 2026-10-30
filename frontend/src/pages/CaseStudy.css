@@ -6,3 +6,25 @@
 .case-study .ant-collapse-header-text { min-width: 0; overflow-wrap: anywhere; }
 .case-study .ant-btn { max-width: 100%; white-space: normal; height: auto; min-height: 32px; }
 .case-study > .ant-space-item { width: 100%; max-width: 100%; }
+.case-study { container: case-content / inline-size; }
+.case-study-layout { display: grid; gap: 20px; align-items: start; }
+.case-study-primary, .case-supporting-panels { min-width: 0; }
+.case-supporting-panels { display: grid; gap: 16px; }
+.case-step-navigation { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(170px,100%),1fr)); gap: 8px; }
+.case-step-navigation button { display: flex; align-items: center; gap: 10px; padding: 12px; border: 0; border-radius: 9px; background: var(--atlas-surface-raised); color: var(--atlas-muted); text-align: left; cursor: pointer; font-size: 14px; line-height: 1.5; }
+.case-step-navigation button > span:last-child { white-space: normal; overflow-wrap: anywhere; }
+.case-step-navigation button[aria-current="step"] { background: var(--atlas-selected); color: var(--atlas-accent-strong); font-weight: 650; }
+.case-step-number { display: grid; place-items: center; flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--atlas-surface-alt); font-variant-numeric: tabular-nums; }
+.case-study .ant-card-head-title { white-space: normal; }
+.case-study p { font-size: 15px; line-height: 1.75; max-width: 75ch; }
+.case-study .ant-card-body { padding: 20px; }
+.case-study .ant-collapse-header-text { font-size: 15px; line-height: 1.6; }
+.atlas-disclosure-card.is-collapsed > .ant-card-body { display: none; }
+@container case-content (min-width: 1000px) {
+  .case-study-layout { grid-template-columns: minmax(0,1.4fr) minmax(340px,1fr); }
+}
+@container case-content (max-width: 520px) {
+  .case-step-navigation { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .case-step-navigation button { gap: 8px; padding: 10px; font-size: 13px; }
+  .case-study .ant-card-body { padding: 16px; }
+}

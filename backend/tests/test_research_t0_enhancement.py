@@ -87,6 +87,19 @@ def test_strict_schema_and_single_task_budget(enabled, monkeypatch):
     assert route.call_count == 2
 
 
+def test_optional_schema_profile_keeps_required_fields_and_disables_thinking(enabled, monkeypatch):
+    monkeypatch.setenv("RESEARCH_MODEL_RESPONSE_FORMAT", "json_schema")
+    monkeypatch.setenv("RESEARCH_MODEL_SCHEMA_REQUIRE_ALL", "false")
+    monkeypatch.setenv("RESEARCH_MODEL_ENABLE_THINKING", "false")
+    get_settings.cache_clear()
+    route = respx.post(URL).mock(return_value=response())
+    call()
+    payload = json.loads(route.calls[0].request.content)
+    schema = payload["response_format"]["json_schema"]["schema"]
+    assert schema == PlanSuggestions.model_json_schema()
+    assert payload["enable_thinking"] is False
+
+
 @pytest.mark.parametrize("status", [302, 401, 429, 500])
 def test_http_failure_no_retry_or_body_leak(enabled, status, caplog):
     route = respx.post(URL).mock(return_value=httpx.Response(status, text="secret source"))
@@ -226,7 +239,8 @@ def test_production_extraction_adapter_and_metadata_separation(enabled):
     message = json.loads(request["messages"][1]["content"])
     assert message["passage_text"] == text
     assert "text" not in message["locator_metadata"]
-    assert bundle.extraction_version.startswith("research-extraction-prompt-v2:")
+    from app.research_extraction.prompts import PROMPT_VERSION
+    assert bundle.extraction_version.startswith(f"{PROMPT_VERSION}:")
 
 
 def test_extraction_task_budget_does_not_return_partial_success(enabled, monkeypatch):

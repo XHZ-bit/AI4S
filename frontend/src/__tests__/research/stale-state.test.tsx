@@ -5,7 +5,7 @@ import ProjectGraphPanel from "../../components/research/ProjectGraphPanel";
 import { comparison, facts, project } from "./fixtures";
 
 const api = vi.hoisted(() => ({
-  getProjectFacts: vi.fn(), compareProjectCandidates: vi.fn(), saveProjectDecision: vi.fn(),
+  getProjectFacts: vi.fn(), compareProjectCandidates: vi.fn(), getComparisonReadiness: vi.fn(), saveProjectDecision: vi.fn(),
   getProjectGraph: vi.fn(), isVersionConflict: () => false,
   ProjectApiError: class extends Error { status = 503; },
 }));
@@ -22,6 +22,7 @@ function deferred<T>() {
 beforeEach(() => {
   api.getProjectFacts.mockReset().mockResolvedValue(facts);
   api.compareProjectCandidates.mockReset().mockResolvedValue(comparison);
+  api.getComparisonReadiness.mockReset().mockResolvedValue({ candidates: [], pairs: [], total_pairs: 0, truncated: false, notice: "自动核查" });
   api.saveProjectDecision.mockReset();
   api.getProjectGraph.mockReset();
 });

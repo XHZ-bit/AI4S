@@ -1,0 +1,73 @@
+.atlas-session-page {
+  --account-paper: #fbfaf7;
+  --account-surface: #ffffff;
+  --account-ink: #263c36;
+  --account-muted: #626a64;
+  --account-line: #dedfd6;
+  min-height: 100dvh;
+  padding: 40px 24px 28px;
+  background: var(--account-paper);
+  color: var(--account-ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.atlas-session-brand { color: var(--account-ink); font-size: 21px; font-weight: 650; display: inline-flex; gap: 12px; align-items: center; margin-bottom: 38px; text-decoration: none; }
+.atlas-session-brand .anticon { font-size: 24px; }
+.atlas-session-sheet { width: min(100%, 460px); padding: 36px 38px 30px; background: var(--account-surface); border: 1px solid var(--account-line); border-radius: 10px; }
+.atlas-session-footer { color: var(--account-muted); font-size: 12px; text-align: center; line-height: 1.8; margin: 26px 0 0; }
+.atlas-session-gate { max-width: 460px; margin: 10vh auto; padding: 24px; }
+.atlas-auth-form { max-width: 440px; }
+.atlas-auth-form header { margin-bottom: 28px; }
+.atlas-auth-form h1 { font-size: 25px; font-weight: 650; line-height: 1.45; letter-spacing: -.02em; margin: 0 0 9px; color: inherit; }
+.atlas-auth-form header p { color: var(--account-muted, var(--atlas-muted, #626a64)); line-height: 1.8; font-size: 14px; margin: 0; }
+.atlas-auth-form .ant-form-item { margin-bottom: 20px; }
+.atlas-auth-form .ant-form-item-extra { font-size: 12px; line-height: 1.6; padding-top: 5px; }
+.atlas-auth-form .ant-form-item-label { padding-bottom: 7px; }
+.atlas-auth-form .ant-form-item-label label { font-size: 14px; font-weight: 500; }
+.atlas-auth-form .ant-input, .atlas-auth-form .ant-input-affix-wrapper { border-radius: 6px; }
+.atlas-auth-form .ant-btn-primary { min-height: 42px; border-radius: 6px; font-weight: 600; }
+.atlas-auth-form .ant-alert, .atlas-session-gate .ant-alert, .atlas-account-services .ant-alert, .atlas-password-form .ant-alert { margin-bottom: 18px; }
+.atlas-auth-forgot { display: flex; justify-content: flex-end; margin: -13px 0 13px; }
+.atlas-auth-forgot .ant-btn-link { padding-right: 0; }
+.atlas-auth-secondary { margin-top: 20px; text-align: center; font-size: 13px; line-height: 1.7; color: var(--account-muted, var(--atlas-muted, #626a64)); }
+.atlas-auth-secondary p { margin: 0; }
+.atlas-auth-secondary .ant-btn-link { height: auto; padding: 4px 5px; white-space: normal; font-size: 13px; }
+.atlas-auth-secondary .atlas-auth-help { margin-bottom: 10px; text-align: left; }
+.atlas-session-controls { padding: 9px 24px; background: var(--atlas-surface, #f5f5ef); border-bottom: 1px solid var(--atlas-line, #dedfd6); text-align: right; font-size: 13px; }
+.atlas-session-controls .ant-tag { background: transparent; border-color: var(--atlas-line, #dedfd6); }
+.atlas-account-notice { border-radius: 0; }
+.atlas-account-services, .atlas-password-form { max-width: 650px; }
+.atlas-account-section { padding: 28px 0; border-top: 1px solid var(--atlas-line, #dedfd6); }
+.atlas-account-section h3 { font-size: 16px; line-height: 1.6; margin: 0 0 10px; }
+.atlas-account-section p, .atlas-password-form > p { font-size: 13px; line-height: 1.8; color: var(--atlas-muted, #626a64); margin: 0 0 16px; max-width: 65ch; }
+.atlas-account-section .ant-form, .atlas-password-form .ant-form { max-width: 420px; }
+.atlas-account-section-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.atlas-account-section-title h3 { margin: 0; }
+.atlas-account-identity { display: flex; gap: 20px; justify-content: space-between; align-items: center; margin: 12px 0 24px; }
+.atlas-account-identity strong { font-size: 18px; overflow-wrap: anywhere; }
+.atlas-account-identity p { font-size: 13px; margin: 5px 0 0; color: var(--atlas-muted, #626a64); }
+.atlas-account-disclosure summary { cursor: pointer; font-size: 13px; padding: 7px 0; }
+.atlas-account-disclosure[open] summary { margin-bottom: 16px; }
+.atlas-account-verified { margin-left: 10px; font-size: 12px; color: var(--atlas-accent, #30644d); }
+.atlas-account-sessions { padding: 0; margin: 0 0 18px; list-style: none; }
+.atlas-account-sessions li { display: grid; grid-template-columns: 90px 1fr; column-gap: 14px; row-gap: 5px; padding: 13px 0; border-bottom: 1px solid var(--atlas-line, #dedfd6); font-size: 13px; }
+.atlas-account-sessions strong { grid-row: span 2; font-weight: 550; }
+.atlas-account-sessions span, .atlas-account-sessions small { color: var(--atlas-muted, #626a64); font-variant-numeric: tabular-nums; }
+.atlas-recovery-code { display: block; overflow-wrap: anywhere; margin: 8px 0 16px; line-height: 1.7; user-select: all; }
+.atlas-session-page a:focus-visible, .atlas-account-disclosure summary:focus-visible { outline: 2px solid var(--atlas-accent, #30644d); outline-offset: 4px; }
+[data-theme="dark"] .atlas-session-page { --account-paper: #181e1b; --account-surface: #222b25; --account-ink: #e1e7df; --account-muted: #b0bcb0; --account-line: #3b473e; }
+[data-theme="dark"] .atlas-session-controls { background: #222b25; border-color: #3b473e; }
+[data-theme="dark"] .atlas-auth-form, [data-theme="dark"] .atlas-account-services, [data-theme="dark"] .atlas-password-form { --account-muted: #b0bcb0; --atlas-muted: #b0bcb0; --atlas-line: #3b473e; }
+@media (max-width: 600px) {
+  .atlas-session-page { padding: 26px 18px; }
+  .atlas-session-brand { margin-bottom: 28px; }
+  .atlas-session-sheet { padding: 28px 22px 24px; }
+  .atlas-session-controls { padding: 9px 16px; text-align: left; }
+  .atlas-account-sessions li { grid-template-columns: 1fr; }
+  .atlas-account-sessions strong { grid-row: auto; }
+  .atlas-auth-form h1 { font-size: 23px; }
+}
+@media print { .atlas-session-controls { display: none; } }
+
+[data-theme="dark"] .atlas-account-verified { color: #a6c8af; }

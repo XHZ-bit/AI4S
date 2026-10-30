@@ -1,5 +1,8 @@
 """Read-only projection of existing work into one local execution view."""
 
+import hashlib
+import json
+
 from urllib.parse import quote
 
 from app.cases.catalog import CASE_ID, QUESTIONS, VERSION
@@ -17,7 +20,8 @@ CHECKS = (
 
 
 def _activity(kind, source_id, version, item_id, title, status, evidence_level, url,
-              *, detail="", estimated_minutes=None, evidence_ids=None, project_id=None):
+              *, detail="", estimated_minutes=None, evidence_ids=None, project_id=None,
+              item_uid=None):
     return {
         "id": f"{kind}:{source_id}:{item_id}", "source_kind": kind,
         "source_id": str(source_id), "source_version": version,
@@ -25,12 +29,13 @@ def _activity(kind, source_id, version, item_id, title, status, evidence_level, 
         "evidence_level": evidence_level, "url": url, "detail": detail,
         "estimated_minutes": estimated_minutes, "evidence_ids": evidence_ids or [],
         "project_id": project_id,
+        "item_uid": item_uid,
     }
 
 
-def _roadmap_activities(conn):
+def _roadmap_activities(conn, source=None):
     rows = conn.execute(
-        "SELECT id FROM roadmaps WHERE id NOT IN (SELECT parent_id FROM workflow_roadmap_lineage) ORDER BY id DESC"
+        "SELECT id FROM roadmaps WHERE id NOT IN (SELECT parent_id FROM workflow_roadmap_lineage) AND (? IS NULL OR id=?) ORDER BY id DESC", (source, source)
     ).fetchall()
     for row in rows:
         route = get_roadmap(conn, row["id"])
@@ -44,11 +49,12 @@ def _roadmap_activities(conn):
                     f"/roadmap?id={row['id']}", detail=item.reason,
                     estimated_minutes=item.estimated_minutes,
                     evidence_ids=item.evidence_ids,
+                    item_uid=item.uid,
                 )
 
 
-def _paper_activities(conn):
-    rows = conn.execute("SELECT uid,title FROM papers ORDER BY created_at DESC,uid DESC").fetchall()
+def _paper_activities(conn, source=None):
+    rows = conn.execute("SELECT uid,title FROM papers WHERE (? IS NULL OR uid=?) ORDER BY created_at DESC,uid DESC", (source, source)).fetchall()
     for paper in rows:
         uid = paper["uid"]
         state = get_state(conn, uid)
@@ -85,7 +91,7 @@ def _paper_activities(conn):
             )
 
 
-def _case_activities(conn):
+def _case_activities(conn, source=None):
     from app.api.cases import read_session
     from app.assistant.engine import exercises
 
@@ -120,10 +126,20 @@ def _case_activities(conn):
         )
 
 
-def _project_activities(conn):
+def _project_activities(conn, source=None):
+    from app.research.audit import project_audit
+
+    impacted = {}
     for snapshot in latest_snapshots(conn):
         sid = snapshot["id"]
         pid = snapshot["project_id"]
+        if source and pid != source:
+            continue
+        if pid not in impacted:
+            exists = conn.execute("SELECT 1 FROM research_project_versions WHERE project_id=? LIMIT 1", (pid,)).fetchone()
+            impacted[pid] = ({sid for issue in project_audit(conn, pid)["issues"]
+                              if issue["severity"] == "blocking"
+                              for sid in issue["affected_snapshot_ids"]} if exists else set())
         plan = snapshot["plan"]
         url = f"/research/{quote(pid, safe='')}?tab=plans&snapshot={quote(sid, safe='')}"
         for step in plan["steps"]:
@@ -131,7 +147,7 @@ def _project_activities(conn):
             yield _activity(
                 "project", sid, snapshot["snapshot_version"], step["id"],
                 f"课题：{plan['title']} · {step['title']}",
-                "needs_review" if snapshot["review_status"] == "needs_review" else
+                "needs_review" if snapshot["review_status"] == "needs_review" or sid in impacted[pid] else
                 "completed" if record["done"] else "pending",
                 "recorded" if record["done"] else "none", url,
                 detail=record["outcome"] or "按快照中的验收条件记录产出；不代表科学结论得到验证。",
@@ -141,25 +157,17 @@ def _project_activities(conn):
 
 
 def activities(conn, source_kind=None, source_id=None, project_id=None):
-    result = []
-    for source, factory in (("roadmap", _roadmap_activities), ("paper", _paper_activities),
-                            ("case", _case_activities), ("project", _project_activities)):
-        if source_kind and source_kind != source:
-            continue
-        for item in factory(conn):
-            if source_id and item["source_id"] != source_id:
-                continue
-            if project_id and item["project_id"] != project_id:
-                continue
-            result.append(item)
-    order = {"needs_review": 0, "in_progress": 1, "pending": 2, "completed": 3}
-    return sorted(result, key=lambda a: (order[a["status"]], a["source_kind"], a["title"], a["id"]))
+    from app.db.projections import activity_page
+    return activity_page(conn, source_kind, source_id, project_id, limit=-1)['items']
 
 
 def overview(conn):
-    items = activities(conn)
-    counts = {name: sum(a["status"] == name for a in items) for name in
-              ("pending", "in_progress", "completed", "needs_review")}
+    from app.db.projections import activity_page
+    first = activity_page(conn, limit=8)
+    names = ['needs_review', 'in_progress', 'pending', 'completed']
+    counts = dict.fromkeys(names, 0)
+    for row in conn.execute('SELECT status_order,COUNT(*) FROM activity_projection GROUP BY status_order'):
+        counts[names[row[0]]] = row[1]
     snapshot_needed = conn.execute(
         "SELECT COUNT(*) FROM research_plan_versions p WHERE p.version=("
         "SELECT MAX(version) FROM research_plan_versions WHERE plan_id=p.plan_id) "
@@ -167,8 +175,86 @@ def overview(conn):
         "AND json_extract(s.payload_json,'$.plan.id')=p.plan_id "
         "AND json_extract(s.payload_json,'$.plan.version')=p.version)"
     ).fetchone()[0]
-    return {"counts": counts, "next": [a for a in items if a["status"] != "completed"][:8],
-            "snapshot_required": snapshot_needed, "total": len(items)}
+    return {"counts": counts, "next": [a for a in first['items'] if a["status"] != "completed"],
+            "snapshot_required": snapshot_needed, "total": first['total']}
+
+
+def recommendations(conn):
+    """Rank current actions by explicit, deterministic rules without changing records."""
+    items = activities(conn)
+    failed = failed_case_checks(conn)
+    confirmed = sorted(r["concept_uid"] for r in conn.execute(
+        "SELECT concept_uid FROM workflow_mastery WHERE confirmed=1"
+    ))
+    suggestions = []
+    review_groups = {}
+    for item in items:
+        if item["status"] == "needs_review":
+            review_groups.setdefault((item["source_kind"], item["source_id"]), []).append(item)
+    for (source_kind, source_id), group in sorted(review_groups.items()):
+        first = group[0]
+        count = len(group)
+        suggestions.append({"id": f"check:{source_kind}:{source_id}", "kind": "source_review",
+                            "title": f"检查依据：{first['title']}",
+                            "reason": f"同一来源有 {count} 项活动待复核；原有完成记录保留。",
+                            "url": first["url"], "source_ids": [item["id"] for item in group],
+                            "priority_score": 95, "priority_reason": "待复核活动需先检查来源",
+                            "related_activity_count": count})
+    for check in failed:
+        suggestions.append({"id": f"review:{check['key']}", "kind": "practice_review",
+                            "title": f"复习并重试：{check['title']}",
+                            "reason": "最近一次固定案例检查未通过；这只反映题目结果。",
+                            "url": check["url"], "source_ids": [check["key"]],
+                            "priority_score": 80, "priority_reason": "最近一次固定检查未通过",
+                            "related_activity_count": 1})
+    rows = conn.execute(
+        "SELECT id,profile_json FROM roadmaps WHERE id NOT IN "
+        "(SELECT parent_id FROM workflow_roadmap_lineage) ORDER BY id DESC"
+    ).fetchall()
+    for row in rows:
+        route = get_roadmap(conn, row["id"])
+        saved = json.loads(row["profile_json"])
+        reasons = []
+        if route.stale:
+            reasons.append("路线来源版本或关系已变化")
+        if sorted(saved.get("known_concepts", [])) != confirmed:
+            reasons.append("已确认掌握记录与生成路线时不同")
+        if failed:
+            reasons.append("最近一次固定案例练习有未通过项")
+        if reasons:
+            score = 70 if route.stale else 60
+            suggestions.append({"id": f"replan:{row['id']}", "kind": "replan_preview",
+                                "title": "预览正式路线调整", "reason": "；".join(reasons),
+                                "url": f"/roadmap?id={row['id']}",
+                                "source_ids": [str(row["id"]), *[x["key"] for x in failed]],
+                                "priority_score": score,
+                                "priority_reason": "路线来源已变化" if route.stale else "掌握记录或练习反馈已变化",
+                                "related_activity_count": 1})
+    active_groups = {}
+    for item in items:
+        if item["status"] in ("pending", "in_progress"):
+            active_groups.setdefault((item["source_kind"], item["source_id"]), []).append(item)
+    for (source_kind, source_id), group in sorted(active_groups.items()):
+        first = min(group, key=lambda item: (item["status"] != "in_progress", item["id"]))
+        in_progress = first["status"] == "in_progress"
+        suggestions.append({"id": f"continue:{first['id']}", "kind": "continue_activity",
+                            "title": f"继续执行：{first['title']}",
+                            "reason": "已有部分记录，可从此处继续。" if in_progress else
+                                      "这项活动尚未完成，可从原页面开始。",
+                            "url": first["url"], "source_ids": [first["id"]],
+                            "priority_score": 50 if in_progress else 30,
+                            "priority_reason": "已有部分记录" if in_progress else "尚无完成记录",
+                            "related_activity_count": len(group),
+                            "estimated_minutes": first["estimated_minutes"]})
+    suggestions.sort(key=lambda item: (-item["priority_score"], item["kind"], item["id"]))
+    for rank, suggestion in enumerate(suggestions, 1):
+        suggestion["rank"] = rank
+    digest = hashlib.sha256(json.dumps([confirmed, failed, items, suggestions],
+                                     ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+    return {"contract_version": "workflow-recommendations-v1", "input_fingerprint": digest,
+            "items": suggestions[:20], "total": len(suggestions), "truncated": len(suggestions) > 20,
+            "ranking_rule_version": "workflow-priority-1",
+            "notice": "固定规则按待复核、练习失败、路线变化、继续执行排序；只使用当前记录，不推断掌握或自动保存路线。"}
 
 
 def failed_case_checks(conn):
@@ -185,11 +271,12 @@ def failed_case_checks(conn):
     if session["stale"]:
         return []
     failed = []
+    url = f"/cases/{quote(CASE_ID, safe='')}?session={quote(session['id'], safe='')}"
     for q in QUESTIONS:
         answer = session["state"]["answers"].get(q["id"])
         if answer and not answer.get("correct"):
-            failed.append({"key": f"question:{q['id']}", "title": q["question"]})
+            failed.append({"key": f"question:{q['id']}", "title": q["question"], "url": url})
     for exercise in exercises(session):
         if exercise.result and not exercise.result.get("correct"):
-            failed.append({"key": f"practice:{exercise.id}", "title": exercise.prompt})
+            failed.append({"key": f"practice:{exercise.id}", "title": exercise.prompt, "url": url})
     return failed

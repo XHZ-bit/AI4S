@@ -1,0 +1,169 @@
+.atlas-manage {
+  display: grid;
+  gap: 30px;
+  min-width: 0;
+  max-width: 1280px;
+  margin: 0 auto;
+  color: var(--atlas-ink);
+}
+.atlas-manage-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 4px 0;
+}
+.atlas-manage-heading h1 {
+  margin: 0;
+  font-size: clamp(28px, 3vw, 34px);
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -.03em;
+}
+.atlas-manage-shortcuts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+}
+.atlas-manage-shortcuts a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  color: var(--atlas-muted);
+  font-size: 14px;
+  text-decoration: none;
+}
+.atlas-manage-shortcuts a:hover { color: var(--atlas-accent-strong); }
+.atlas-manage-shortcuts .atlas-manage-add {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--atlas-accent);
+  border-radius: 9px;
+  color: var(--atlas-accent-strong);
+  font-weight: 600;
+}
+.atlas-manage-shortcuts .atlas-manage-add:hover {
+  background: var(--atlas-accent-soft);
+}
+.atlas-manage-import {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 15px;
+  min-width: 0;
+  padding: 24px;
+  border-radius: 16px;
+  background: var(--atlas-surface);
+}
+.atlas-manage-import-heading h2 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.35;
+  font-weight: 620;
+  scroll-margin-top: 100px;
+}
+.atlas-manage-upload { min-width: 0; }
+.atlas-manage-upload-limits,
+.atlas-manage-upload-limits .ant-typography {
+  color: var(--atlas-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.atlas-manage-upload-limits .ant-typography { margin: 0; }
+.atlas-manage-collection { min-width: 0; }
+.atlas-manage-collection-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  min-height: 54px;
+  padding: 12px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--atlas-ink);
+  text-align: left;
+  font-size: 16px;
+  font-weight: 550;
+  cursor: pointer;
+}
+.atlas-manage-collection-toggle:hover { color: var(--atlas-accent-strong); }
+.atlas-manage-collection-toggle > .anticon {
+  color: var(--atlas-muted);
+  font-size: 13px;
+  transition: transform .18s;
+}
+.atlas-manage-collection-toggle > .anticon.is-open { transform: rotate(180deg); }
+.atlas-manage-collection-body {
+  padding: 16px 20px 22px;
+  border-radius: 12px;
+  background: var(--atlas-surface);
+}
+.atlas-manage-collection-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(150px, 1fr) 110px 90px auto;
+  align-items: end;
+  gap: 14px;
+}
+.atlas-manage-collection-form .ant-form-item { min-width: 0; margin-bottom: 0; }
+.atlas-manage-collection-form .atlas-collection-extra { grid-column: 1 / -1; }
+.atlas-manage-collection-form .ant-form-item-label label {
+  color: var(--atlas-muted);
+  font-size: 14px;
+}
+.atlas-manage-collection-form .ant-input-number { width: 100%; }
+.atlas-manage-collection-body > p,
+.atlas-manage-collection-note {
+  margin: 15px 0 0;
+  color: var(--atlas-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.atlas-manage-collection-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+.atlas-manage-collection-note > .anticon { margin-top: 4px; }
+.atlas-manage-search { min-width: 0; }
+.atlas-manage-search > .ant-card {
+  border-color: var(--atlas-line);
+  border-radius: 15px;
+  background: var(--atlas-surface);
+  box-shadow: none;
+}
+.atlas-manage-search > .ant-card > .ant-card-head {
+  min-height: 56px;
+  border-bottom-color: var(--atlas-line);
+}
+.atlas-manage-search .ant-card-head-title { color: var(--atlas-ink); font-size: 18px; font-weight: 600; }
+.atlas-manage-search .ant-typography-secondary { color: var(--atlas-muted); font-size: 14px; }
+.atlas-manage-search input::placeholder { color: var(--atlas-muted); opacity: 1; }
+@media (max-width: 1050px) {
+  .atlas-manage-collection-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .atlas-manage-collection-form > .ant-btn { justify-self: start; }
+}
+@media (max-width: 767px) {
+  .atlas-manage { gap: 22px; }
+  .atlas-manage-heading { align-items: flex-start; gap: 12px; }
+  .atlas-manage-heading h1 { width: 100%; font-size: 29px; }
+  .atlas-manage-shortcuts { gap: 6px 15px; }
+  .atlas-manage-shortcuts a { font-size: 13px; }
+  .atlas-manage-import { padding: 18px 16px; }
+  .atlas-manage-import-heading h2 { font-size: 20px; }
+  .atlas-manage-collection-body { padding: 16px; }
+  .atlas-manage-collection-form { gap: 12px; }
+  .atlas-manage-collection-form > .ant-form-item:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 440px) {
+  .atlas-manage-collection-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .atlas-manage-collection-form > .ant-form-item:nth-child(2) { grid-column: 1 / -1; }
+}
+
+
+/* A focused library: switch tasks instead of stacking all tools. */
+.atlas-manage{gap:22px}.atlas-manage-heading h1{font-size:26px;letter-spacing:-.02em}.atlas-manage>.ant-segmented{justify-self:start;max-width:100%;overflow:auto}.atlas-manage-import{padding:24px 0;background:transparent;border-radius:0}.atlas-manage-search>.ant-card{border:0}.atlas-manage-import-heading{margin-bottom:8px}
+
+.atlas-manage-project{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px;font-size:14px;color:var(--atlas-muted)}.atlas-manage-existing{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:12px 0;color:var(--atlas-muted)}

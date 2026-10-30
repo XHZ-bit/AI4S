@@ -1,0 +1,29 @@
+{
+  "environment": "TestClient with copied local data; five sequential requests per scope; not a network or concurrent load benchmark",
+  "results": [
+    {
+      "scope_index": 0,
+      "overview_nodes": 0,
+      "first_ms": 12.2,
+      "median_ms": 7.4,
+      "max_ms": 12.2,
+      "compatibility_ids_match": true
+    },
+    {
+      "scope_index": 1,
+      "overview_nodes": 3,
+      "first_ms": 25.0,
+      "median_ms": 20.3,
+      "max_ms": 25.0,
+      "compatibility_ids_match": true
+    },
+    {
+      "scope_index": 2,
+      "overview_nodes": 32,
+      "first_ms": 111.4,
+      "median_ms": 30.8,
+      "max_ms": 111.4,
+      "compatibility_ids_match": true
+    }
+  ]
+}

@@ -102,6 +102,7 @@ def evaluate(records: list[dict[str, Any]]) -> dict[str, Any]:
     manual_actions = 0
     final_fields = 0
     condition_correct = condition_total = 0
+    confusion = {expected: {actual: 0 for actual in sorted(CONDITION_RESULTS)} for expected in sorted(CONDITION_RESULTS)}
     citations_located = citations_total = 0
     plan_present = plan_total = 0
     time_totals = {"preparation": 0.0, "review": 0.0, "correction": 0.0}
@@ -118,6 +119,7 @@ def evaluate(records: list[dict[str, Any]]) -> dict[str, Any]:
         for check in record["condition_checks"]:
             condition_total += 1
             condition_correct += int(check["expected"] == check["actual"])
+            confusion[check["expected"]][check["actual"]] += 1
         for check in record["citation_checks"]:
             citations_total += 1
             citations_located += int(check["located"])
@@ -157,6 +159,21 @@ def evaluate(records: list[dict[str, Any]]) -> dict[str, Any]:
             "actions_per_final_field": _ratio(manual_actions, final_fields),
         },
         "condition_check_accuracy": _ratio(condition_correct, condition_total),
+        "condition_checks": {
+            "total": condition_total,
+            "correct": condition_correct,
+            "confusion_matrix_expected_by_actual": confusion,
+            "false_pass_count": confusion["incompatible"]["compatible"] + confusion["insufficient"]["compatible"],
+            "non_comparable_count": sum(confusion["incompatible"].values()) + sum(confusion["insufficient"].values()),
+            "false_pass_rate": _ratio(
+                confusion["incompatible"]["compatible"] + confusion["insufficient"]["compatible"],
+                sum(confusion["incompatible"].values()) + sum(confusion["insufficient"].values())),
+            "determinable_count": sum(confusion["compatible"].values()) + sum(confusion["incompatible"].values()),
+            "correct_definite_count": confusion["compatible"]["compatible"] + confusion["incompatible"]["incompatible"],
+            "effective_judgment_coverage": _ratio(
+                confusion["compatible"]["compatible"] + confusion["incompatible"]["incompatible"],
+                sum(confusion["compatible"].values()) + sum(confusion["incompatible"].values())),
+        },
         "citation_location_success_rate": _ratio(citations_located, citations_total),
         "plan_structure_completeness": _ratio(plan_present, plan_total),
         "time_minutes": {
@@ -206,4 +223,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -165,6 +165,23 @@ def dimension(result, name):
     return next(item for item in result.dimensions if item.name == name)
 
 
+def test_robot_policy_conditions_keep_missing_and_different_fields_unranked():
+    bundle=image_bundle()
+    names=['task','environment_version','observation_modality','action_space','demonstration_data','evaluation_episodes']
+    for index,setting in enumerate(bundle.experiment_settings,1):
+        setting.hyperparameters=[NamedValue(name=name,value='same') for name in names]
+        setting.field_evidence.extend(_binding(name,f'ev-{index}') for name in names)
+    for measurement in bundle.measurements:
+        measurement.metric_name='success_rate'
+    result=compare_conditions(request('robot_policy_learning'),bundle)
+    assert all(dimension(result,name).comparable for name in names)
+    bundle.experiment_settings[1].hyperparameters[1].value='different version'
+    bundle.experiment_settings[1].hyperparameters.pop()
+    result=compare_conditions(request('robot_policy_learning'),bundle)
+    assert not dimension(result,'environment_version').comparable
+    assert not dimension(result,'evaluation_episodes').comparable
+
+
 CONSISTENT_DIMENSIONS = [
     "dataset",
     "dataset_version",

@@ -19,21 +19,14 @@ def _uid(payload, side):
 
 
 def relation_audit(conn) -> dict:
-    rows = [dict(row) for row in conn.execute(
-        "SELECT k.id,k.paper_uid,k.document_id,k.passage_id,k.quote,k.start_offset,"
-        "k.end_offset,k.layer,k.status,p.kind,p.payload_json,pa.text,pa.document_id "
-        "AS passage_document_id,d.paper_uid AS document_paper_uid "
-        "FROM knowledge k LEFT JOIN extraction_proposals p ON p.id=k.id "
-        "LEFT JOIN passages pa ON pa.id=k.passage_id "
-        "LEFT JOIN documents d ON d.id=k.document_id "
-        "WHERE k.status IN (?,?,?,?) ORDER BY k.id", ACTIVE
-    )]
+    from app.roadmap.trusted_queries import audit_rows
+    rows = [r for r in audit_rows(conn) if r['status'] in ACTIVE]
     issues = []
     edges = []
     aliases = {}
 
     def add(code, ids, detail):
-        ids = sorted(set(ids))
+        ids = sorted(set(ids), key=str)
         key = json.dumps([code, ids], ensure_ascii=False)
         issues.append(dict(id=hashlib.sha256(key.encode()).hexdigest()[:16],
                            code=code, relation_ids=ids, detail=detail))

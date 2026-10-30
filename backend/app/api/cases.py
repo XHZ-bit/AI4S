@@ -95,7 +95,7 @@ def download_checker(case_id: str):
     return Response(
         script.read_bytes(),
         media_type="text/x-python",
-        headers={"Content-Disposition": 'attachment; filename="atlas_case_check.py"'},
+        headers={"Content-Disposition": 'attachment; filename="paperstride_case_check.py"'},
     )
 
 
@@ -123,7 +123,7 @@ def download_sources(case_id: str):
     return Response(
         buffer.getvalue(),
         media_type="application/zip",
-        headers={"Content-Disposition": 'attachment; filename="atlas-sources.zip"'},
+        headers={"Content-Disposition": 'attachment; filename="paperstride-sources.zip"'},
     )
 
 
@@ -272,7 +272,7 @@ def report(case_id: str, sid: str):
             (sid,),
         ).fetchone()
     lines = [
-        "# Research Atlas 学习与源码检查报告",
+        "# PaperStride 学习与源码检查报告",
         "",
         f"学习记录：{sid}",
         f"专题版本：{session['case_version']}",
@@ -327,5 +327,5 @@ def report(case_id: str, sid: str):
     return Response(
         "\n".join(lines),
         media_type="text/markdown; charset=utf-8",
-        headers={"Content-Disposition": 'attachment; filename="atlas-case-report.md"'},
+        headers={"Content-Disposition": 'attachment; filename="paperstride-case-report.md"'},
     )

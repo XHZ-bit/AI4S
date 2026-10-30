@@ -1,0 +1,603 @@
+
+> paperstride-frontend@1.0.0 test
+> node scripts/test.mjs
+
+
+ RUN  v5.0.3 D:/storage/Codex_program/AI4S/frontend
+
+ ✓ src/__tests__/KnowledgeWorkspace.test.tsx (17 tests) 76311ms
+   ✓ four-source workspace opens the whole graph and node learning never calls a model on page load 10185ms
+   ✓ comparison to learning and source evidence retain a return path and exact source page 15935ms
+   ✓ report reader uses document blocks and preserves formula content without inventing PDF pages 1415ms
+   ✓ gating demo updates real residual calculations when message changes 1298ms
+   ✓ selected report block offers its own linked knowledge without per-block footers 5238ms
+   ✓ source to learning returns to its selected block and PDF evidence target remains stable while scrolling 5827ms
+   ✓ opening a space restores the graph scope while explicit reading URLs retain their saved page 852ms
+   ✓ repository viewer names the frozen snapshot and shows file path plus commit 1070ms
+   ✓ formula correction submits versioned LaTeX for the current space without rewriting source text 3890ms
+   ✓ method comparison explicitly focuses D2 within the chosen report and omits deselected sources 1737ms
+   ✓ saved comparison restores its exact focused method without generating content 388ms
+   ✓ learning correction and section hide use successive saved revisions without model calls 8507ms
+   ✓ learning revision conflict preserves the draft and explains how to read the latest saved version 6774ms
+   ✓ a material click updates the real workspace URL once and opens its methods without a competing clear navigation 6604ms
+   ✓ node practice expands from the graph and returns to its selected node and canvas position 6141ms
+   ✓ graph failure is visible and recoverable rather than leaving an empty canvas 432ms
+ ✓ src/__tests__/GraphOverview.test.tsx (5 tests) 24140ms
+   ✓ global overview displays distinct scoped sources and expands the chosen source with a bounded request 13389ms
+   ✓ library source reading keeps graph return context without impersonating a research project 2619ms
+   ✓ historical paper records remain searchable and their link explicitly opens source evidence 4936ms
+   ✓ library relationship evidence links to its actual source and clears stale project context 1259ms
+   ✓ a project report without a paper ID opens its source and never creates a false paper link 1927ms
+ ✓ src/__tests__/PaperLibrary.test.tsx (8 tests) 47299ms
+   ✓ library views preserve server query and parse filters while resetting pagination 3356ms
+   ✓ starred and read later are independent persisted flags 2745ms
+   ✓ a failed marker update keeps the previous state and permits another attempt 2441ms
+   ✓ removing the last item of a filtered last page returns to a valid page 2627ms
+   ✓ a response from an old library view cannot overwrite the latest view 5801ms
+   ✓ filter feedback and clearing preserve unrelated URL state and reset server pagination 13575ms
+   ✓ desktop papers show Chinese source and parse state with a direct reading action 5912ms
+   ✓ switching to mobile renders one accessible card and preserves selection and markers 10836ms
+ ✓ src/__tests__/SessionGate.test.tsx (10 tests) 46095ms
+   ✓ children receive only the verified access mode and unmount when the session expires 3882ms
+   ✓ session verification fails closed and can be retried 1158ms
+   ✓ multiuser login gates the workspace and logout clears only Atlas drafts 6323ms
+   ✓ expired sessions unmount the workspace before another login 1733ms
+   ✓ changing the password forces a fresh login and clears browser drafts 4825ms
+   ✓ administrators create and disable accounts with authenticated requests 28010ms
+ ✓ src/__tests__/research/workspace-panels.test.tsx (9 tests) 29318ms
+   ✓ comparison readiness explains missing conditions without ranking 1199ms
+   ✓ partial extraction stays visible and manual correction remains a local draft 318ms
+   ✓ upload failure is shown without inventing a linked paper 721ms
+   ✓ comparison separates project constraints from literature comparability 17863ms
+   ✓ 409 keeps settings form values instead of clearing the draft 4405ms
+   ✓ generation failure does not hide saved plan history and graph stays honest 928ms
+   ✓ model failure can fall back to an empty user-input draft and save through the existing API 2569ms
+   ✓ an unsaved manual draft is restored from browser storage without replacing server history 1111ms
+stderr | src/__tests__/research/project-graph.test.tsx > older request cannot overwrite a newly navigated project
+Warning: An update to RouterProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at RouterProvider (file:///D:/storage/Codex_program/AI4S/frontend/node_modules/react-router/dist/development/chunk-OB3PAWPO.mjs:6794:3)
+    at RouterProvider2
+
+ ✓ src/__tests__/research/project-graph.test.tsx (9 tests) 38449ms
+   ✓ isolates graph by project and rejects a foreign response 1000ms
+   ✓ shows node details and readable evidence with a document jump 13329ms
+   ✓ method view keeps same method experiment settings separate 9879ms
+   ✓ impact view highlights dependency paths without calling the plan wrong 632ms
+   ✓ shows empty graph state 366ms
+   ✓ shows service failure while preserving return links 2931ms
+   ✓ older request cannot overwrite a newly navigated project 10076ms
+ ✓ src/__tests__/AccountRecovery.test.tsx (10 tests) 34033ms
+   ✓ registration checks confirmation before creating an account and forwards optional email 7199ms
+   ✓ email recovery shows a neutral receipt and offers the offline recovery path 5564ms
+   ✓ a reset link works in local mode, removes its token from the URL, and returns to sign-in 4831ms
+   ✓ a verification link waits for confirmation and preserves the signed-in workspace 3743ms
+   ✓ recovery without mail explains the fallback and invalid code leaves the form retryable 4653ms
+   ✓ registration stays hidden when disabled, including after signing out 3861ms
+   ✓ pending authentication cannot be submitted a second time 1436ms
+   ✓ an expired local account stays at sign-in until explicitly leaving that account 2457ms
+ ✓ src/__tests__/ManageLibrary.test.tsx (6 tests) 15627ms
+   ✓ multiuser explains unavailable collection and extraction with actual configured upload limits 6317ms
+   ✓ quota load failure leaves uploading available and can be retried 3383ms
+   ✓ local mode keeps collection and model extraction available without a quota request 4071ms
+   ✓ legacy add link keeps the project and imports directly into its reading workspace 629ms
+   ✓ existing library paper can retry project binding and then reads inside the same workspace 684ms
+   ✓ batch binding skips existing project papers 533ms
+stderr | src/__tests__/PdfReader.test.tsx > a 21-page paper opens evidence page 14 without saving a different reading position
+Warning: Please use the `legacy` build in Node.js environments.
+
+ ✓ src/__tests__/PdfReader.test.tsx (19 tests) 26935ms
+   ✓ a version mismatch shows one recoverable error without repeated reading advice 4210ms
+   ✓ a 21-page paper opens evidence page 14 without saving a different reading position 575ms
+   ✓ fixed zoom keeps its accurate label and scale through resizes until fit width is selected 5055ms
+   ✓ page controls wait for the PDF and accept keyboard page navigation 452ms
+   ✓ typed out-of-range and empty page values cannot request invalid PDF pages 414ms
+   ✓ invalid initial page -4 is bounded to 1 before rendering 328ms
+   ✓ invalid initial page NaN is bounded to 1 before rendering 305ms
+   ✓ invalid initial page 2.7 is bounded to 2 before rendering 322ms
+   ✓ continuous reading keeps all page positions but renders only nearby pages 338ms
+   ✓ fit width uses the actual dimensions of landscape and portrait pages 4861ms
+   ✓ fit width follows the actual scroll viewport after padding and scrollbar space 320ms
+   ✓ full text search finds unrendered pages and navigates matching pages 3247ms
+   ✓ PDF outline resolves named destinations and navigates nested chapters 2491ms
+   ✓ source boxes use PDF coordinates on only the targeted page 356ms
+   ✓ parsed section headings provide navigation when the PDF has no embedded outline 2195ms
+   ✓ expanded reading works when the browser does not offer native fullscreen 370ms
+   ✓ scroll position reports the visible page without snapping when the saved page echoes back 485ms
+stderr | src/__tests__/AssistantInteractions.test.tsx > four scenarios are the limit and drafts survive a project version refresh
+Warning: An update to ScenarioPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenarioPanel (D:/storage/Codex_program/AI4S/frontend/src/components/workspace/ScenarioPanel.tsx:51:26)
+
+stderr | src/__tests__/AssistantInteractions.test.tsx > four scenarios are the limit and drafts survive a project version refresh
+Warning: An update to ScenarioPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenarioPanel (D:/storage/Codex_program/AI4S/frontend/src/components/workspace/ScenarioPanel.tsx:51:26)
+Warning: An update to ScenarioPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenarioPanel (D:/storage/Codex_program/AI4S/frontend/src/components/workspace/ScenarioPanel.tsx:51:26)
+
+ ✓ src/__tests__/AssistantInteractions.test.tsx (4 tests) 19658ms
+   ✓ tensor feedback follows the numeric control and windows support single step/reset 2958ms
+   ✓ scenarios cancel old requests and keep only the latest response 1349ms
+   ✓ four scenarios are the limit and drafts survive a project version refresh 11553ms
+   ✓ practice conflict preserves the answer and reload enables a versioned retry 3787ms
+ ✓ src/__tests__/Actions.test.tsx (3 tests) 28817ms
+   ✓ switching lists clears the previous list before loading the next one 8099ms
+   ✓ a pending replan cannot attach its preview to another list 9867ms
+   ✓ changing the budget invalidates a preview that is still loading 10838ms
+ ✓ src/__tests__/research/projects-list.test.tsx (4 tests) 29813ms
+   ✓ empty project state is explicit 529ms
+   ✓ StrictMode double interaction creates a project once 12124ms
+   ✓ an exploratory workspace does not require a specific question or validation objective 11851ms
+   ✓ a workspace can be created by entering only its temporary name 5299ms
+ ✓ src/__tests__/QuickLauncher.test.tsx (6 tests) 7566ms
+   ✓ global shortcut opens focused keyboard navigation without any background search 1741ms
+   ✓ metadata results support keyboard opening and safely encode the paper ID 715ms
+   ✓ query changes cancel work and ignore old responses even when a transport ignores abort 1011ms
+   ✓ failure can retry; escape cancels pending requests and restores trigger focus 2191ms
+   ✓ global and workspace shortcuts open only their own dialog 1265ms
+   ✓ knowledge search names its space and opens the exact unified node 634ms
+ ✓ src/__tests__/research/stale-state.test.tsx (6 tests) 19324ms
+   ✓ excluded datasets override the allowlist 1155ms
+   ✓ changing selection invalidates an existing comparison 10271ms
+   ✓ a comparison arriving after project version change is ignored 7693ms
+ ✓ src/__tests__/ReadingWorkspaceContext.test.tsx (9 tests) 17822ms
+   ✓ reading opens with the assistance panel closed and does not request insights or resources 1216ms
+   ✓ new selected text clears an older session and sends the exact source context only on request 1646ms
+   ✓ a successful tutor session URL update keeps the mobile drawer and selected passage open 876ms
+   ✓ reopening the same passage retains its fetched document, page and quote without another fetch 1090ms
+   ✓ a slow note save cannot replace another record opened through a deep link 4774ms
+   ✓ recovering an editor draft decodes its content and saves to the original record with source metadata 8169ms
+ ✓ src/__tests__/PlatformExecution.test.tsx (6 tests) 18471ms
+   ✓ one failed workflow section preserves successful activity and suggestions 5212ms
+   ✓ task polling does not overlap slow requests and aborts on unmount 2294ms
+   ✓ task failure uses backoff and keeps explicit error state 1911ms
+   ✓ runtime and PDF coverage show their precise available scope 2759ms
+   ✓ automatic actions preview saves fingerprint and remains reloadable 879ms
+   ✓ processing task view only loads system tasks 5405ms
+ ❯ src/__tests__/research/next-step.test.tsx (1 test | 1 failed) 16167ms
+   × manual evidence, comparison and plan workflows remain reachable without automatic processing or completion 16157ms
+ ✓ src/__tests__/research/space-experience.test.tsx (5 tests) 13435ms
+   ✓ legacy record links open the canonical outcomes editor without mounting every output tool 1012ms
+   ✓ nonrobotics research never mounts the diffusion practice 4044ms
+   ✓ practice stays absent until project preferences arrive and remains hidden when disabled 2394ms
+   ✓ changing outcomes tool loads just the selected workflow 5681ms
+ ✓ src/__tests__/roadmap.test.tsx (2 tests) 17114ms
+   ✓ saved roadmap reloads and progress uses stable id and version 7404ms
+   ✓ generation requires explicit target selection 9697ms
+ ✓ src/__tests__/KnowledgeComparisonAuto.test.tsx (4 tests) 12538ms
+   ✓ opening comparison restores cached results and automatically requests GET preview without a model POST 1406ms
+   ✓ typing a custom comparison dimension automatically displays its new table row without generation 2484ms
+   ✓ a per-cell PATCH records the expected revision and survives automatic preview refresh 5589ms
+   ✓ an items refresh for the same comparison ID cannot overwrite a context-selected D2 method 3049ms
+ ✓ src/__tests__/research/research-domain.test.tsx (3 tests) 8073ms
+   ✓ free text remains a custom research domain while known suggestions retain their profile 891ms
+   ✓ project settings accept a new domain directly and send it in custom_domain 5145ms
+   ✓ choosing a recognized domain clears an obsolete custom label on save 2031ms
+ ✓ src/__tests__/automatic-roadmap-preview.test.tsx (1 test) 1367ms
+   ✓ machine checked route remains a read-only preview 1365ms
+ ❯ src/__tests__/research/decision-overview.test.tsx (5 tests | 1 failed) 2717ms
+   ✓ overview shows saved rationale, unknowns and immutable snapshot links 346ms
+   ✓ failed refresh clears outdated decisions and retry restores current server data 197ms
+   ✓ an old project response cannot replace the new project's overview 39ms
+   × content corrections save through the API and preserve input on version conflict 2132ms
+   ✓ upper bounds and unknown values cannot look like exact measured scores 0ms
+ ✓ src/__tests__/ReadLaterPreview.test.tsx (4 tests) 295ms
+ ✓ src/__tests__/MathTextRendering.test.tsx (7 tests) 231ms
+ ✓ src/__tests__/ReadingWorkspaceStrictMode.test.tsx (2 tests) 1179ms
+   ✓ StrictMode effect replay preserves an initial selected-text draft and its saved source 644ms
+   ✓ switching papers drops the previous source and lesson context before opening the next reader 533ms
+ ✓ src/__tests__/WorkflowLoop.test.tsx (1 test) 190ms
+stderr | src/__tests__/Workspace.test.tsx > one paper links reading, reproduction and research without claiming verification
+Warning: [antd: Input] `addonBefore` is deprecated. Please use `Space.Compact` instead.
+Warning: [antd: Input] `addonBefore` is deprecated. Please use `Space.Compact` instead.
+Warning: [antd: Input] `addonBefore` is deprecated. Please use `Space.Compact` instead.
+Warning: [antd: Input] `addonBefore` is deprecated. Please use `Space.Compact` instead.
+
+ ✓ src/__tests__/Workspace.test.tsx (1 test) 1132ms
+   ✓ one paper links reading, reproduction and research without claiming verification 1129ms
+ ✓ src/__tests__/PaperDetailContinuity.test.tsx (4 tests) 933ms
+   ✓ multiuser reading exposes named fields and explains unavailable processing before clicking 342ms
+ ✓ src/__tests__/LearningDependencies.test.tsx (7 tests) 930ms
+ ✓ src/__tests__/Graph.test.tsx (2 tests) 859ms
+   ✓ an empty search retains the explicit project scope instead of loading the account overview 626ms
+ ✓ src/__tests__/CaseStudy.test.tsx (4 tests) 660ms
+ ✓ src/__tests__/EvidenceMatrixNavigation.test.tsx (1 test) 751ms
+   ✓ the editor waits for delayed source navigation before restoring an unsaved cell draft 749ms
+ ✓ src/__tests__/Pages.test.tsx (2 tests) 647ms
+   ✓ paper list uses server pagination 643ms
+ ✓ src/__tests__/NextPhase.test.tsx (1 test) 638ms
+   ✓ workflow shows an evidence-bound review action without changing mastery 636ms
+ ✓ src/__tests__/KnowledgeExperience.test.tsx (9 tests) 591ms
+ ✓ src/__tests__/PdfUploadQueue.test.tsx (14 tests) 594ms
+ ✓ src/__tests__/PaperSearchPanel.test.tsx (4 tests) 524ms
+ ✓ src/__tests__/research/project-routing.test.tsx (7 tests) 245ms
+ ✓ src/__tests__/GraphConvenience.test.tsx (1 test) 416ms
+   ✓ search preserves a group of matching datasets and source context after selecting one 414ms
+ ✓ src/__tests__/App.test.tsx (1 test) 361ms
+   ✓ home starts with research spaces and two clear entry paths while retaining diagnostics and tasks 322ms
+ ✓ src/__tests__/LearningFocus.test.tsx (6 tests) 407ms
+ ✓ src/__tests__/PersonalizedRoadmapDemo.test.tsx (1 test) 376ms
+   ✓ the complete demo is available immediately and changes prerequisites with the learner 374ms
+ ✓ src/__tests__/PaperReaderPosition.test.tsx (7 tests) 335ms
+ ✓ src/__tests__/TopicExplorer.test.tsx (2 tests) 344ms
+ ✓ src/__tests__/research/project-audit.test.tsx (2 tests) 322ms
+ ✓ src/__tests__/RuntimeStatus.test.tsx (7 tests) 313ms
+ ✓ src/__tests__/KnowledgePractice.test.tsx (7 tests) 294ms
+ ✓ src/__tests__/Home.test.tsx (6 tests) 267ms
+ ✓ src/__tests__/KnowledgeLearningContent.test.tsx (11 tests) 268ms
+ ✓ src/__tests__/GraphFlatNavigation.test.tsx (4 tests) 217ms
+ ✓ src/__tests__/KnowledgeGraphLayout.test.ts (9 tests) 252ms
+ ✓ src/__tests__/ShellNavigation.test.tsx (3 tests) 238ms
+ ✓ src/__tests__/research/print.test.tsx (2 tests) 171ms
+ ✓ src/__tests__/KnowledgePathPanel.test.tsx (2 tests) 97ms
+ ✓ src/__tests__/GraphDraft.test.ts (4 tests) 81ms
+ ✓ src/__tests__/ProjectFeatures.test.tsx (8 tests) 37ms
+ ✓ src/__tests__/RecentProjects.test.tsx (2 tests) 26ms
+ ✓ src/__tests__/KnowledgeApi.test.ts (5 tests) 8ms
+ ✓ src/__tests__/UploadApi.test.ts (2 tests) 5ms
+ ✓ src/__tests__/research/projects-api.test.ts (2 tests) 5ms
+ ✓ src/__tests__/ReadingPositionApi.test.ts (1 test) 4ms
+ ✓ src/__tests__/LibraryApi.test.ts (1 test) 4ms
+ ✓ src/__tests__/SearchApi.test.ts (1 test) 4ms
+ ✓ src/__tests__/QuickFindApi.test.ts (1 test) 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/research/decision-overview.test.tsx > content corrections save through the API and preserve input on version conflict
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "保存新版本"
+
+Here are the accessible roles:
+
+  button:
+
+  Name "修订内容":
+  <button
+    class="ant-btn css-dev-only-do-not-override-mncuj7 ant-btn-default ant-btn-color-default ant-btn-variant-outlined"
+    type="button"
+  />
+
+  --------------------------------------------------dialog:
+
+  Name "修订：Patch Method":
+  <div
+    aria-labelledby="test-id"
+    aria-modal="true"
+    class="ant-modal css-dev-only-do-not-override-mncuj7 ant-zoom-appear ant-zoom-appear-prepare ant-zoom"
+    role="dialog"
+    style="width: 520px;"
+  />
+
+  --------------------------------------------------
+  button:
+
+  Name "Close":
+  <button
+    aria-label="Close"
+    class="ant-modal-close"
+    type="button"
+  />
+
+  Name "关 闭":
+  <button
+    class="ant-btn css-dev-only-do-not-override-mncuj7 ant-btn-default ant-btn-color-default ant-btn-variant-outlined"
+    type="button"
+  />
+
+  Name "loading 保存新版本":
+  <button
+    class="ant-btn css-dev-only-do-not-override-mncuj7 ant-btn-primary ant-btn-color-primary ant-btn-variant-solid ant-btn-loading"
+    type="button"
+  />
+
+  --------------------------------------------------
+  img:
+
+  Name "close":
+  <span
+    aria-label="close"
+    class="anticon anticon-close ant-modal-close-icon"
+    role="img"
+  />
+
+  Name "loading":
+  <span
+    aria-label="loading"
+    class="anticon anticon-loading anticon-spin"
+    role="img"
+  />
+
+  --------------------------------------------------
+  alert:
+
+  Name "":
+  <div
+    class="ant-alert ant-alert-info ant-alert-no-icon css-dev-only-do-not-override-mncuj7"
+    data-show="true"
+    role="alert"
+  />
+
+  Name "":
+  <div
+    class="ant-alert ant-alert-error ant-alert-no-icon css-dev-only-do-not-override-mncuj7"
+    data-show="true"
+    role="alert"
+  />
+
+  --------------------------------------------------
+  combobox:
+
+  Name "修订字段":
+  <input
+    aria-autocomplete="list"
+    aria-controls="rc_select_TEST_OR_SSR_list"
+    aria-expanded="false"
+    aria-haspopup="listbox"
+    aria-label="修订字段"
+    aria-owns="rc_select_TEST_OR_SSR_list"
+    autocomplete="off"
+    class="ant-select-selection-search-input"
+    id="rc_select_TEST_OR_SSR"
+    readonly=""
+    role="combobox"
+    style="opacity: 0;"
+    type="search"
+    unselectable="on"
+    value=""
+  />
+
+  Name "修订依据":
+  <input
+    aria-autocomplete="list"
+    aria-controls="rc_select_TEST_OR_SSR_list"
+    aria-expanded="false"
+    aria-haspopup="listbox"
+    aria-label="修订依据"
+    aria-owns="rc_select_TEST_OR_SSR_list"
+    autocomplete="off"
+    class="ant-select-selection-search-input"
+    id="rc_select_TEST_OR_SSR"
+    readonly=""
+    role="combobox"
+    style="opacity: 0;"
+    type="search"
+    unselectable="on"
+    value=""
+  />
+
+  --------------------------------------------------
+  textbox:
+
+  Name "修订内容":
+  <textarea
+    aria-label="修订内容"
+    class="ant-input css-dev-only-do-not-override-mncuj7 ant-input-outlined"
+    maxlength="8000"
+    placeholder="填写核对后的内容；可选字段留空表示未知"
+    rows="4"
+  />
+
+  Name "修订人":
+  <input
+    aria-label="修订人"
+    class="ant-input css-dev-only-do-not-override-mncuj7 ant-input-outlined"
+    maxlength="200"
+    placeholder="修订人"
+    type="text"
+    value="Reviewer"
+  />
+
+  Name "修订理由":
+  <textarea
+    aria-label="修订理由"
+    class="ant-input css-dev-only-do-not-override-mncuj7 ant-input-outlined"
+    maxlength="4000"
+    placeholder="修订理由"
+  />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <button
+      class="ant-btn css-dev-only-do-not-override-mncuj7 ant-btn-default ant-btn-color-default ant-btn-variant-outlined"
+      type="button"
+    >
+      <span>
+        修订内容
+      </span>
+    </button>
+  </div>
+  <div>
+    <div
+      class="ant-modal-root css-dev-only-do-not-override-mncuj7"
+    >
+      <div
+        class="ant-modal-mask"
+      />
+      <div
+        class="ant-modal-wrap"
+        tabindex="-1"
+      >
+        <div
+          aria-labelledby="test-id"
+          aria-modal="true"
+          class="ant-modal css-dev-only-do-not-override-mncuj7 ant-zoom-appear ant-zoom-appear-prepare ant-zoom"
+          role="dialog"
+          style="width: 520px;"
+        >
+          <div
+            style="outline: none;"
+            tabindex="0"
+          >
+            <div
+              class="ant-modal-content"
+            >
+              <button
+                aria-label="Close"
+                class="ant-modal-close"
+                type="button"
+              >
+                <span
+                  aria-label="Close"
+                  class="ant-modal-close-x"
+                >
+                  <span
+                    aria-label="close"
+                    class="anticon anticon-close ant-modal-close-icon"
+                    role="img"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      data-icon="close"
+                      fill="currentColor"
+                      fill-rule="evenodd"
+                      focusable="false"
+                      height="1em"
+                      viewBox="64 64 896 896"
+                      width="1em"
+                    >
+                      <path
+                        d="M799.86 166.31c.02 0 .04.02.08.06l57.69 57.7c.04.03.05.05.06.08a.12.12 0 010 .06c0 .03-.02.05-.06.09L569.93 512l287.7 287.7c.04.04.05.06.06.09a.12.12 0 010 .07c0 .02-.02.04-.06.08l-57.7 57.69c-.03.04-.05.05-.07.06a.12.12 0 01-.07 0c-.03 0-.05-.02-.09-.06L512 569.93l-287.7 287.7c-.04.04-.06.05-.09.06a.12.12 0 01-.07 0c-.02 0-.04-.02-.08-.06l-57.69-57.7c-.04-.03-.05-.05-.06-.07a.12.12 0 010-.07c0-.03.02-.05.06-.09L454.07 512l-287.7-287.7c-.04-.04-.05-.06-.06-.09a.12.12 0 010-.07c0-.02.02-.04.06-.08l57.7-57.69c.03-.04.05-.05.07-.06a.12.12 0 01.07 0c.03 0 .05.02.09.06L512 454.07l287.7-287.7c.04-.04.06-.05.09-.06a.12.12 0 01.07 0z"
+                      />
+                    </svg>
+                  </span>
+                </span>
+              </button>
+              <div
+                class="ant-modal-header"
+              >
+                <div
+                  class="ant-modal-title"
+                  id="test-id"
+                >
+                  修订：Patch Method
+                </div>
+              </div>
+              <div
+                class="ant-modal-body"
+              >
+                <div
+                  class="ant-space css-dev-only-do-not-override-mncuj7 ant-space-vertical ant-space-gap-row-small ant-space-gap-col-small"
+                  style="width: 100%;"
+                >
+                  <div
+                    class="ant-space-item"
+                  >
+                    <div
+                      class="ant-alert ant-alert-info ant-alert-no-icon css-dev-only-do-not-override-mncuj7"
+                      data-show="true"
+                      role="alert"
+                    >
+                      <div
+                        class="ant-alert-content"
+                      >
+                        <div
+                          class="ant-alert-message"
+                        >
+                          修订保存为人工输入，回到待确认状态；旧版本与快照保留。
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    class="ant-space-item"
+                  >
+                    <div
+                      class="ant-alert ant-alert-error ant-alert-no-icon css-dev-only-do-not-override-mncuj7"
+                      data-show="true"
+                      role="alert"
+                    >
+                      <div
+                        class="ant-alert-content"
+                      >
+                        <div
+                          class="ant-alert-message"
+                        >
+                          服务端内容已变化，修正未覆盖新版本。请保留当前输入，关闭并重新加载事实后再次核对。
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    class="ant-space-item"
+                  >
+                    <div
+                      aria-label="修订字段"
+                      class="ant-select ant-select-outlined css-dev-only-do-not-override-mncuj7 ant-select-single ant-select-show-arrow"
+                      style="width: 100%;"
+                    >
+                      <div
+                        class="ant-select-selector"
+                      >
+                        <span
+                          class="ant-select-selection-wrap"
+                        >
+                          <span
+                            class...
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/__tests__/research/decision-overview.test.tsx:65:26
+     63|   expect(onSaved).not.toHaveBeenCalled();
+     64|   expect(api.reviseProjectFact).toHaveBeenCalledWith(project.id, metho…
+     65|   fireEvent.click(screen.getByRole("button", { name: "保存新版本" }));
+       |                          ^
+     66|   await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+     67| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/__tests__/research/next-step.test.tsx > manual evidence, comparison and plan workflows remain reachable without automatic processing or completion
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/__tests__/research/next-step.test.tsx:19:1
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 63 passed (65)
+      Tests  2 failed | 318 passed (320)
+   Start at  12:20:22
+   Duration  917.85s (tests 63%, import 31%, environment 4%, transform 1%, setup 1%)
+
+     Import  235 modules were evaluated 822 times · 280.89s total, 31% of tracked time
+             ~200.58s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+

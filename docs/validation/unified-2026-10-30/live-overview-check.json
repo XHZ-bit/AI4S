@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "real_data_read_only": true,
+  "source_roots": 22,
+  "scope_count": 3,
+  "includes_library": true,
+  "all_roots_identified": true,
+  "all_roots_have_child_count": true,
+  "browser_source_expand_checked": true,
+  "preservation_reference": "summary.json"
+}

@@ -30,6 +30,7 @@ from app.models.research import (
     ResearchProject,
 )
 from app.research.domain_profiles import DOMAIN_DIMENSIONS
+from app.research.field_bindings import matching_bindings
 
 
 _IMAGE_HINTS = {
@@ -77,15 +78,12 @@ def _display_list(values: Iterable[object]) -> str | None:
 
 
 def _evidence_for_paths(fact, tokens: Iterable[str]) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    normalized_tokens = {_norm_name(token) for token in tokens}
     evidence: set[str] = set()
     conflicts: set[str] = set()
-    for binding in fact.field_evidence:
-        path = _norm_name(binding.field_path)
-        if any(token in path or path in token for token in normalized_tokens):
-            evidence.update(binding.evidence_ids)
-            if binding.finding_status == FindingStatus.CONFLICTING:
-                conflicts.update(binding.evidence_ids or {binding.field_path})
+    for binding in matching_bindings(fact, tokens):
+        evidence.update(binding.evidence_ids)
+        if binding.finding_status == FindingStatus.CONFLICTING:
+            conflicts.update(binding.evidence_ids or {binding.field_path})
     return tuple(sorted(evidence)), tuple(sorted(conflicts))
 
 
@@ -250,6 +248,8 @@ def _candidate_facts(
                 raise ValueError("comparison candidate references a missing measurement")
             if measurement.experiment_setting_id != setting.id:
                 raise ValueError("measurement does not belong to the selected setting")
+            if measurement.project_id != request.project_id:
+                raise ValueError("measurement belongs to another project")
             if measurement.status == RecordStatus.WITHDRAWN:
                 raise ValueError("withdrawn measurements cannot be compared")
             selected_measurements.append(measurement)

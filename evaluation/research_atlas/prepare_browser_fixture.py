@@ -222,6 +222,7 @@ def prepare_fixture(output_dir: Path) -> dict[str, object]:
             finding_status="reported",
             field_evidence=[
                 _field_evidence("dataset", evidence_id),
+                _field_evidence("dataset_version", evidence_id),
                 _field_evidence("split", evidence_id),
                 _field_evidence("evaluation_protocol", evidence_id),
                 _field_evidence("resources", evidence_id, FindingStatus.UNKNOWN),
@@ -247,6 +248,7 @@ def prepare_fixture(output_dir: Path) -> dict[str, object]:
             finding_status="reported",
             field_evidence=[
                 _field_evidence("dataset", evidence_id),
+                _field_evidence("dataset_version", evidence_id),
                 _field_evidence("split", evidence_id),
                 _field_evidence("evaluation_protocol", evidence_id),
                 _field_evidence("random_seed", evidence_id, FindingStatus.UNKNOWN),

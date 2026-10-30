@@ -11,6 +11,7 @@ class CollectReq(BaseModel):
     categories: list[str]
     start_year: int = 2021
     max_results: int = Field(default=50, ge=1, le=200)
+    include_citations: bool = False
 
     @field_validator("start_year")
     @classmethod

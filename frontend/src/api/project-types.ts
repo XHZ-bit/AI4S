@@ -1,10 +1,12 @@
 // Frozen JSON contract shared by the Research Atlas project workflow.
 // Keep field names and enum values in sync with backend/app/models/research.py.
 
-export const CONTRACT_VERSION = "research-v1.1" as const;
+export const CONTRACT_VERSION = "research-v1.2" as const;
 
-export type DomainId = "image_anomaly_detection" | "time_series_forecasting";
-export type SourceKind = "literature_report" | "user_input" | "model_suggestion";
+export type DomainId = "custom" | "robot_policy_learning" | "image_anomaly_detection" | "time_series_forecasting";
+export type ProjectStage = 'exploring' | 'framing' | 'validating';
+export const PROJECT_STAGES:Record<ProjectStage,string>={exploring:'探索方向',framing:'形成问题',validating:'验证想法'};
+export type SourceKind = "literature_report" | "user_input" | "model_suggestion" | "system_template";
 export type RecordStatus = "candidate" | "user_confirmed" | "disputed" | "withdrawn";
 export type FindingStatus = "unknown" | "not_found" | "not_parsed" | "conflicting" | "reported";
 export type ReviewStatus = "current" | "needs_review";
@@ -106,11 +108,16 @@ export interface ResearchProjectCreate {
   title: string;
   research_question: string;
   domain: DomainId;
+  custom_domain?: string | null;
+  stage?: ProjectStage;
   constraints: ProjectConstraints;
 }
 
 export interface ResearchProjectPatch {
   expected_version: number;
+  domain?: DomainId;
+  custom_domain?: string | null;
+  stage?: ProjectStage;
   title: string | null;
   research_question: string | null;
   status: ProjectStatus | null;
@@ -123,6 +130,8 @@ export interface ResearchProject {
   title: string;
   research_question: string;
   domain: DomainId;
+  custom_domain?: string | null;
+  stage?: ProjectStage;
   domain_profile_version: string;
   status: ProjectStatus;
   constraints: ProjectConstraints;
@@ -210,7 +219,7 @@ export interface Measurement extends FactBase {
 }
 
 export interface CandidateBundle {
-  contract_version: typeof CONTRACT_VERSION;
+  contract_version: typeof CONTRACT_VERSION | "research-v1.1";
   project_id: string;
   paper_link_id: string;
   document_id: string;
@@ -265,7 +274,7 @@ export interface ComparisonGroup {
 }
 
 export interface ComparisonResult {
-  contract_version: typeof CONTRACT_VERSION;
+  contract_version: typeof CONTRACT_VERSION | "research-v1.1";
   project_id: string;
   project_version: number;
   dimensions: ComparisonDimension[];
@@ -350,7 +359,7 @@ export interface FrozenDocument {
 
 export interface ProjectSnapshot {
   id: string;
-  contract_version: typeof CONTRACT_VERSION;
+  contract_version: typeof CONTRACT_VERSION | "research-v1.1";
   project_id: string;
   snapshot_version: number;
   frozen_project_version: number;
@@ -372,7 +381,7 @@ export interface SnapshotCreateRequest {
 }
 
 export interface ExtractionInput {
-  contract_version: typeof CONTRACT_VERSION;
+  contract_version: typeof CONTRACT_VERSION | "research-v1.1";
   project_id: string;
   paper_link: PaperLink;
   document: FrozenDocument;
@@ -428,7 +437,7 @@ export interface GraphEdge {
 }
 
 export interface GraphProjection {
-  contract_version: typeof CONTRACT_VERSION;
+  contract_version: typeof CONTRACT_VERSION | "research-v1.1";
   project_id: string;
   snapshot_id: string;
   snapshot_version: number;
@@ -531,6 +540,8 @@ export interface DomainProfile {
 }
 
 export const DOMAIN_PROFILES: Readonly<Record<DomainId, DomainProfile>> = {
+ custom:{id:'custom',version:'custom-v1',label:'自定义 / 暂未确定',comparison_dimensions:['dataset','dataset_version','split','evaluation_protocol','metric_name','metric_scope','aggregation'],common_metrics:[],incompatibility_rules:['需要补充领域特有条件，不自动排名']},
+ robot_policy_learning: {"id": "robot_policy_learning", "version": "robot-policy-learning-v1", "label": "机器人策略学习", "comparison_dimensions": ["task", "environment_version", "observation_modality", "action_space", "demonstration_data", "split", "evaluation_episodes", "evaluation_protocol", "metric_name", "aggregation"], "common_metrics": ["success_rate", "mean_return"], "incompatibility_rules": ["任务、观测、动作与评估条件一致后方可比较"]},
   image_anomaly_detection: {
     id: "image_anomaly_detection",
     version: "image-anomaly-v1",
@@ -577,3 +588,5 @@ export const DOMAIN_PROFILES: Readonly<Record<DomainId, DomainProfile>> = {
     ],
   },
 };
+
+export function projectDomainLabel(project:Pick<ResearchProject,'domain'|'custom_domain'>){return project.domain==='custom'?(project.custom_domain||'领域待探索'):DOMAIN_PROFILES[project.domain].label;}

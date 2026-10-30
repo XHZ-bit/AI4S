@@ -44,6 +44,7 @@ export default function AutomaticRoadmapPreview() {
       <Space>每周时间 <InputNumber aria-label="候选路线每周小时" min={1} max={80} value={weeklyHours} onChange={value => setWeeklyHours(value ?? 10)} /> 小时 <Button type="primary" disabled={!target || !goal.trim()} loading={busy} onClick={() => void run()}>生成候选预览</Button></Space>
       {error && <Alert type="warning" showIcon message="候选资料不足或检查失败" description={error} />}
       {preview && <>
+        <Link to={`/actions?target=${encodeURIComponent(target || "")}&goal=${encodeURIComponent(goal)}`}>保存为自动行动清单 →</Link>
         <Alert type="info" showIcon message={`已检查 ${preview.checked_relations} 条关系`} description={preview.notice} />
         <Typography.Text type="secondary">阅读与练习估算 {preview.schedule.estimated_minutes} 分钟；未排期任务 {preview.schedule.unscheduled_count} 项。</Typography.Text>
         {preview.route.phases.map(phase => <Card size="small" key={phase.phase} title={`${phase.title} · ${phase.weeks}`}>

@@ -38,6 +38,9 @@ def isolated_services(tmp_path, monkeypatch, test_tls_context):
 
     monkeypatch.setattr(Settings, "__init__", settings_init)
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("ACCESS_MODE", "local")
+    monkeypatch.setenv("REQUIRE_LOGIN", "false")
+    monkeypatch.setenv("OFFLINE_MODE", "false")
     monkeypatch.setenv("RESEARCH_MODEL_ENABLED", "false")
     monkeypatch.setenv("DASHSCOPE_API_KEY", "")
     monkeypatch.setenv("GROBID_BASE_URL", "http://127.0.0.1:1")

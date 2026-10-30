@@ -291,6 +291,7 @@ def _normalize_passage(raw: dict[str, Any], document_id: str) -> _Passage:
             raise ExtractionInputError(f"passage {pid} metadata_json is invalid") from exc
     if not isinstance(metadata, dict):
         raise ExtractionInputError(f"passage {pid} metadata must be an object")
+    metadata = dict(metadata)
     for key in ("table_id", "row_label", "column_label"):
         if raw.get(key) is not None:
             metadata[key] = raw[key]
@@ -352,13 +353,25 @@ def _validate_input(value: ExtractionInput) -> list[_Passage]:
 
 
 class _Assembler:
-    def __init__(self, extraction_input: ExtractionInput):
+    def __init__(self, extraction_input: ExtractionInput, existing_ids: set[str] | None = None):
         self.input = extraction_input
+        self.existing_ids = existing_ids or set()
+        self.legacy_ids: dict[str, str] = {}
         self.evidence: dict[str, EvidenceRef] = {}
         self.methods: list[MethodCard] = []
         self.settings: list[ExperimentSetting] = []
         self.measurements: list[Measurement] = []
         self.warnings: list[str] = []
+
+    def scoped_id(self, kind: str, *parts: object) -> str:
+        legacy = _stable_id(kind, *(self.legacy_ids.get(str(part), part) for part in parts))
+        scoped = _stable_id(kind, self.input.project_id, self.input.paper_link.id,
+                           self.input.document.document_version, *parts)
+        # The caller supplies only IDs already owned by this frozen source.
+        # Preserve legacy references without rewriting immutable snapshots.
+        identity = legacy if legacy in self.existing_ids else scoped
+        self.legacy_ids[identity] = legacy
+        return identity
 
     def warn(self, code: str) -> None:
         self.warnings.append(code[:1000])
@@ -371,7 +384,7 @@ class _Assembler:
         }.get(passage.kind, EvidenceKind.TEXT)
 
     def add_table_placeholder(self, passage: _Passage) -> None:
-        evidence_id = _stable_id("ev", passage.document_id, passage.id, "table_manual")
+        evidence_id = self.scoped_id("ev", passage.document_id, passage.id, "table_manual")
         locator = EvidenceLocator(
             page=passage.page,
             heading=passage.heading,
@@ -412,7 +425,7 @@ class _Assembler:
                 value = empty_value
             else:
                 conflict_group_id = (
-                    _stable_id("conflict", passage.id, field_path)
+                    self.scoped_id("conflict", passage.id, field_path)
                     if status == FindingStatus.CONFLICTING
                     else None
                 )
@@ -452,6 +465,37 @@ class _Assembler:
                 self.warn(f"non_reported_evidence_removed:{passage.id}:{field_path}")
             value = empty_value
 
+        if status == FindingStatus.REPORTED and isinstance(claim, _DirectionClaim):
+            # A familiar metric name is not a source statement about direction.
+            quotes = " ".join(self.evidence[eid].quote or "" for eid in evidence_ids)
+            expressions = {
+                MetricDirection.HIGHER_IS_BETTER: r"(?:higher|larger|greater)(?:\s+\w+){0,3}\s+(?:better|preferred)|越(?:高|大)越好",
+                MetricDirection.LOWER_IS_BETTER: r"(?:lower|smaller)(?:\s+\w+){0,3}\s+(?:better|preferred)|越(?:低|小)越好",
+                MetricDirection.TARGET_IS_BETTER: r"closer to (?:the )?target|接近目标值",
+            }
+            pattern = expressions.get(value)
+            clauses = re.split(r"[;；。!?！？\n]|\.\s+", quotes)
+            if not pattern or not any(re.search(pattern, clause, re.IGNORECASE)
+                    and not re.search(r"\bnot\b|并非|不是", clause, re.IGNORECASE) for clause in clauses):
+                self.warn(f"direction_not_explicit:{passage.id}:{field_path}")
+                value, status = empty_value, FindingStatus.NOT_PARSED
+
+        if status == FindingStatus.REPORTED and isinstance(claim, _NumericClaim):
+            try:
+                NumericValue.model_validate(value.model_dump())
+            except ValueError:
+                self.warn(f"invalid_numeric_bounds:{passage.id}:{field_path}")
+                value, status = empty_value, FindingStatus.NOT_PARSED
+
+        if status == FindingStatus.REPORTED and isinstance(claim, _NumericClaim):
+            quotes = " ".join(self.evidence[eid].quote or "" for eid in evidence_ids)
+            uncertain = bool(re.search(r"not (?:actually )?measured|was not measured|未测量|未经测量", quotes, re.IGNORECASE))
+            missing_bound = ((re.search(r"up to|at most|至多|最高(?:为|达)", quotes, re.IGNORECASE) and value.upper is None)
+                             or (re.search(r"at least|至少", quotes, re.IGNORECASE) and value.lower is None))
+            if uncertain or missing_bound:
+                self.warn(f"numeric_qualifier_requires_review:{passage.id}:{field_path}")
+                value, status = empty_value, FindingStatus.NOT_PARSED
+
         return value, status, FieldEvidence(
             field_path=field_path,
             source_kind=SourceKind.LITERATURE_REPORT,
@@ -484,7 +528,7 @@ class _Assembler:
             self.warn(f"quote_not_found:{passage.id}:{field_path}")
             return None
         end = start + len(raw.quote)
-        evidence_id = _stable_id(
+        evidence_id = self.scoped_id(
             "ev", passage.document_id, passage.id, field_path, status.value, start, end
         )
         self.evidence[evidence_id] = EvidenceRef(
@@ -540,7 +584,7 @@ class _Assembler:
             ensure_ascii=False,
             sort_keys=True,
         )
-        method_id = _stable_id(
+        method_id = self.scoped_id(
             "method", passage.document_id, passage.id, draft.local_id, method_index
         )
         fields: list[FieldEvidence] = [name_evidence, attribution_evidence]
@@ -650,7 +694,7 @@ class _Assembler:
         if name_status != FindingStatus.REPORTED or not name:
             self.warn(f"setting_skipped_without_grounded_name:{passage.id}:{draft.local_id}")
             return
-        setting_id = _stable_id(
+        setting_id = self.scoped_id(
             "setting", passage.document_id, passage.id, method_id, draft.local_id, setting_index
         )
         fields = [name_field]
@@ -772,7 +816,7 @@ class _Assembler:
         uncertainty_value = (
             NumericValue(**uncertainty.model_dump()) if uncertainty is not None else None
         )
-        measurement_id = _stable_id(
+        measurement_id = self.scoped_id(
             "measurement",
             passage.document_id,
             passage.id,
@@ -836,16 +880,22 @@ def _lexically_grounded(value: Any, quotes: list[str]) -> bool:
     joined = " ".join(quotes)
     normalized_quote = re.sub(r"\s+", " ", joined.casefold()).strip()
     if isinstance(value, _NumericDraft):
+        # Match whole numeric tokens: 1e-3 is 0.001, never 1 or -3;
+        # .5 is 0.5, never 5. Do not extract digits from identifiers.
         numbers = [
             float(token.replace(",", ""))
-            for token in re.findall(r"[-+]?\d[\d,]*(?:\.\d+)?", joined)
+            for token in re.findall(
+                r"(?<![\w.,])[-+]?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d*)?|\.\d+)"
+                r"(?:[eE][-+]?\d+)?(?!\w|\.\d|,\d)",
+                joined.replace("−", "-"),
+            )
         ]
         required = [value.value]
         if value.lower is not None:
             required.append(value.lower)
         if value.upper is not None:
             required.append(value.upper)
-        return all(any(abs(number - item) <= 1e-12 for number in numbers) for item in required)
+        return all(item in numbers for item in required)
     if isinstance(value, bool):
         return str(value).casefold() in normalized_quote
     if isinstance(value, (int, float)):
@@ -858,7 +908,7 @@ def _lexically_grounded(value: Any, quotes: list[str]) -> bool:
     return False
 
 
-def extract_candidates(input: ExtractionInput) -> CandidateBundle:
+def extract_candidates(input: ExtractionInput, *, existing_ids: set[str] | None = None) -> CandidateBundle:
     """Extract passage-scoped candidates without reading or writing persistence.
 
     Text passages may fail independently.  A partial bundle carries explicit
@@ -874,7 +924,7 @@ def extract_candidates(input: ExtractionInput) -> CandidateBundle:
         except Exception as exc:
             raise ExtractionInputError(f"invalid ExtractionInput: {exc}") from exc
     passages = _validate_input(input)
-    assembler = _Assembler(input)
+    assembler = _Assembler(input, existing_ids)
     eligible = 0
     succeeded = 0
     failures: list[str] = []

@@ -11,7 +11,7 @@ def _unpack(b: bytes) -> list[float]:
     return list(struct.unpack(f"{len(b) // 8}d", b))
 
 
-def save_proposal(conn, paper_uid, kind, payload, confidence, embedding=None):
+def save_proposal(conn, paper_uid, kind, payload, confidence, embedding=None, *, commit=True):
     existing = conn.execute(
         "SELECT id, payload_json FROM extraction_proposals "
         "WHERE paper_uid=? AND kind=? AND status IN ('pending', 'approved', 'auto_merged')",
@@ -43,7 +43,8 @@ def save_proposal(conn, paper_uid, kind, payload, confidence, embedding=None):
             _pack(embedding) if embedding else None,
         ),
     )
-    conn.commit()
+    if commit:
+        conn.commit()
     return cur.lastrowid
 
 
@@ -83,6 +84,8 @@ def update_status(conn, pid, status, edited_payload=None):
         conn.execute(
             "UPDATE extraction_proposals SET status=? WHERE id=?", (status, pid)
         )
+    from app.knowledge.unified import sync_legacy
+    sync_legacy(conn, kid=pid)
     conn.commit()
 
 

@@ -1,0 +1,31 @@
+.kw-learning-without-toc { grid-template-columns: minmax(0, 1fr); }
+.kw-learning-management {
+ margin-top: 28px;
+ border-top: 1px solid var(--atlas-line);
+ padding-top: 16px;
+ color: var(--atlas-muted);
+ font-size: 13px;
+}
+.kw-learning-management > summary { cursor: pointer; width: fit-content; }
+.kw-learning-management > div { display: grid; gap: 4px; margin-top: 12px; max-width: 480px; }
+.kw-learning-management > div > div { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.kw-learning-management .ant-btn { color: var(--atlas-accent); }
+.kw-learning-view>.kw-learning-heading { display: block; }
+.kw-learning-content-kind { display: inline-block; margin-top: 10px; color: var(--atlas-muted); font-size: 12px; }
+.kw-learning-request { display: grid; grid-template-columns: minmax(0,1fr) 150px auto; align-items: end; gap: 14px; margin-top: 20px; }
+.kw-learning-request label { display: grid; gap: 7px; color: var(--atlas-ink); font-size: 13px; }
+.kw-learning-request select { width: 100%; min-height: 38px; padding: 7px 10px; border: 1px solid var(--atlas-line); border-radius: 7px; color: var(--atlas-ink); background: var(--atlas-surface); }
+.kw-learning-request select:focus-visible { outline: 2px solid var(--atlas-accent); outline-offset: 2px; }
+.kw-learning-history,.kw-learning-coverage { margin: 14px 0; color: var(--atlas-muted); font-size: 13px; }
+.kw-learning-history summary,.kw-learning-coverage summary { cursor: pointer; width: fit-content; }
+.kw-learning-history>div { display: grid; gap: 4px; margin-top: 10px; }
+.kw-learning-history button { background: transparent; border: 0; color: var(--atlas-accent); text-align: left; padding: 8px 0; cursor: pointer; max-width: 90ch; overflow-wrap: anywhere; }
+.kw-learning-coverage ul { padding: 0; margin: 10px 0; list-style: none; }
+.kw-learning-coverage li { display: grid; grid-template-columns: 160px 70px minmax(0,1fr); gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--atlas-line); }
+.kw-learning-coverage strong { color: var(--atlas-ink); font-weight: 500; }
+@media(max-width:800px) {
+ .kw-learning-request { grid-template-columns: minmax(0,1fr) auto; gap: 12px; margin-top: 14px; }
+ .kw-learning-request>label:first-child { grid-column: 1/-1; }
+ .kw-learning-coverage li { grid-template-columns: minmax(0,1fr) 70px; }
+ .kw-learning-coverage small { grid-column: 1/-1; }
+}

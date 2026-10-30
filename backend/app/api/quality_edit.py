@@ -15,11 +15,27 @@ class Edit(BaseModel):
     actor: str = Field(min_length=1)
     reason: str = Field(min_length=1)
     payload: dict
+    expected_version: int | None = Field(default=None, ge=1)
 
 
 @router.patch("/{kid}")
-def edit_candidate(kid: int, req: Edit):
+def edit_candidate(kid: str, req: Edit):
     with closing(connect()) as conn:
+        kid = str(kid)
+        if not kid.isdigit():
+            from app.knowledge.unified import edit_candidate as edit_unified
+
+            result = edit_unified(
+                conn,
+                kid,
+                req.payload,
+                req.actor,
+                req.reason,
+                expected_version=req.expected_version,
+            )
+            conn.commit()
+            return result
+        kid = int(kid)
         row = conn.execute(
             "SELECT k.*,p.kind,p.payload_json FROM knowledge k JOIN extraction_proposals p ON p.id=k.id WHERE k.id=?",
             (kid,),
@@ -98,5 +114,51 @@ def edit_candidate(kid: int, req: Edit):
                 json.dumps(payload, ensure_ascii=False),
             ),
         )
+        from app.knowledge.unified import sync_legacy
+        from app.knowledge import store
+
+        store.init(conn)
+        mapped = conn.execute(
+            "SELECT record_id,record_table FROM kw_legacy_map WHERE scope_id='library' AND legacy_table='knowledge' AND legacy_id=?",
+            (str(kid),),
+        ).fetchone()
+        if mapped:
+            value = store.record(conn, mapped[1], "library", mapped[0])
+            value["hidden"] = False
+            value["quality_status"] = "candidate"
+            value["metadata"].pop("quality_decision", None)
+            value["metadata"]["user_fields"] = [
+                f
+                for f in value["metadata"].get("user_fields", [])
+                if f
+                not in {
+                    "label",
+                    "summary",
+                    "explanation",
+                    "evidence_ids",
+                    "quality_status",
+                    "hidden",
+                }
+            ]
+            store.put_record(conn, mapped[1], value, preserve_user=False)
+        sync_legacy(conn, kid=kid)
+        mapped = conn.execute(
+            "SELECT record_id,record_table FROM kw_legacy_map WHERE scope_id='library' AND legacy_table='knowledge' AND legacy_id=?",
+            (str(kid),),
+        ).fetchone()
+        if mapped:
+            value = store.record(conn, mapped[1], "library", mapped[0])
+            value["origin"] = "user"
+            value["metadata"]["quality_decision"] = {
+                "action": "edit",
+                "actor": req.actor,
+                "reason": req.reason,
+                "at": store.now(),
+            }
+            value["metadata"]["user_fields"] = sorted(
+                set(value["metadata"].get("user_fields", []))
+                | {"label", "summary", "explanation", "evidence_ids", "origin"}
+            )
+            store.put_record(conn, mapped[1], value, preserve_user=False)
         conn.commit()
         return {"status": "candidate"}

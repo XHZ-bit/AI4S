@@ -1,0 +1,10 @@
+import {useMemo,useState} from 'react';
+import {Button,Input,Pagination,Tag} from 'antd';
+import ResourceAccess from '../ResourceAccess';
+const labels:Record<string,string>={candidate:'待核验',auto_checked:'自动检查通过',human_verified:'人工核验',disputed:'存在争议',withdrawn:'已撤回'};
+export default function KnowledgeDirectory({items,onSource}:{items:any[];onSource:(id:string)=>void}){
+ const [query,setQuery]=useState(''),[page,setPage]=useState(1),[selected,setSelected]=useState<number>();
+ const groups=useMemo(()=>{const map=new Map<string,any>();for(const row of items.filter(k=>k.kind==='entity'&&k.status!=='withdrawn')){const key=`${row.payload.type}:${row.payload.name.trim().toLocaleLowerCase()}`;const group=map.get(key)||{...row,evidence:[]};group.evidence.push(row);map.set(key,group);}return [...map.values()].filter(k=>`${k.payload.name} ${k.payload.type}`.toLowerCase().includes(query.toLowerCase()));},[items,query]);
+ const active=groups.find(k=>k.id===selected);
+ return <section className="ps-knowledge-directory"><Input.Search aria-label="查找本文知识" placeholder="查找术语、方法或数据集" value={query} onChange={e=>{setQuery(e.target.value);setPage(1)}}/><p className="ps-subtle">{groups.length} 个条目 · 同名同类证据归组展示</p><div className="ps-knowledge-list">{groups.slice((page-1)*12,page*12).map(k=><button type="button" key={k.id} aria-pressed={active?.id===k.id} onClick={()=>setSelected(active?.id===k.id?undefined:k.id)}><strong>{k.payload.name}</strong><span>{k.payload.type} · {k.evidence.length} 处依据</span></button>)}</div>{groups.length>12&&<Pagination size="small" current={page} pageSize={12} total={groups.length} showSizeChanger={false} onChange={setPage}/>} {!groups.length&&<p>未找到对应条目，可以继续阅读或换一个关键词。</p>}{active&&<article className="ps-knowledge-detail"><h3>{active.payload.name}</h3><ResourceAccess links={active.access_links}/>{active.evidence.map((k:any)=><section key={k.id}><Tag>{labels[k.status]||k.status}</Tag><blockquote>{k.quote||'暂无可定位证据'}</blockquote>{k.passage_id&&<Button size="small" onClick={()=>onSource(k.passage_id)}>查看这处原文</Button>}</section>)}</article>}</section>
+}

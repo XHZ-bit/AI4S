@@ -1,0 +1,142 @@
+{
+  "original_ruff_issue_count": 199,
+  "final_ruff_issue_count": 0,
+  "formatter_files": 13,
+  "formatter_original_ast_preserved": true,
+  "changed_files": 17,
+  "final_original_ast_unchanged_files": 7,
+  "all_final_edits_match_reviewed_ast": true,
+  "rules_changed": false,
+  "unsafe_fix_used": false,
+  "docs_changed": false,
+  "required_regression_modules": [
+    "legacy graph queries/resources and unified graph compatibility",
+    "PaperStride matrix/scene/dependencies/learning APIs",
+    "workbench records/project services and topic exploration",
+    "personal tutoring/catalog/registration isolation",
+    "collector service imports/batch indexing",
+    "shared graph-first pytest fixtures and grounded comparison tests",
+    "archive and unified knowledge tests that were formatting-only"
+  ],
+  "files": [
+    {
+      "path": "backend/app/api/graph.py",
+      "ast_identical_to_original": false,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Move the two graph service imports before the pure enabled_graph function definition; graphsvc has no api.graph import cycle.",
+      "sha256": "3844b1d6832a898e11e098ea072b7769a43cd338d1042ad43d3378696828d23d"
+    },
+    {
+      "path": "backend/app/api/stride.py",
+      "ast_identical_to_original": false,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Remove unused standard-library uuid4 binding.",
+      "sha256": "07340fee5d731dfd2f47b97f5ea67a78e7d09ca6313e4ae25ab3414db3499d83"
+    },
+    {
+      "path": "backend/app/api/stride_graph.py",
+      "ast_identical_to_original": true,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Whitespace/formatting only; original AST unchanged.",
+      "sha256": "d7f16ab2b4144186468f8dda7b6cefb3b368320a4cdedc2d262e06c16bc10a60"
+    },
+    {
+      "path": "backend/app/api/stride_learning.py",
+      "ast_identical_to_original": true,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Whitespace/formatting only; original AST unchanged.",
+      "sha256": "d2ac2288f5a3ae647fc421cf6a6196fdd11bf3adf006314dcc9c534327c8f4de"
+    },
+    {
+      "path": "backend/app/api/topic_exploration.py",
+      "ast_identical_to_original": false,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Remove unused projects binding; workbench imports and initializes the same module before this removed import.",
+      "sha256": "057ffd7c784b1a6fc4c9a567331f377225e09fd6a7c8794592c1ba8c8472419f"
+    },
+    {
+      "path": "backend/app/api/tutoring.py",
+      "ast_identical_to_original": true,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Whitespace/formatting only; original AST unchanged.",
+      "sha256": "f6ae8edcd97f0dd2dd12880bcbc0ac56631c2b9823e4cbc77a817be4bd66b8cf"
+    },
+    {
+      "path": "backend/app/api/workbench.py",
+      "ast_identical_to_original": true,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Whitespace/formatting only; original AST unchanged.",
+      "sha256": "1f944b5d5bbd9d6497c3344686bee573fcd0618a6fdbd5a46615b01db4ceac90"
+    },
+    {
+      "path": "backend/app/collector/service.py",
+      "ast_identical_to_original": false,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Remove unused index_paper binding while retaining index_papers from the same module, preserving module import side effects.",
+      "sha256": "03b07061ee6bfad175b7fee7fd8a18d79c9d4aeaef39f7afc89d5753cbdef8c2"
+    },
+    {
+      "path": "backend/app/learning_catalog.py",
+      "ast_identical_to_original": false,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Move authored DIFFUSION_LESSONS import ahead of the literal LESSONS construction; curriculum has no import back to catalog.",
+      "sha256": "686d7d883fce1db3a3c2f79b344582bb2d29a2bd8fdcbb4d8a514b813db26079"
+    },
+    {
+      "path": "backend/tests/test_data_archive.py",
+      "ast_identical_to_original": true,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Whitespace/formatting only; original AST unchanged.",
+      "sha256": "a48f6cef3d751efdb97dbe045f53f2c3ca1dbbb1556c264482aa27cff93ac7e2"
+    },
+    {
+      "path": "backend/tests/test_graph_convenience.py",
+      "ast_identical_to_original": false,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Rename three comprehension-local l bindings to link; expressions and assertions unchanged.",
+      "sha256": "fee75b27047de8651f21a8cd09d8af336c343f1a3508e9cbc6ac8adcba521b82"
+    },
+    {
+      "path": "backend/tests/test_graph_first.py",
+      "ast_identical_to_original": false,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Bind the same original pytest fixture objects through the imported module, retaining names fake_model and synchronous. Helper imports and test arguments unchanged.",
+      "sha256": "8b38f22bc7d20757289afa925d597036e2227fd8b6ba9111c36d37fdb578454c"
+    },
+    {
+      "path": "backend/tests/test_paperstride.py",
+      "ast_identical_to_original": false,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Prefix unused dep and pid bindings with underscore in their respective tests; request and project-creation expressions remain unchanged.",
+      "sha256": "cb5b664c19bdde3a786ede81400954ea520af7f29292967d6fcd122ecd5e1105"
+    },
+    {
+      "path": "backend/tests/test_personal_learning.py",
+      "ast_identical_to_original": false,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Prefix unused second_headers binding with underscore, preserving registration call; remove unused upsert_paper while retaining connect from the same module.",
+      "sha256": "d9719acf39fb97ac76d5a28ceb6902521a44d8468fd704e9a187fed4b13198bf"
+    },
+    {
+      "path": "backend/tests/test_topic_exploration.py",
+      "ast_identical_to_original": true,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Whitespace/formatting only; original AST unchanged.",
+      "sha256": "23a7769d7ffe6ed9967504af0da0db28481b0f099ac466f88582485b1eb7faba"
+    },
+    {
+      "path": "backend/tests/test_unified_knowledge.py",
+      "ast_identical_to_original": true,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Whitespace/formatting only; original AST unchanged.",
+      "sha256": "dc749be4abf377ddcfaa6dad758329e80d33afcc0c261fb998a0211b9a9bbdcf"
+    },
+    {
+      "path": "backend/tests/test_workbench_services.py",
+      "ast_identical_to_original": false,
+      "matches_reviewed_expected_ast": true,
+      "reviewed_difference": "Remove unused closing/json/connect imports; app.main still imports sqlite, no imported module's side effects are removed from test initialization.",
+      "sha256": "98bc8e5c8a6d9a95fb9fbda12d242f64a00052c527713d08d57f981bf564d946"
+    }
+  ]
+}

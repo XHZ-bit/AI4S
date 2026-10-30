@@ -17,7 +17,7 @@ const api = vi.hoisted(() => {
   }
   return {
     getProjectFacts: vi.fn(), listProjectPapers: vi.fn(), getProjectTask: vi.fn(), linkProjectPaper: vi.fn(), retryProjectTask: vi.fn(), startProjectExtraction: vi.fn(), transitionFact: vi.fn(),
-    compareProjectCandidates: vi.fn(), saveProjectDecision: vi.fn(), updateProject: vi.fn(),
+    compareProjectCandidates: vi.fn(), getComparisonReadiness: vi.fn(), saveProjectDecision: vi.fn(), updateProject: vi.fn(),
     listProjectDecisions: vi.fn(), listProjectPlans: vi.fn(), listProjectSnapshots: vi.fn(), generateProjectPlan: vi.fn(), saveProjectPlan: vi.fn(), createProjectSnapshot: vi.fn(),
     snapshotExportUrl: vi.fn(() => "http://example.test/export"), getProjectGraph: vi.fn(), getProjectProjectionStatus: vi.fn(), retryProjectProjection: vi.fn(),
     isVersionConflict: (error: unknown) => error instanceof MockProjectApiError && error.status === 409,
@@ -37,6 +37,7 @@ beforeEach(() => {
   api.getProjectFacts.mockResolvedValue(facts);
   api.listProjectPapers.mockResolvedValue({ items: [] });
   api.compareProjectCandidates.mockResolvedValue(comparison);
+  api.getComparisonReadiness.mockResolvedValue({ candidates: [], pairs: [], total_pairs: 0, truncated: false, notice: "自动核查" });
   api.saveProjectDecision.mockResolvedValue(decision);
   api.listProjectDecisions.mockResolvedValue({ items: [decision] });
   api.listProjectPlans.mockResolvedValue({ items: [{ ...plan, version: 2, title: "最新方案" }, plan] });
@@ -49,6 +50,32 @@ test("refresh restores the explicitly selected saved plan instead of the oldest 
   localStorage.setItem(`research-atlas:selected-plan:${project.id}`, "saved-new-plan");
   render(<PlansPanel project={project} />);
   expect(await screen.findByDisplayValue("最近保存的人工方案")).toBeTruthy();
+});
+
+test("comparison readiness explains missing conditions without ranking", async () => {
+  api.getComparisonReadiness.mockResolvedValue({
+    candidates: [{ setting_id: "setting-1", method_id: "method-1", label: "Method / Setting",
+      constraint_status: "unknown", missing_fields: ["split"], source_gaps: ["quote_mismatch"], constraint_gaps: [] }],
+    pairs: [{ left_setting_id: "setting-1", right_setting_id: "setting-2",
+      status: "information_insufficient", missing_fields: ["split"],
+      conflicting_fields: [], next_action: "补齐缺失的原文条件或测量",
+      source_gaps: ["quote_mismatch"],
+      condition_checks: [{ field: "split", status: "missing", left_value: "official", right_value: null, reason: "至少一侧没有记录" }],
+      shared_metrics: [{ metric_name: "AUROC", metric_scope: "image", scale: "raw", unit: null,
+        aggregation: null, left_measurement_id: "m1", right_measurement_id: "m2" }] }],
+    total_pairs: 1, truncated: false, notice: "自动核查，不验证科研结论。",
+  });
+  render(<MemoryRouter><ComparisonPanel project={project} /></MemoryRouter>);
+  expect(await screen.findByText("比较准备度 · 自动核查")).toBeTruthy();
+  expect(screen.getByText(/待补齐 划分/)).toBeTruthy();
+  expect(screen.getByText(/补齐缺失的原文条件或测量/)).toBeTruthy();
+  expect(screen.getByText(/共同指标仅限：AUROC \/ image/)).toBeTruthy();
+  fireEvent.click(screen.getByText("查看逐项条件与指标检查"));
+  expect(screen.getByText(/划分：official \/ 未记录/)).toBeTruthy();
+  expect(screen.getAllByRole("link", { name: /来源问题/ }).length).toBeGreaterThan(0);
+  const beforeRefresh = api.getComparisonReadiness.mock.calls.length;
+  fireEvent.click(screen.getByRole("button", { name: "刷新比较依据" }));
+  await waitFor(() => expect(api.getComparisonReadiness.mock.calls.length).toBe(beforeRefresh + 1));
 });
 
 test("partial extraction stays visible and manual correction remains a local draft", async () => {

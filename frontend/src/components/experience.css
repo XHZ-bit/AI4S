@@ -1,0 +1,99 @@
+/* Research surfaces: content leads, controls stay close to their object. */
+.atlas-shell.atlas-interface .atlas-content{padding-top:24px}
+.atlas-shell.atlas-interface h1,.atlas-shell.atlas-interface h2.ant-typography{font-size:26px;line-height:1.35;letter-spacing:-.025em}
+.atlas-shell.atlas-interface .ps-workspace-tools{justify-content:flex-end;padding:0;margin:0 0 12px;background:transparent;min-height:30px;border:0}
+.atlas-shell.atlas-interface .ps-workspace-tools .ant-btn{border-color:transparent;background:transparent;box-shadow:none;color:var(--atlas-muted)}
+.atlas-shell.atlas-interface .atlas-paper-title-row h2.ant-typography{font-size:26px;margin-bottom:6px}
+.atlas-shell.atlas-interface .atlas-paper-back{margin-bottom:10px}
+.atlas-shell.atlas-interface .atlas-paper-metadata{font-size:13px}
+.atlas-shell.atlas-interface .atlas-paper-options{margin-top:8px;background:transparent}
+.atlas-shell.atlas-interface .atlas-paper-options .ant-collapse-header{padding:4px 0!important}
+.atlas-shell.atlas-interface .atlas-paper-tabs>.ant-tabs-nav .ant-tabs-tab{padding:8px 0;font-size:15px}
+.atlas-shell.atlas-interface .atlas-reader-controls{padding:8px 10px;margin-bottom:8px;background:var(--atlas-surface-alt)}
+.atlas-shell.atlas-interface .atlas-pdf-pages{padding:12px 8px;max-height:calc(100dvh - 265px);min-height:260px}
+.ps-paper-reader{min-width:0}
+.ps-paper-reader>.atlas-muted,.ps-paper-reader>p[role=status]{font-size:12px;margin:6px 0;color:var(--atlas-muted)}
+.ps-reading-actions{position:relative;min-width:0}
+.ps-selection-tools{position:absolute;z-index:7;display:flex;flex-wrap:wrap;align-items:center;gap:2px;max-width:100%;padding:5px;border-radius:9px;background:var(--atlas-surface-raised);box-shadow:0 5px 20px #142a3b26;border:1px solid var(--atlas-line)}
+.ps-selection-tools .ant-btn{border:0;box-shadow:none}
+.ps-reading-extra{width:100%;padding:14px 0}
+.ps-reading-extra>summary{cursor:pointer;font-weight:600;color:var(--atlas-ink);padding:4px 0}
+.ps-reading-extra[open]>summary{margin-bottom:16px}
+.ps-reading-extra>.ant-card{border:0;background:transparent}
+.ps-reading-extra .ant-card-body{padding:16px 0}
+.ps-knowledge-directory{max-width:900px}
+.ps-knowledge-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 20px;margin:12px 0}
+.ps-knowledge-list>button{display:grid;text-align:left;padding:12px;border:0;border-radius:7px;background:transparent;color:var(--atlas-ink);cursor:pointer;gap:4px;overflow-wrap:anywhere}
+.ps-knowledge-list>button[aria-pressed=true],.ps-knowledge-list>button:hover{background:var(--atlas-accent-soft)}
+.ps-knowledge-list span,.ps-subtle{color:var(--atlas-muted);font-size:13px;line-height:1.7}
+.ps-knowledge-detail{margin-top:20px;padding:20px;background:var(--atlas-surface-alt);border-radius:10px}
+.ps-knowledge-detail section{padding:12px 0}
+.ps-knowledge-detail blockquote,.ps-selected-source blockquote,.ps-notebook blockquote{margin:12px 0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;font-size:14px}
+.ps-selected-source{margin:10px 0 16px}.ps-selected-source summary{cursor:pointer;color:var(--atlas-muted);font-size:13px}
+.ps-focus-learning{display:inline-flex;margin:6px 0 12px;font-size:14px}
+.atlas-shell.atlas-interface .atlas-notebook.ps-notebook{margin-top:0}
+.ps-notebook-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.ps-notebook-heading h3{margin:0!important;font-size:18px}
+.ps-notebook-layout{display:grid;grid-template-columns:minmax(180px,240px) minmax(0,1fr);gap:28px}
+.ps-notebook-directory{min-width:0}.ps-notebook-directory nav{display:grid;gap:4px;margin-top:12px;max-height:60vh;overflow:auto}
+.ps-notebook-directory nav button{display:grid;gap:5px;padding:11px 12px;text-align:left;color:var(--atlas-ink);background:transparent;border:0;border-radius:7px;cursor:pointer;font:inherit;overflow-wrap:anywhere}
+.ps-notebook-directory nav button[aria-current=page],.ps-notebook-directory nav button:hover{background:var(--atlas-accent-soft)}
+.ps-notebook-directory nav button strong{font-size:14px;font-weight:550}.ps-notebook-directory nav button span{font-size:12px;color:var(--atlas-muted)}
+.ps-notebook-editor{min-width:0;max-width:850px}.ps-notebook-editor>input.ant-input{font-size:19px;font-weight:600;padding:10px 12px}
+.ps-editor-meta{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:12px 0}.ps-editor-meta .ant-select{min-width:145px}.ps-editor-meta a{font-size:13px}
+.ps-notebook-editor>textarea.ant-input{font-size:15px;line-height:1.85;padding:16px;background:var(--atlas-surface-raised)}
+.ps-notebook-editor>div[role=status]{font-size:12px;color:var(--atlas-muted);margin:8px 0}.ps-notebook-editor>div[role=status]>p{margin:0}
+.ps-record-empty{padding:36px 20px;max-width:60ch;color:var(--atlas-muted)}.ps-record-empty h3{color:var(--atlas-ink)}
+.ps-notebook.is-compact .ps-notebook-layout{display:flex;flex-direction:column-reverse;gap:20px}
+.ps-notebook.is-compact .ps-notebook-directory nav{max-height:220px}
+.atlas-shell.atlas-interface .atlas-inspector{border:0;box-shadow:0 4px 24px #142a3b0a;top:80px}
+.atlas-shell.atlas-interface .atlas-inspector-body{padding:16px}
+.atlas-shell.atlas-interface .tutor-current-step,.atlas-shell.atlas-interface .learning-prose{max-width:74ch;line-height:1.85}
+.atlas-shell.atlas-interface .tutor-step-nav{flex-wrap:wrap}
+.atlas-shell.atlas-interface .tutor-step-nav button{white-space:normal;text-align:left}
+.atlas-shell.atlas-interface .learning-footnote>summary{cursor:pointer;font-size:12px}
+.atlas-shell.atlas-interface ::selection{background:var(--atlas-accent-soft);color:var(--atlas-ink)}
+@media(max-width:1023px){.ps-notebook-layout{grid-template-columns:190px minmax(0,1fr);gap:18px}.atlas-shell.atlas-interface .atlas-pdf-pages{max-height:65dvh}}
+@media(max-width:767px){.atlas-shell.atlas-interface .atlas-content{padding-top:16px}.atlas-shell.atlas-interface h1,.atlas-shell.atlas-interface h2.ant-typography,.atlas-shell.atlas-interface .atlas-paper-title-row h2.ant-typography{font-size:24px}.atlas-shell.atlas-interface .ps-workspace-tools{margin-bottom:10px}.atlas-shell.atlas-interface .ps-workspace-tools>.ant-space{justify-content:flex-end}.atlas-paper-title-row{gap:10px;flex-wrap:wrap}.ps-notebook-layout{display:flex;flex-direction:column;gap:16px}.ps-notebook-directory nav{display:flex;overflow:auto;max-width:100%}.ps-notebook-directory nav button{flex:0 0 160px}.ps-knowledge-list{grid-template-columns:1fr}.ps-selection-tools{left:0!important;width:max-content;max-width:100%}.atlas-shell.atlas-interface .atlas-pdf-pages{min-height:220px;max-height:65dvh}.ps-notebook-editor>textarea.ant-input{padding:12px}.atlas-shell.atlas-interface .atlas-reader-controls{gap:6px!important}.ps-workspace-tools .ant-btn{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.ps-notebook *, .ps-selection-tools *{scroll-behavior:auto!important;transition:none!important}}
+
+.ps-project-reader-tools{max-width:100%;margin-bottom:14px}.ps-project-reader-tools .ant-space-item{min-width:0;max-width:100%}
+.atlas-shell.atlas-interface .ps-sidebar-spaces{grid-template-columns:minmax(0,1fr)}.atlas-shell.atlas-interface .ps-sidebar-spaces a{min-width:0;max-width:100%}.atlas-shell.atlas-interface .ps-sidebar-spaces a>span:not(.anticon){min-width:0}
+
+.atlas-shell.atlas-interface .atlas-paper-page.is-embedded .atlas-paper-heading{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;margin:0}.atlas-shell.atlas-interface .atlas-paper-page.is-embedded .atlas-paper-options{margin:0}.atlas-paper-page.is-embedded .atlas-paper-options:has(.ant-collapse-item-active){grid-column:1/-1}
+@media(max-width:767px){.atlas-shell.atlas-interface .atlas-paper-page.is-embedded .atlas-paper-heading{grid-template-columns:1fr}.atlas-paper-page.is-embedded .atlas-paper-save-state{display:none}}
+@media(max-width:767px){.atlas-shell.atlas-interface .atlas-paper-page.is-embedded .atlas-paper-heading{grid-template-columns:minmax(0,1fr) auto;gap:6px}.atlas-paper-page.is-embedded .atlas-paper-title-row>div{display:none}.atlas-shell.atlas-interface .atlas-paper-page.is-embedded .atlas-paper-title-row>.ant-btn{width:auto;font-size:13px}.atlas-shell.atlas-interface .atlas-paper-page.is-embedded .atlas-paper-options .ant-collapse-header{font-size:13px}.atlas-paper-page.is-embedded .atlas-paper-options:has(.ant-collapse-item-active){grid-column:1/-1}}
+
+/* Shared finish: quiet surfaces and a consistent reading rhythm. */
+.atlas-shell.atlas-interface .atlas-content { padding-top: 32px; }
+.atlas-shell.atlas-interface h1, .atlas-shell.atlas-interface h2.ant-typography { font-size: 28px; font-weight: 650; letter-spacing: -.025em; }
+.atlas-shell.atlas-interface .atlas-brand > div { font-size: 17px; font-weight: 650; letter-spacing: -.035em; }
+.atlas-shell.atlas-interface .atlas-account-signin { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 12px; color: var(--atlas-accent-strong); border: 1px solid var(--atlas-line); border-radius: var(--atlas-radius); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.atlas-shell.atlas-interface .atlas-account-signin:hover { background: var(--atlas-selected); border-color: var(--atlas-accent); }
+.atlas-shell.atlas-interface .atlas-sidebar nav.ps-sidebar-spaces { gap: 4px; margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--atlas-line); }
+.atlas-shell.atlas-interface .atlas-sidebar-bottom { padding-top: 18px; border-top: 1px solid var(--atlas-line); }
+.atlas-shell.atlas-interface .atlas-footer { font-size: 11px; }
+.atlas-shell.atlas-interface .atlas-inspector { border: 1px solid var(--atlas-line); border-radius: var(--atlas-radius-panel); box-shadow: none; }
+.atlas-shell.atlas-interface .atlas-action-card:hover, .atlas-shell.atlas-interface .atlas-resource-card:hover { transform: none; box-shadow: none; border-color: var(--atlas-accent); background: var(--atlas-surface-alt); }
+.atlas-shell.atlas-interface .ant-card { border-radius: var(--atlas-radius-panel); }
+.atlas-shell.atlas-interface .ant-card .ant-card { border: 0; border-radius: 0; background: transparent; }
+.atlas-shell.atlas-interface :is(.atlas-manage-import, .atlas-library, .ps-create-space, .settings-content) { border: 1px solid var(--atlas-line); border-radius: var(--atlas-radius-panel); }
+.atlas-shell.atlas-interface .ant-table { font-variant-numeric: tabular-nums; }
+.atlas-shell.atlas-interface .ant-table-thead > tr > th { font-size: 12px; color: var(--atlas-muted); background: var(--atlas-surface-alt); }
+.atlas-shell.atlas-interface .ant-tag { border-radius: 4px; font-size: 12px; }
+.atlas-shell.atlas-interface :is(.ant-tabs-tab, .ant-segmented-item-label) { font-size: 14px; }
+.atlas-shell.atlas-interface .ant-tabs-top > .ant-tabs-nav::before { border-color: var(--atlas-line); }
+.atlas-shell.atlas-interface .ant-form-item-label > label { font-size: 14px; }
+.atlas-shell.atlas-interface .atlas-overview-stat strong { font-size: 22px; color: var(--atlas-ink); }
+.atlas-shell.atlas-interface .atlas-overview-stat { background: transparent; border: 0; border-radius: 0; border-bottom: 1px solid var(--atlas-line); }
+.atlas-shell.atlas-interface .ps-project-next { border-radius: var(--atlas-radius-panel); background: var(--atlas-surface); border: 1px solid var(--atlas-line); }
+.atlas-shell.atlas-interface .stride-table-scroll th { background: var(--atlas-surface-alt); }
+.atlas-shell.atlas-interface .stride-practice-layout nav button[aria-current=step] { background: var(--atlas-selected); color: var(--atlas-accent-strong); }
+.atlas-shell.atlas-interface .stride-experiment { color: var(--atlas-accent); }
+.atlas-shell.atlas-interface :is(.stride-cell small, .stride-practice-layout nav button span) { color: var(--atlas-muted); }
+@media(max-width: 767px) {
+  .atlas-shell.atlas-interface .atlas-content { padding-top: 24px; }
+  .atlas-shell.atlas-interface h1, .atlas-shell.atlas-interface h2.ant-typography { font-size: 25px; }
+  .atlas-shell.atlas-interface .atlas-account-signin { padding: 0 9px; font-size: 12px; }
+  .atlas-shell.atlas-interface .atlas-global-header { gap: 4px; padding-inline: 12px; }
+}

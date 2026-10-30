@@ -7,7 +7,7 @@ import json
 from app.models.research import DomainId
 
 
-PROMPT_VERSION = "research-extraction-prompt-v2"
+PROMPT_VERSION = "research-extraction-prompt-v4"
 SCHEMA_VERSION = "research-extraction-schema-v1"
 
 SYSTEM_PROMPT = f"""You extract source-grounded method and experiment candidates.
@@ -45,6 +45,28 @@ Rules:
   measurement in this passage and bind it to its exact setting.
 - Do not emit commands. Return one JSON object only, matching the supplied
   schema exactly. Unknown fields are forbidden.
+- Names, dataset, split, metric_name and all other factual fields are CLAIM
+  OBJECTS, never bare strings. A reported claim must explicitly include
+  finding_status="reported", value, and its own evidence array. Omitting
+  finding_status means unknown and the value will be discarded.
+- List fields (mechanisms, limitations, notes, etc.) are ONE claim object
+  with a list-valued value, not an array of claim objects.
+- A measurement's value is a claim object wrapping a numeric object:
+  {{"value": {{"value": 0.5, "scale": "raw"}}, "finding_status": "reported",
+   "evidence": [{{"passage_id": "actual id", "quote": "actual exact quote"}}]}}.
+  Evidence belongs to each claim, never directly to a measurement.
+- Omit unknown optional fields, or use value=null, finding_status="unknown",
+  evidence=[]. Do not supply an invented default direction or experimental split.
+- Keep an explicit metric scope (image/pixel/etc.) in metric_scope as well
+  as the source-grounded metric_name. Preserve the source numeric scale;
+  "up to" is an upper-bound statement, not an average or exact observed run.
+- Use claim_role="unclear" when the passage alone does not identify whether
+  the method belongs to the current authors or is cited. A method name alone
+  does not establish authorship.
+- Explicit "our method" or "we propose" establishes current_paper_method;
+  explicit "cited method" establishes cited_method. Do not discard these cues.
+- Keep evidence quotes short and literal. They must not include JSON syntax,
+  escaped serialization fragments, or text from the example below.
 """
 
 
@@ -63,6 +85,26 @@ def build_messages(
         "locator_metadata": {key: value for key, value in passage.items() if key != "text"},
         "passage_text": passage["text"],
         "output_schema": output_schema,
+        "format_example_not_research_data": {
+            "example_passage": "We propose Orchid. Orchid setting Delta uses ToyBench: image score 0.5.",
+            "example_output": {
+                "methods": [{
+                    "local_id": "m1", "claim_role": "current_paper_method",
+                    "name": {"value": "Orchid", "finding_status": "reported", "evidence": [{"passage_id": "example-only", "quote": "We propose Orchid."}]},
+                    "experiment_settings": [{
+                        "local_id": "s1",
+                        "name": {"value": "Delta", "finding_status": "reported", "evidence": [{"passage_id": "example-only", "quote": "Orchid setting Delta"}]},
+                        "dataset": {"value": "ToyBench", "finding_status": "reported", "evidence": [{"passage_id": "example-only", "quote": "uses ToyBench"}]},
+                        "measurements": [{
+                            "local_id": "v1",
+                            "metric_name": {"value": "score", "finding_status": "reported", "evidence": [{"passage_id": "example-only", "quote": "image score 0.5"}]},
+                            "metric_scope": {"value": "image", "finding_status": "reported", "evidence": [{"passage_id": "example-only", "quote": "image score 0.5"}]},
+                            "value": {"value": {"value": 0.5, "scale": "raw"}, "finding_status": "reported", "evidence": [{"passage_id": "example-only", "quote": "image score 0.5"}]},
+                        }],
+                    }],
+                }], "warnings": [],
+            },
+        },
     }
     return [
         {"role": "system", "content": SYSTEM_PROMPT},

@@ -1,0 +1,7 @@
+.atlas-reading-excerpt { padding: 14px 16px; border-radius: 10px; background: var(--atlas-surface-alt); color: var(--atlas-ink); margin: 12px 0; }
+.atlas-reading-excerpt > strong { font-size: 14px; }
+.atlas-reading-excerpt > p { margin: 6px 0 10px; font-size: 14px; line-height: 1.75; }
+.atlas-reading-excerpt summary { cursor: pointer; color: var(--atlas-accent); font-size: 14px; }
+.atlas-reading-excerpt .atlas-excerpt-caution { color: var(--atlas-muted); font-size: 13px; }
+.atlas-reading-excerpt blockquote { margin: 12px 0 0; max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.7; }
+.atlas-reading-excerpt.is-compact { padding: 12px; }

@@ -3,9 +3,9 @@
 import hashlib
 import re
 from contextlib import closing
-from pathlib import Path
+import pymupdf
 from fastapi import APIRouter, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 from app.db.neo4j_client import merge_paper
 from app.db.sqlite import connect, get_paper, upsert_paper
@@ -23,9 +23,9 @@ def _connect():
 
 
 def _data_dir():
-    from app.config import get_settings
+    from app.tenancy import data_dir
 
-    path = Path(get_settings().data_dir) / "pdfs"
+    path = data_dir() / "pdfs"
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -35,46 +35,125 @@ def process_saved_pdf(conn, uid):
     stage(conn, uid, "parse", "running")
     try:
         raw = path.read_bytes()
+        digest = hashlib.sha256(raw).hexdigest()
+        prior = conn.execute("SELECT id FROM documents WHERE paper_uid=? AND content_hash=?", (uid, digest)).fetchone()
+        if prior:
+            if not conn.execute('SELECT 1 FROM paper_parse_quality WHERE document_id=?', (prior['id'],)).fetchone():
+                from app.paper_quality import record_quality
+                from app.task_control import check_active
+                parsed_quality = parse_pdf(uid, raw, filename=path.name)
+                check_active(conn)
+                record_quality(conn, uid, prior['id'], raw, parsed_quality)
+            stage(conn, uid, "parse", "done")
+            _sync_optional(conn, uid, get_paper(conn, uid))
+            return {"uid": uid, "parse_status": "parsed", "reused": True}
         parsed = parse_pdf(uid, raw, filename=path.name)
+        from app.task_control import check_active
+        check_active(conn)
         paper = get_paper(conn, uid)
-        paper.update(title=parsed.title or paper["title"], abstract=parsed.abstract)
+        # The local fallback extracts page text, but cannot identify an abstract.
+        # Keep collected metadata when a parser has no replacement for it.
+        paper.update(
+            title=parsed.title.strip() or paper["title"],
+            abstract=parsed.abstract.strip() or paper["abstract"],
+        )
         upsert_paper(conn, paper)
-        save_document(conn, uid, parsed, hashlib.sha256(raw).hexdigest(), path.name)
+        did = save_document(conn, uid, parsed, digest, path.name)
+        from app.paper_quality import record_quality
+        quality = record_quality(conn, uid, did, raw, parsed)
         conn.execute("UPDATE papers SET parse_status='parsed' WHERE uid=?", (uid,))
         conn.commit()
         stage(conn, uid, "parse", "done")
     except Exception as exc:
         stage(conn, uid, "parse", "failed", str(exc))
         raise
+    _sync_optional(conn, uid, paper)
+    return {"uid": uid, "parse_status": "parsed", "quality": quality}
+
+
+def _sync_optional(conn, uid, paper):
+    from app.knowledge.unified import sync_metadata
+    sync_metadata(conn, uid=uid)
+    conn.commit()
+    from app.task_control import check_active
+    from app.config import get_settings
+    if get_settings().access_mode == "multiuser":
+        # Intentionally disabled providers are not parse failures or retry work.
+        check_active(conn)
+        stage(conn, uid, "graph", "skipped")
+        stage(conn, uid, "index", "skipped")
+        return
     for name, operation in [
         ("graph", lambda: merge_paper(paper)),
         (
             "index",
-            lambda: index_paper(conn, uid, parsed.title + "\n" + parsed.abstract),
+            lambda: index_paper(conn, uid, paper['title'] + "\n" + paper['abstract']),
         ),
     ]:
+        check_active(conn)
+        if name == "graph":
+            from app.db.neo4j_client import graph_reachable
+            if not graph_reachable():
+                # SQLite is already the source of the local graph projection.
+                stage(conn, uid, name, "done")
+                continue
+        done = conn.execute('SELECT status FROM pipeline_stages WHERE paper_uid=? AND stage=?', (uid,name)).fetchone()
+        if done and done['status'] == 'done':
+            continue
         stage(conn, uid, name, "running")
         try:
             operation()
             stage(conn, uid, name, "done")
         except Exception as exc:
             stage(conn, uid, name, "failed", str(exc))
-    return {"uid": uid, "parse_status": "parsed"}
 
 
 def _store(file, uid=None):
+    from app.tenancy import workspace_write_lock
+    with workspace_write_lock():
+        return _store_locked(file, uid)
+
+
+def _store_locked(file, uid=None):
+    from app.config import get_settings
+    settings = get_settings()
+    managed = settings.access_mode == "multiuser"
+    byte_limit = settings.user_pdf_max_bytes if managed else _MAX_PDF_BYTES
     if uid and (not _UID_RE.fullmatch(uid) or uid in (".", "..")):
         raise HTTPException(400, "invalid uid")
-    raw = file.file.read(_MAX_PDF_BYTES + 1)
-    if len(raw) > _MAX_PDF_BYTES:
-        raise HTTPException(413, "PDF 超过 50MB 限制")
+    raw = file.file.read(byte_limit + 1)
+    if len(raw) > byte_limit:
+        raise HTTPException(413, f"PDF 超过 {byte_limit // (1024 * 1024)}MB 限制")
     if not raw.startswith(b"%PDF-"):
         raise HTTPException(400, "文件不是有效的 PDF")
+    try:
+        with pymupdf.open(stream=raw, filetype="pdf") as document:
+            if document.needs_pass:
+                raise HTTPException(422, "PDF 已加密，请先移除打开密码后重新上传")
+            if document.page_count == 0:
+                raise HTTPException(422, "PDF 没有可读取的页面，请检查文件后重新上传")
+            if managed and document.page_count > settings.user_pdf_max_pages:
+                raise HTTPException(413, f"PDF 超过 {settings.user_pdf_max_pages} 页限制")
+    except (pymupdf.FileDataError, ValueError) as exc:
+        raise HTTPException(422, "PDF 已损坏或无法读取，请检查文件后重新上传") from exc
     digest = hashlib.sha256(raw).hexdigest()
     paper_uid = uid or f"upload-{digest[:24]}"
     path = _data_dir() / f"{paper_uid}.pdf"
     with closing(_connect()) as conn:
+        if uid is None:
+            existing = conn.execute('SELECT paper_uid FROM documents WHERE content_hash=? ORDER BY created_at,paper_uid LIMIT 1', (digest,)).fetchone()
+            if existing and get_paper(conn, existing['paper_uid']):
+                saved_file = _data_dir()/f"{existing['paper_uid']}.pdf"
+                if saved_file.is_file() and saved_file.read_bytes() == raw:
+                    return existing['paper_uid']
         from app.storage import save_original
+
+        if managed and not path.exists():
+            if not get_paper(conn, paper_uid) and conn.execute('SELECT COUNT(*) FROM papers').fetchone()[0] >= settings.user_max_papers:
+                raise HTTPException(409, "个人论文数量已达到当前配额")
+            used = sum(saved.stat().st_size for saved in _data_dir().iterdir() if saved.is_file())
+            if used + len(raw) > settings.user_storage_max_bytes:
+                raise HTTPException(413, "个人原文空间已达到当前配额")
 
         try:
             save_original(path, raw)
@@ -110,11 +189,14 @@ def upload_async(file: UploadFile):
     try:
         return {
             "uid": uid,
-            "task_id": enqueue("ingest", {"uid": uid}),
+            "task_id": enqueue("parse", {"uid": uid}),
             "parse_status": "queued",
         }
     except RuntimeError as exc:
-        raise HTTPException(429, str(exc)) from exc
+        return JSONResponse(status_code=429, content={
+            "detail": f"原文已保存，尚未排入解析；{exc}。请稍后重试解析，无需重新上传文件。",
+            "saved": True, "uid": uid, "parse_status": "not_queued", "retryable": True,
+        })
 
 
 @router.post("/upload")
@@ -122,6 +204,29 @@ def upload(file: UploadFile, uid: str | None = None):
     paper_uid = _store(file, uid)
     with closing(_connect()) as conn:
         return process_saved_pdf(conn, paper_uid)
+
+
+@router.get("/{uid}/quality")
+def quality_report(uid: str):
+    from app.paper_quality import paper_quality
+    with closing(_connect()) as conn:
+        if not get_paper(conn, uid):
+            raise HTTPException(404, "论文不存在")
+        return paper_quality(conn, uid)
+
+
+@router.post('/{uid}/parse', status_code=202)
+def reparse(uid: str):
+    from app.jobs import enqueue
+    if not _UID_RE.fullmatch(uid) or not (_data_dir()/f'{uid}.pdf').is_file():
+        raise HTTPException(404, '本地原文不存在，请先上传 PDF')
+    with closing(_connect()) as conn:
+        if not get_paper(conn, uid):
+            raise HTTPException(404, '论文不存在')
+    try:
+        return {'task_id': enqueue('parse', {'uid':uid})}
+    except RuntimeError as exc:
+        raise HTTPException(429,str(exc)) from exc
 
 
 @router.get("/{uid}/file")

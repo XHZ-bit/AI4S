@@ -11,15 +11,38 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version-file: backend/.python-version
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - run: python -m pip install -e "backend[dev]" ruff
-      - run: python -m ruff check backend/app backend/scripts backend/tests
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: '0.13.1'
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv lock --project backend --check
+      - run: uv sync --project backend --locked --extra dev --python 3.11.17
+      - name: Select the locked backend environment for scripts and browsers
+        shell: python
+        run: |
+          import os
+          from pathlib import Path
+          folder = Path(os.environ['GITHUB_WORKSPACE']) / 'backend' / '.venv'
+          binaries = folder / ('Scripts' if os.name == 'nt' else 'bin')
+          executable = binaries / ('python.exe' if os.name == 'nt' else 'python')
+          with open(os.environ['GITHUB_PATH'], 'a', encoding='utf-8') as output:
+              output.write(str(binaries) + '\n')
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+              output.write('ATLAS_PYTHON=' + str(executable) + '\n')
+      - run: python -m ruff check backend/app backend/scripts backend/tests evaluation/research_atlas evaluation/retrieval
       - run: python backend/scripts/test.py -q
+      - run: python evaluation/research_atlas/evaluate_next_phase.py --output .ui_validation/next-phase-evaluation.json
+      - run: python evaluation/research_atlas/benchmark_local_search.py --output .ui_validation/local-search-benchmark.json
+      - run: python evaluation/research_atlas/benchmark_workflow_projection.py --output .ui_validation/workflow-projection-benchmark.json
+      - run: python evaluation/retrieval/evaluate_retrieval.py --output .ui_validation/retrieval-fts.json
+      - run: python evaluation/retrieval/evaluate_retrieval.py --scan --output .ui_validation/retrieval-scan.json
       - run: npm ci
         working-directory: frontend
       - run: npm test
@@ -34,7 +57,17 @@ jobs:
       - run: node evaluation/research_atlas/run_assistant_browser.cjs .ui_validation/ci-interaction
         env:
           ATLAS_PLAYWRIGHT_PATH: ${{ github.workspace }}/frontend/node_modules/playwright
-          ATLAS_PYTHON: python
+      - run: python evaluation/research_atlas/prepare_platform_fixture.py --output-dir .ui_validation/ci-platform
+      - run: node evaluation/research_atlas/run_platform_browser.cjs .ui_validation/ci-platform
+        env:
+          ATLAS_PLAYWRIGHT_PATH: ${{ github.workspace }}/frontend/node_modules/playwright
+      - run: node evaluation/research_atlas/run_multiuser_browser.cjs .ui_validation/ci-multiuser
+        env:
+          ATLAS_PLAYWRIGHT_PATH: ${{ github.workspace }}/frontend/node_modules/playwright
+      - run: docker compose -f docker-compose.multiuser.yml config --quiet
+        if: runner.os == 'Linux'
+      - run: powershell -ExecutionPolicy Bypass -File evaluation/research_atlas/check_local_runtime.ps1 -OutputDir .ui_validation/ci-runtime
+        if: runner.os == 'Windows'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -42,3 +75,13 @@ jobs:
           path: |
             .ui_validation/ci-interaction/*.png
             .ui_validation/ci-interaction/assistant-browser.json
+            .ui_validation/next-phase-evaluation.json
+            .ui_validation/local-search-benchmark.json
+            .ui_validation/workflow-projection-benchmark.json
+            .ui_validation/retrieval-fts.json
+            .ui_validation/retrieval-scan.json
+            .ui_validation/ci-platform/*.png
+            .ui_validation/ci-platform/platform-browser.json
+            .ui_validation/ci-multiuser/*.png
+            .ui_validation/ci-multiuser/multiuser-browser-report.json
+            .ui_validation/ci-runtime/runtime-check.json

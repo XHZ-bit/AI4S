@@ -15,13 +15,8 @@ from app.roadmap.trusted_queries import get_prerequisite_edges
 def evaluate_candidates(conn, target_uid, profiles, status="demo_curated"):
     failures = []
     checked = 0
-    rows = conn.execute(
-        "SELECT k.*,p.kind,p.payload_json,pa.text,pa.document_id AS source_document "
-        "FROM knowledge k JOIN extraction_proposals p ON p.id=k.id "
-        "LEFT JOIN passages pa ON pa.id=k.passage_id "
-        "WHERE k.status=? AND p.kind='relation' ORDER BY k.id",
-        (status,),
-    ).fetchall()
+    from app.roadmap.trusted_queries import audit_rows
+    rows = [r for r in audit_rows(conn) if r['status'] == status]
     if not rows:
         failures.append("no candidate relations")
     for row in rows:
@@ -34,10 +29,7 @@ def evaluate_candidates(conn, target_uid, profiles, status="demo_curated"):
         start, end = row["start_offset"], row["end_offset"]
         if text is None or start is None or end is None or text[start:end] != row["quote"] or not row["quote"].strip():
             failures.append(f"{kid}: evidence quote is not located")
-        if row["source_document"] != row["document_id"] or not conn.execute(
-            "SELECT 1 FROM documents WHERE id=? AND paper_uid=?",
-            (row["document_id"], row["paper_uid"]),
-        ).fetchone():
+        if row["source_document"] != row["document_id"] or row['document_paper_uid'] != row['paper_uid']:
             failures.append(f"{kid}: source document mismatch")
         checked += 1
     edges = get_prerequisite_edges(conn, status)
@@ -57,7 +49,7 @@ def evaluate_candidates(conn, target_uid, profiles, status="demo_curated"):
                 routes[name] = [phase.title for phase in route.phases]
             except ValueError as exc:
                 failures.append(f"{name}: {exc}")
-    if len(profiles) > 1 and len({tuple(route) for route in routes.values()}) < 2:
+    if not failures and len(profiles) > 1 and len({tuple(route) for route in routes.values()}) < 2:
         failures.append("profiles produced no route difference")
     return {"passed": not failures, "checked_relations": checked,
             "checked_profiles": len(routes), "routes": routes, "failures": failures,

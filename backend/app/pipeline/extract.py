@@ -30,7 +30,7 @@ def extract_paper(conn, paper_uid: str, title: str, abstract: str, intro_excerpt
         save_proposal(
             conn, paper_uid, "entity",
             {"type": ent.type, "name": ent.name, "evidence": ent.evidence},
-            ent.confidence, embedding,
+            ent.confidence, embedding, commit=False,
         )
         saved_entities += 1
 
@@ -46,10 +46,13 @@ def extract_paper(conn, paper_uid: str, title: str, abstract: str, intro_excerpt
              "src_type": ent_type_by_name.get(rel.src_name.lower(), "concept"),
              "dst_type": ent_type_by_name.get(rel.dst_name.lower(), "concept"),
              "evidence": rel.evidence},
-            rel.confidence, None,
+            rel.confidence, None, commit=False,
         )
         saved_relations += 1
 
+    from app.knowledge.unified import sync_legacy
+    sync_legacy(conn, uid=paper_uid)
+    conn.commit()
     discarded = len(result.entities) + len(result.relations) - saved_entities - saved_relations
     logger.info("extract %s: entities=%s relations=%s discarded=%s",
                 paper_uid, saved_entities, saved_relations, discarded)

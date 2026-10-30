@@ -1,0 +1,13 @@
+data
+.tmp
+.ui_validation
+.pytest_cache
+.ruff_cache
+.venv
+venv
+**/__pycache__
+**/*.pyc
+*.egg-info
+build
+.env
+.env.*

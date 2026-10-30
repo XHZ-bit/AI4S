@@ -1,5 +1,7 @@
 # 本机源码教学使用说明
 
+这是保留的可选 Diffusion Policy 源码专题。PaperStride 1.0 主流程从统一图谱节点按需进入学习与练习，见[当前交付说明](unified-release.md)，不要求先完成这个固定专题。
+
 打开 http://localhost:5173/cases/diffusion-policy-intro ，点击“开始学习并保存进度”。这个专题可以不调用模型、不连接图数据库，直接查看固定版本的源码和教学步骤。
 
 ## 本轮已经提供

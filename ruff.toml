@@ -1,0 +1,1 @@
+extend-exclude = [".tmp", ".ui_validation", ".local-backups", "node_modules"]

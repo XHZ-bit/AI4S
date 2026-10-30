@@ -45,7 +45,19 @@ export interface StepRecord {
   updated_at: string | null;
 }
 
-export const workflowOverview = () => apiGet<WorkflowOverview>("/api/workflow/v1/overview");
+export const workflowOverview = (signal?: AbortSignal) => apiGet<WorkflowOverview>("/api/workflow/v1/overview", undefined, signal);
+export interface WorkflowRecommendation {
+  id: string; kind: "practice_review" | "replan_preview" | "source_review" | "continue_activity";
+  title: string; reason: string; url: string; source_ids: string[];
+  rank: number; priority_score: number; priority_reason: string;
+  related_activity_count: number; estimated_minutes?: number | null;
+}
+export interface WorkflowRecommendations {
+  contract_version: "workflow-recommendations-v1";
+  input_fingerprint: string; items: WorkflowRecommendation[]; total: number;
+  truncated: boolean; ranking_rule_version: string; notice: string;
+}
+export const workflowRecommendations = () => apiGet<WorkflowRecommendations>("/api/workflow/v1/recommendations");
 export const workflowActivities = (params?: Record<string, unknown>) => apiGet<{items: WorkflowActivity[]; total: number; offset: number; limit: number}>("/api/workflow/v1/activities", params);
 export const listMastery = () => apiGet<{items: Mastery[]}>("/api/workflow/v1/mastery");
 export const getMastery = (uid: string) => apiGet<Mastery>(`/api/workflow/v1/mastery/${encodeURIComponent(uid)}`);

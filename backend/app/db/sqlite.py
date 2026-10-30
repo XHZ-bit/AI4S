@@ -49,6 +49,10 @@ CREATE TABLE IF NOT EXISTS paper_embeddings (
     paper_uid TEXT PRIMARY KEY,
     embedding BLOB NOT NULL
 );
+CREATE TABLE IF NOT EXISTS paper_citations (
+    src_uid TEXT NOT NULL, dst_uid TEXT NOT NULL,
+    PRIMARY KEY(src_uid,dst_uid)
+);
 CREATE TABLE IF NOT EXISTS roadmaps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     goal TEXT NOT NULL,
@@ -69,21 +73,42 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     task_columns = {row["name"] for row in conn.execute("PRAGMA table_info(tasks)")}
     if "result_json" not in task_columns:
         conn.execute("ALTER TABLE tasks ADD COLUMN result_json TEXT")
+    if "retry_of" not in task_columns:
+        conn.execute("ALTER TABLE tasks ADD COLUMN retry_of INTEGER")
+    for name in ('created_at', 'updated_at', 'error'):
+        if name not in task_columns:
+            conn.execute(f"ALTER TABLE tasks ADD COLUMN {name} TEXT")
+    conn.execute("UPDATE tasks SET created_at=coalesce(created_at,datetime('now')),updated_at=coalesce(updated_at,datetime('now'))")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_retry_of ON tasks(retry_of)")
     from app.db.workspace import init_workspace
     from app.db.projects import init_research_schema
     from app.db.workflow import init_workflow
+    from app.db.search_index import init_search_index
 
     init_workspace(conn)
     init_research_schema(conn)
     init_workflow(conn)
+    init_search_index(conn)
+    from app.task_control import init_controls
+    init_controls(conn)
+    from app.paper_quality import init_quality
+    init_quality(conn)
+    from app.action_lists import init_actions
+    init_actions(conn)
+    from app.db.projections import init_projections
+    init_projections(conn)
+    from app.db.library import init_library
+    init_library(conn)
+    from app.db.reading_position import init_reading_positions
+    init_reading_positions(conn)
     conn.commit()
 
 
 def connect(db_path: str | None = None) -> sqlite3.Connection:
     if db_path is None:
-        from app.config import get_settings
+        from app.tenancy import data_dir
 
-        db_path = str(Path(get_settings().data_dir) / "atlas.db")
+        db_path = str(data_dir() / "atlas.db")
     # ":memory:" 是特殊值，不存在父目录，跳过 mkdir
     is_memory = db_path == _MEMORY_DB
     if not is_memory:
@@ -112,7 +137,7 @@ def reset_running_tasks(conn: sqlite3.Connection) -> int:
     """把遗留的 running 任务标记为 failed（服务重启时后台任务已不存在）。"""
     cur = conn.execute(
         "UPDATE tasks SET status='failed', error='interrupted by restart', "
-        "updated_at=datetime('now') WHERE status IN ('running','queued')"
+        "updated_at=datetime('now') WHERE status='running' OR (status='queued' AND type!='parse')"
     )
     conn.commit()
     return cur.rowcount

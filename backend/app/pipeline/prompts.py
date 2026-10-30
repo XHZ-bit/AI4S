@@ -11,6 +11,7 @@ PREREQUISITE_OF 和 SUBTOPIC_OF 是 concept→concept；HAS_RESOURCE 是 paper/m
 当前论文 paper 实体名称必须与输入标题完全一致。端点必须出现在实体列表。
 不要从损坏的表格文本中孤立抽数值，不推断图片和公式。
 允许 entities 与 relations 为空，不设最低数量。confidence 只是模型信号，不代表准确率。
+合并重复候选，只保留本段最关键的内容；entities 和 relations 各不超过 12 项。证据需精炼并保留必要条件，不复制整页。
 返回 JSON {"entities":[{"type":str,"name":str,"confidence":float,"evidence":str}],
 "relations":[{"rel_type":str,"src_name":str,"dst_name":str,"confidence":float,"evidence":str}]}。"""
 
