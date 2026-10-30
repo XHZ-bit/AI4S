@@ -1266,8 +1266,10 @@ def _bounded_enrich_formulas(path, blocks):
     if not payload:
         return coverage, ["公式区域没有可用页面定位，已保留来源文字。"]
     warnings = []
+    temporary = ROOT / ".tmp"
+    temporary.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
-        prefix="stride-formulas-", dir=ROOT / ".tmp", ignore_cleanup_errors=True
+        prefix="stride-formulas-", dir=temporary, ignore_cleanup_errors=True
     ) as folder:
         temp = Path(folder)
         request, result = temp / "request.json", temp / "result.json"

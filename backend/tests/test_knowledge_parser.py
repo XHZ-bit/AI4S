@@ -298,6 +298,9 @@ def test_formula_budget_zero_preserves_regions_and_reports_no_recognition(
 def test_formula_budget_prioritizes_method_before_appendix(tmp_path, monkeypatch):
     from app.knowledge import parser
 
+    # A fresh checkout has no ignored workspace temporary directory.
+    monkeypatch.setattr(parser, "ROOT", tmp_path)
+    assert not (tmp_path / ".tmp").exists()
     path = tmp_path / "paper.pdf"
     make_pdf(path)
     blocks = [
