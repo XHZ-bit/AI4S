@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import os
 import sqlite3
 from contextlib import closing
 from contextvars import ContextVar
@@ -179,6 +180,7 @@ def test_password_change_and_machine_recovery_revoke_every_session(identity):
 def test_api_session_cookie_logout_and_password_rotation(client):
     accounts.create_user("administrator", PASSWORD, "admin")
     assert client.get("/api/auth/session").json() == {"mode": "multiuser", "user": None,
+                                                    "require_login": False, "runtime_id": "", "pid": os.getpid(),
                                                     "registration_enabled": True, "recovery_email_enabled": False}
     result = _sign_in(client)
     assert result.status_code == 200
@@ -222,6 +224,7 @@ def test_admin_user_endpoints_reject_anonymous_and_regular_users(client):
 def test_local_mode_supports_optional_accounts_and_registration_can_be_disabled(client, identity):
     identity.access_mode = "local"
     assert client.get("/api/auth/session").json() == {"mode": "local", "user": None,
+                                                    "require_login": False, "runtime_id": "", "pid": os.getpid(),
                                                     "registration_enabled": True, "recovery_email_enabled": False}
     assert _sign_in(client).status_code == 401
     assert client.get("/api/auth/users").status_code == 401
