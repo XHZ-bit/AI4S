@@ -7,7 +7,7 @@ $atlasValidation=[IO.Path]::GetFullPath((Join-Path $atlasRoot '.ui_validation'))
 if (-not $atlasOutput.StartsWith($atlasValidation+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)) { throw 'Runtime acceptance must use an isolated .ui_validation directory' }
 if (Test-Path -LiteralPath $atlasOutput) { throw 'Choose a fresh runtime acceptance directory' }
 New-Item -ItemType Directory -Path $atlasOutput | Out-Null
-$atlasEnvironmentNames=@('DASHSCOPE_API_KEY','RESEARCH_MODEL_ENABLED','OFFLINE_MODE','NEO4J_URI','GROBID_BASE_URL','DATA_DIR','ATLAS_ENV_FILE','RUNTIME_MODE','RUNTIME_ID','ATLAS_API_TARGET','ACCESS_MODE')
+$atlasEnvironmentNames=@('DASHSCOPE_API_KEY','RESEARCH_MODEL_ENABLED','OFFLINE_MODE','NEO4J_URI','GROBID_BASE_URL','DATA_DIR','ATLAS_ENV_FILE','RUNTIME_MODE','RUNTIME_ID','ATLAS_API_TARGET','ACCESS_MODE','REGISTRATION_ENABLED','SESSION_SECURE_COOKIE')
 $atlasEnvironmentSaved=@{}
 foreach ($atlasName in $atlasEnvironmentNames) {
     $atlasEnvironmentSaved[$atlasName]=[Environment]::GetEnvironmentVariable($atlasName,'Process')
@@ -52,6 +52,8 @@ try {
     $env:RUNTIME_ID='acceptance-caller'
     $env:ATLAS_API_TARGET='http://127.0.0.1:1'
     $env:ACCESS_MODE='local'
+    $env:REGISTRATION_ENABLED='true'
+    $env:SESSION_SECURE_COOKIE='false'
     $atlasExpected=@{}
     foreach ($atlasName in $atlasEnvironmentNames) {
         $atlasExpected[$atlasName]=[Environment]::GetEnvironmentVariable($atlasName,'Process')
@@ -76,15 +78,33 @@ try {
     & "$atlasRoot\start.ps1" -Mode Local -Offline -DataDir $atlasData -BackendPort $atlasBackendPort -FrontendPort $atlasFrontendPort
     Assert-CallerEnvironment $atlasExpected 'local startup'
     $atlasReport.checks.local_start_restores_caller_environment=$true
-    $atlasFirst=Invoke-RestMethod "$atlasApi/api/system/status" -TimeoutSec 15
+    $atlasPublicSession=Invoke-RestMethod "$atlasApi/api/auth/session" -TimeoutSec 15
+    if (-not $atlasPublicSession.require_login) { throw 'Default startup did not require login' }
+    $atlasAnonymousBlocked=$false
+    try { Invoke-RestMethod "$atlasApi/api/system/status" -TimeoutSec 15 | Out-Null }
+    catch {
+        if ($_.Exception.Response.StatusCode.value__ -ne 401) { throw }
+        $atlasAnonymousBlocked=$true
+    }
+    if (-not $atlasAnonymousBlocked) { throw 'Anonymous access bypassed the runtime login boundary' }
+    $atlasRegistration=@{username='runtime-acceptance';password='isolated runtime acceptance password'} | ConvertTo-Json
+    Invoke-RestMethod "$atlasApi/api/auth/register" -Method Post -ContentType 'application/json' -Body $atlasRegistration -SessionVariable atlasHttpSession -TimeoutSec 30 | Out-Null
+    $atlasFirst=Invoke-RestMethod "$atlasApi/api/system/status" -WebSession $atlasHttpSession -TimeoutSec 15
+    $atlasReport.checks.default_login_boundary_and_isolated_account=$true
     if ($atlasFirst.services.model.status -ne 'unconfigured' -or $atlasFirst.services.model.research_enabled -or -not $atlasFirst.capabilities.local_workspace) { throw 'Offline startup did not enable the local workspace without a model' }
-    if ($atlasFirst.services.graph.status -ne 'unavailable' -or $atlasFirst.services.parser.status -ne 'fallback') { throw 'Acceptance runtime connected to a real optional service' }
-    $atlasReport.checks.child_profile_is_offline_and_services_isolated=$true
-    & "$atlasRoot\start.ps1" -Mode Local -Offline -DataDir $atlasData -BackendPort $atlasBackendPort -FrontendPort $atlasFrontendPort
+    if ($atlasFirst.services.graph.status -ne 'available' -or $atlasFirst.services.graph.backend -ne 'sqlite-kw' -or $atlasFirst.services.parser.status -ne 'fallback') { throw 'Acceptance runtime did not use the local graph and optional-parser fallback' }
+    $atlasReport.checks.child_profile_is_offline_with_local_sqlite_graph=$true
+    $atlasProtectedRuntimeRejected=$false
+    try { & "$atlasRoot\start.ps1" -Mode Local -Offline -DataDir $atlasData -BackendPort $atlasBackendPort -FrontendPort $atlasFrontendPort }
+    catch {
+        if ($_.Exception.Message -notlike 'A login-protected runtime already uses this port.*') { throw }
+        $atlasProtectedRuntimeRejected=$true
+    }
+    if (-not $atlasProtectedRuntimeRejected) { throw 'Repeated startup did not reject a login-protected runtime' }
     Assert-CallerEnvironment $atlasExpected 'repeated local startup'
-    $atlasRepeated=Invoke-RestMethod "$atlasApi/api/system/status" -TimeoutSec 15
+    $atlasRepeated=Invoke-RestMethod "$atlasApi/api/system/status" -WebSession $atlasHttpSession -TimeoutSec 15
     if ($atlasRepeated.pid -ne $atlasFirst.pid) { throw 'Repeated startup changed process identity' }
-    $atlasReport.checks.repeated_start_reuses_same_data_process=$true
+    $atlasReport.checks.repeated_start_does_not_replace_protected_process=$true
     $atlasRejected=$false
     try { & "$atlasRoot\start.ps1" -Mode Local -Offline -DataDir (Join-Path $atlasOutput 'other-data') -BackendPort $atlasBackendPort -FrontendPort $atlasFrontendPort } catch { $atlasRejected=$true }
     if (-not $atlasRejected) { throw 'Different data profile was silently accepted' }
@@ -92,7 +112,7 @@ try {
     $atlasReport.checks.different_data_profile_rejected=$true
     & "$atlasRoot\restart.ps1" -Mode Local -BackendPort $atlasBackendPort
     Assert-CallerEnvironment $atlasExpected 'local restart'
-    $atlasRestarted=Invoke-RestMethod "$atlasApi/api/system/status" -TimeoutSec 15
+    $atlasRestarted=Invoke-RestMethod "$atlasApi/api/system/status" -WebSession $atlasHttpSession -TimeoutSec 15
     if ($atlasRestarted.runtime_id -eq $atlasFirst.runtime_id -or $atlasRestarted.data_dir -ne $atlasFirst.data_dir -or $atlasRestarted.services.model.status -ne 'unconfigured' -or $atlasRestarted.services.model.research_enabled) { throw 'Restart lost the selected data/offline profile' }
     $atlasReport.checks.restart_preserves_data_and_offline_profile=$true
 

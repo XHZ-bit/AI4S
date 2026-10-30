@@ -55,15 +55,10 @@ jobs:
         working-directory: frontend
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
-      - run: python evaluation/research_atlas/prepare_interaction_fixture.py --output-dir .ui_validation/ci-interaction
-      - run: node evaluation/research_atlas/run_assistant_browser.cjs .ui_validation/ci-interaction
+      - run: node evaluation/research_atlas/run_knowledge_browser.cjs .ui_validation/ci-knowledge
         env:
           ATLAS_PLAYWRIGHT_PATH: ${{ github.workspace }}/frontend/node_modules/playwright
-      - run: python evaluation/research_atlas/prepare_platform_fixture.py --output-dir .ui_validation/ci-platform
-      - run: node evaluation/research_atlas/run_platform_browser.cjs .ui_validation/ci-platform
-        env:
-          ATLAS_PLAYWRIGHT_PATH: ${{ github.workspace }}/frontend/node_modules/playwright
-      - run: node evaluation/research_atlas/run_multiuser_browser.cjs .ui_validation/ci-multiuser
+      - run: node evaluation/research_atlas/run_auth_browser.cjs .ui_validation/ci-auth
         env:
           ATLAS_PLAYWRIGHT_PATH: ${{ github.workspace }}/frontend/node_modules/playwright
       - run: docker compose -f docker-compose.multiuser.yml config --quiet
@@ -75,15 +70,15 @@ jobs:
         with:
           name: interaction-${{ matrix.os }}
           path: |
-            .ui_validation/ci-interaction/*.png
-            .ui_validation/ci-interaction/assistant-browser.json
+            .ui_validation/ci-knowledge/*.png
+            .ui_validation/ci-knowledge/report.json
+            .ui_validation/ci-knowledge/servers.log
             .ui_validation/next-phase-evaluation.json
             .ui_validation/local-search-benchmark.json
             .ui_validation/workflow-projection-benchmark.json
             .ui_validation/retrieval-fts.json
             .ui_validation/retrieval-scan.json
-            .ui_validation/ci-platform/*.png
-            .ui_validation/ci-platform/platform-browser.json
-            .ui_validation/ci-multiuser/*.png
-            .ui_validation/ci-multiuser/multiuser-browser-report.json
+            .ui_validation/ci-auth/*.png
+            .ui_validation/ci-auth/report.json
+            .ui_validation/ci-auth/servers.log
             .ui_validation/ci-runtime/runtime-check.json

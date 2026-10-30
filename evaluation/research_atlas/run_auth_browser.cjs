@@ -6,7 +6,9 @@ const net = require('node:net');
 const { spawn } = require('node:child_process');
 const root = path.resolve(__dirname, '../..');
 const { chromium } = require(path.join(root, 'frontend/node_modules/playwright'));
-const output = path.resolve(root, '.ui_validation', `auth-${Date.now()}`);
+const output = path.resolve(process.argv[2] || path.join(root, '.ui_validation', `auth-${Date.now()}`));
+assert(output.startsWith(path.join(root, '.ui_validation') + path.sep));
+assert(!fs.existsSync(output), 'Choose a fresh acceptance directory');
 const base = 'http://127.0.0.1:15261';
 const api = 'http://127.0.0.1:18061';
 const children = [], messages = [], report = { checks: [], screenshots: [], pageErrors: [] };
@@ -65,7 +67,8 @@ async function run() {
       RESEARCH_MODEL_ENABLED: 'false', DASHSCOPE_API_KEY: '', TUTOR_DEFAULT_API_KEY: '', NEO4J_URI: 'bolt://127.0.0.1:1', GROBID_BASE_URL: 'http://127.0.0.1:1',
       SMTP_HOST: '127.0.0.1', SMTP_PORT: String(smtp.address().port), SMTP_SECURITY: 'plain', SMTP_USERNAME: '', SMTP_PASSWORD: '',
       SMTP_FROM_EMAIL: 'paperstride@example.test', AUTH_PUBLIC_URL: base };
-    start(path.join(root, 'backend/.venv/Scripts/python.exe'), ['-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '18061'], path.join(root, 'backend'), env);
+    const python = process.env.ATLAS_PYTHON || path.join(root, 'backend/.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+    start(python, ['-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '18061'], path.join(root, 'backend'), env);
     start(process.execPath, ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '15261', '--strictPort'], path.join(root, 'frontend'), { ...process.env, ATLAS_API_TARGET: api });
     let ready = false;
     for (let attempt = 0; attempt < 100; attempt++) {
@@ -132,6 +135,26 @@ async function run() {
     await submit(/^登\s*录$/);
     await signedIn();
     report.checks.push('registration-confirmation-email-delivery-verification-email-login');
+
+    // Independent browser cookie jars must never expose another account's data.
+    const ownerSession = await (await context.request.get(`${base}/api/auth/session`)).json();
+    const createdProject = await context.request.post(`${base}/api/projects`, {
+      data: {title: 'Private synthetic browser research', research_question: 'Only tests account isolation',
+        domain: 'robot_policy_learning', constraints: {version: 1, objective: 'Verify isolation'}},
+      headers: {'X-Atlas-CSRF': ownerSession.csrf_token},
+    });
+    assert.equal(createdProject.status(), 201);
+    const privateProject = await createdProject.json();
+    const stranger = await browser.newContext();
+    assert.equal((await stranger.request.post(`${base}/api/auth/register`, {data: {
+      username: 'isolated-browser-reader', password: 'another synthetic long password',
+    }})).status(), 201);
+    assert.equal((await stranger.request.get(`${base}/api/projects/${privateProject.id}`)).status(), 404);
+    const strangerProjects = await (await stranger.request.get(`${base}/api/projects`)).json();
+    assert(Array.isArray(strangerProjects.items));
+    assert(!strangerProjects.items.some(item => item.id === privateProject.id));
+    await stranger.close();
+    report.checks.push('independent-browser-accounts-cannot-read-another-research-space');
 
     // Keep a second live session to prove reset revokes all devices.
     const other = await browser.newContext();
