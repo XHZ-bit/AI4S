@@ -50,8 +50,6 @@ jobs:
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
-      - run: npm install --no-save --package-lock=false playwright
-        working-directory: frontend
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
       - run: python evaluation/research_atlas/prepare_interaction_fixture.py --output-dir .ui_validation/ci-interaction
