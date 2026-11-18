@@ -1,6 +1,6 @@
 # PaperStride 1.0.0：升级、演示与交付说明
 
-日期：2026-10-30。适用范围：Windows 本机单用户与受限评审交付。正式报告、PPT 和视频保留，由项目方另行处理；本说明不声称软件已提交比赛后台。
+日期：2026-10-30，许可声明更新于2026-11-18。适用范围：Windows 本机单用户与源码交付。正式报告、PPT 和视频保留，由项目方另行处理；本说明不声称软件已提交比赛后台。
 
 ## 当前入口与知识边界
 
@@ -70,14 +70,14 @@ backend\.venv\Scripts\python.exe backend\scripts\migrate_knowledge_workspace.py 
 
 ## 发行包与许可证
 
-从仓库根目录生成受限评审源码包：
+从仓库根目录生成包含项目许可证的源码包：
 
 ```powershell
-backend\.venv\Scripts\python.exe scripts\package_release.py --version 1.0.0 --output .releases\PaperStride-1.0.0-source.zip
+backend\.venv\Scripts\python.exe scripts\package_release.py --version 1.0.0 --output .releases\PaperStride-1.0.0-source.zip --require-license
 ```
 
 已有同名 ZIP 不覆盖。包内 `RELEASE-MANIFEST.json` 列出各文件 SHA-256，旁侧 JSON 记录压缩包摘要。必须从最终包解压到独立目录、准备锁定依赖、使用空数据目录验证生成演示、启动、运行、停止与重启；仅 CRC/哈希验证不能替代运行复现。
 
 包排除个人数据库、原始论文、密钥、下载模型、依赖安装目录、缓存、备份及历史草稿，保留源码、锁文件、必要测试与声明。用户正式报告、PPT、视频留在本机原位置。旧 README 与阶段草稿仅在本机带清单及哈希的历史归档中保留，不随当前源码包分发；历史内容不能覆盖当前版本行为描述。
 
-自研开源许可证尚未确定；本轮是本机运行与受限评审交付，不作公开发布或新增公网部署。第三方声明见 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。最后版本冻结后只处理阻断问题与交付校验。
+项目自研代码采用 **AGPL-3.0-or-later**，许可证全文见 [LICENSE](../LICENSE)，项目授权通知见 [NOTICE](../NOTICE)。源码包包含这两个文件及 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。第三方组件、上游示例和外部资料保留各自的许可与权利声明。项目源码已公开，当前运行方式仍以 Windows 本机运行为主，本次许可设置不新增公网部署。

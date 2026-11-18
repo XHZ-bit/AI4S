@@ -1,6 +1,6 @@
 # Third-party dependency inventory and release review
 
-本清单于2026-10-29从当前安装环境与上游说明核对，记录主要直接依赖和本地解析权重。它不是完整的传递依赖 SBOM，也不替代各上游许可全文及兼容性核对；不为本项目自研部分授予新的许可证。自研开源许可证仍须由权利人确定。
+本清单于2026-10-29从当前安装环境与上游说明核对，记录主要直接依赖和本地解析权重。它不是完整的传递依赖 SBOM，也不替代各上游许可全文及兼容性核对。项目自研代码采用 AGPL-3.0-or-later，详见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)；第三方组件、上游示例和外部资料继续适用各自的许可与权利声明。
 
 ## Direct runtime dependencies
 

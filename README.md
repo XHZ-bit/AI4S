@@ -5,6 +5,7 @@
 *Understand papers. Build your research.*
 
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+[![License AGPL-3.0-or-later](https://img.shields.io/badge/License-AGPL--3.0--or--later-6f42c1)](LICENSE)
 [![Status Public](https://img.shields.io/badge/Status-Public-238636?logo=github&logoColor=white)](https://github.com/XHZ-bit/AI4S)
 
 **项目源码已公开，欢迎查看源码、交流反馈与共同完善。**
@@ -125,9 +126,17 @@ Pop-Location
 
 版本号为 **1.0.0**。打包入口为 `scripts/package_release.py`，生成源码 ZIP、逐文件 SHA-256 清单和包校验信息；具体发行物与实测验收以[当前交付说明](docs/unified-release.md)及随包验收记录为准。包内不含真实数据库、个人论文、凭据、模型权重、依赖目录、备份或正式参赛报告/PPT/视频。
 
-项目源码已在 GitHub 公开。自研代码的开源许可证尚未选择，第三方组件说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。发行物与验收状态以当前交付说明及随包记录为准。
+项目源码已在 GitHub 公开。发行物与验收状态以当前交付说明及随包记录为准。
 
 开发结构：`backend/app/knowledge/` 为统一知识服务；`frontend/src/components/knowledge/` 为图谱、学习、比较和练习；`backend/tests/` 与 `frontend/src/__tests__/` 为回归；`scripts/` 为安装、运行和打包工具。资料、正式材料、依赖与归档的用途见[工作区文件索引](docs/workspace-layout.md)。历史迭代说明与旧 README 已移出主使用流程，仅在本机历史归档中保留，不随当前源码包分发。
+
+## 开源许可证
+
+项目自研代码采用 **GNU Affero General Public License v3.0 or later**，SPDX 标识为 **AGPL-3.0-or-later**。
+
+许可证全文见 [LICENSE](LICENSE)，项目授权通知见 [NOTICE](NOTICE)。
+
+第三方组件、上游示例、论文、数据、模型权重及其他外部资料保留各自的许可与权利声明，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 及对应材料中的声明。
 
 ## 交流与反馈
 
