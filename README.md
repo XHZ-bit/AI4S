@@ -1,10 +1,46 @@
-# PaperStride 1.0 · 知识图谱驱动的科研工作台
+# PaperStride
 
-**Understand papers. Build your research.**
+**知识图谱驱动的学习与科研工作台**
 
-PaperStride 将资料、概念、方法、公式和依据组织到统一知识图谱中。围绕一个节点，可以回到原文、解释关系、查找前置知识、比较方法、运行 Python 教学练习并保存自己的学习状态。资料原文共享，各研究空间的修订独立保存；未归属空间的资料仍可从资料库图谱查看。
+*Understand papers. Build your research.*
 
-本版本面向 **Windows 本机单用户运行和受限评审交付**。源码包可在空数据目录生成原创合成演示，无需密钥、私人论文或已下载大模型。合成示例只展示软件流程，不代表模型准确率、科研效果或真人学习效果。
+![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+[![Status Public](https://img.shields.io/badge/Status-Public-238636?logo=github&logoColor=white)](https://github.com/XHZ-bit/AI4S)
+
+**项目源码已公开，欢迎查看源码、交流反馈与共同完善。**
+
+[GitHub 仓库](https://github.com/XHZ-bit/AI4S) · [安装与演示](#首次安装与演示) · [问题反馈](https://github.com/XHZ-bit/AI4S/issues)
+
+## 项目简介
+
+PaperStride（AI4S）是一个面向科研与教学的项目，将论文与研究资料中的概念、方法、公式和原文依据组织到统一知识图谱中。围绕同一研究问题，用户可以查找前置知识、回到原文核对、比较不同方法、运行 Python 教学练习，并保存自己的学习状态与研究记录。
+
+平台连接资料导入、知识组织、学习核对与代码实践，帮助用户将一次论文阅读沉淀为可保存、可复查、可接续的学习与研究成果。资料原文共享，各研究空间的修订独立保存；未归属空间的资料仍可从资料库图谱查看。
+
+## 核心能力
+
+| 能力 | 主要内容 |
+| --- | --- |
+| 知识组织 | 围绕研究问题组织资料、概念、方法、公式与语义关系 |
+| 学习路径 | 从目标节点查找前置知识，选择学习入口并保存个人学习状态 |
+| 原文核对 | 联动查看原文位置与引用依据，区分原文明示、系统推断与用户补充 |
+| 方法比较 | 按共同维度核对方法机制、适用条件与证据，保存比较记录 |
+| Python 实践 | 在浏览器中编辑并运行教学练习，通过改变输入检查计算结果 |
+| 过程保存 | 保留修订、笔记、比较与练习记录，支持重新打开后继续使用 |
+
+## 仓库内容
+
+| 路径 | 内容 |
+| --- | --- |
+| [backend/](backend/) | 后端 API 与知识服务 |
+| [frontend/](frontend/) | 图谱、学习、比较和练习界面 |
+| [docs/](docs/) | 使用说明、依赖安装与恢复文档 |
+| [evaluation/](evaluation/) | 评估脚本与案例检查材料 |
+| [scripts/](scripts/) | 依赖安装、运行辅助与打包工具 |
+| [demo.ps1](demo.ps1) | 本机教学演示入口 |
+| [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | 第三方组件说明 |
+
+当前版本以 **Windows 本机单用户运行**为主要使用方式。源码包可在空数据目录生成原创合成演示，无需密钥、私人论文或已下载大模型。合成示例用于展示软件流程，模型准确率、科研效果和真人学习效果需另行评价。
 
 ## 首次安装与演示
 
@@ -89,6 +125,16 @@ Pop-Location
 
 版本号为 **1.0.0**。打包入口为 `scripts/package_release.py`，生成源码 ZIP、逐文件 SHA-256 清单和包校验信息；具体发行物与实测验收以[当前交付说明](docs/unified-release.md)及随包验收记录为准。包内不含真实数据库、个人论文、凭据、模型权重、依赖目录、备份或正式参赛报告/PPT/视频。
 
-本轮不新增公网部署。自研开源许可证尚未选择，受限评审源码交付不等于获得公开再分发许可；依赖声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。打包与本地验收不等于已在比赛后台提交。
+项目源码已在 GitHub 公开。自研代码的开源许可证尚未选择，第三方组件说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。发行物与验收状态以当前交付说明及随包记录为准。
 
 开发结构：`backend/app/knowledge/` 为统一知识服务；`frontend/src/components/knowledge/` 为图谱、学习、比较和练习；`backend/tests/` 与 `frontend/src/__tests__/` 为回归；`scripts/` 为安装、运行和打包工具。资料、正式材料、依赖与归档的用途见[工作区文件索引](docs/workspace-layout.md)。历史迭代说明与旧 README 已移出主使用流程，仅在本机历史归档中保留，不随当前源码包分发。
+
+## 交流与反馈
+
+欢迎查看源码、交流使用体验与提出改进建议。
+
+- 使用问题与功能建议：通过 [GitHub Issues](https://github.com/XHZ-bit/AI4S/issues) 提交，说明使用场景、复现步骤与预期结果。
+- 文档、教学练习与代码改进：欢迎通过 [Pull Requests](https://github.com/XHZ-bit/AI4S/pulls) 提交建议与修改。
+- 科研教学交流：欢迎围绕知识组织、原文核对、方法比较和 Python 教学实践分享思路。
+
+项目由 **GraphMind 队**维护。
