@@ -58,7 +58,7 @@ def fake_model(monkeypatch):
                 'edges': [{'source_key': 'gate', 'target_key': 'residual', 'kind': 'USES', 'label': 'uses', 'origin': 'source', 'evidence': [{'block_id': block['block_id'], 'quote': quote}]}]}
         if purpose == 'cross_source_links':
             return {'edges': []}
-        if purpose == 'node_learning':
+        if purpose in {'node_learning', 'learning_repair'}:
             return {'sections': teaching_sections(), 'evidence_ids': [payload['sources'][0]['id']]}
         if purpose == 'learning_review':
             return {'accepted': True, 'issues': [], 'corrections': {}}
@@ -93,7 +93,8 @@ def test_upload_automatically_decomposes_and_locates_sources(synchronous, fake_m
         detail = client.get(f'/api/projects/{pid}/knowledge/nodes/{node["id"]}').json()
         assert detail['evidence'][0]['quote'] == 'State Gate'
         assert detail['evidence'][0]['source_version'].startswith('sha256:')
-        assert detail['prerequisites']
+        assert detail['suggested_foundations']
+        assert not detail['prerequisites']
         assert all(e['locator']['page'] is None for e in detail['evidence'])
         assert fake_model.count('decomposition') == 1
 
@@ -133,6 +134,11 @@ def test_learning_cache_invalidates_on_dependency_edit_and_relevant_source_addit
         pid = project(client)
         src = upload(client, pid)
         n = semantic(client, pid, src['id'])
+        with store.connection(pid) as conn:
+            foundation = store.put_record(conn, 'kw_nodes', extraction.node(src, 'test-foundation', 'concept',
+                'Gate input', 'Synthetic prerequisite used to test dependency cache invalidation.', n['evidence_ids'], origin='user'))
+            store.put_record(conn, 'kw_edges', extraction.edge(src, foundation['id'], n['id'], 'PREREQUISITE_OF',
+                'user-defined prerequisite', 'The user explicitly chose this learning dependency.', n['evidence_ids'], origin='user'))
         url = f'/api/projects/{pid}/knowledge/nodes/{n["id"]}/learning'
         assert client.get(url).json()['status'] == 'basic'
         assert 'node_learning' not in fake_model
@@ -208,6 +214,8 @@ def test_learning_review_rejects_unsupported_explanation_and_keeps_basics(synchr
     original = model.structured
     def checked(*args, **kwargs):
         if args[3] == 'learning_review':
+            args[2].calls += 1
+            args[2].usage['calls'] += 1
             return {'accepted': False, 'issues': ['Unsupported mathematical simplification'], 'corrections': {}}
         return original(*args, **kwargs)
     monkeypatch.setattr(model, 'structured', checked)

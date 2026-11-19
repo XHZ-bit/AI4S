@@ -17,6 +17,7 @@ from uuid import uuid4
 from app.config import get_settings
 
 COOKIE_NAME = "atlas_session"
+PASSWORD_MIN_LENGTH = 6
 _WINDOW_SECONDS = 15 * 60
 _PAIR_LIMIT = 5
 _IP_LIMIT = 30
@@ -91,8 +92,8 @@ def _password_hash(password: str, salt: bytes) -> bytes:
 
 
 def _validate_password(password: str):
-    if not isinstance(password, str) or not 12 <= len(password) <= 1024:
-        raise AccountError("密码须为 12 至 1024 个字符")
+    if not isinstance(password, str) or not PASSWORD_MIN_LENGTH <= len(password) <= 1024:
+        raise AccountError("密码须为 6 至 1024 个字符")
 
 
 def _public_user(row):

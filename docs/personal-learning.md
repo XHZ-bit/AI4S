@@ -10,7 +10,7 @@
 
 本机模式允许继续使用原有本机空间；登录后使用 `data/users/<account-id>/` 下的独立空间。注册不会迁移或删除本机资料。退出登录可回到本机空间。受控多人部署仍要求登录。
 
-`REGISTRATION_ENABLED=false` 可关闭自助注册。注册账号固定为普通用户，管理员继续使用已有 CLI 创建和管理。密码至少 12 个字符，服务端保存 scrypt 哈希；会话使用 HttpOnly Cookie，已登录写操作校验 CSRF。
+`REGISTRATION_ENABLED=false` 可关闭自助注册。注册账号固定为普通用户，管理员继续使用已有 CLI 创建和管理。密码至少 6 个字符，服务端保存 scrypt 哈希；会话使用 HttpOnly Cookie，已登录写操作校验 CSRF。
 
 ## 个人模型
 

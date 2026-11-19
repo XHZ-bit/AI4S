@@ -351,6 +351,30 @@ def test_model_candidates_require_quotes_and_do_not_replay(
         assert route.call_count == 2
 
 
+def test_matrix_interpret_uses_personal_provider(isolated_services, monkeypatch):
+    from app import preferences
+    monkeypatch.setattr(preferences, 'provider', lambda: {
+        'api_key': 'personal-secret', 'base_url': 'https://personal.example/v1',
+        'model': 'personal-model', 'address': '8.8.8.8', 'host': 'personal.example',
+    })
+    route = isolated_services.post('https://8.8.8.8/v1/chat/completions').mock(
+        return_value=httpx.Response(200, json={'choices': [{'message': {
+            'content': json.dumps({'content': '', 'finding': 'not_found'})
+        }}]})
+    )
+    with TestClient(app) as client:
+        pid = project(client)
+        paper(client, pid)
+        response = client.post(f'/api/workbench/projects/{pid}/matrix/interpret',
+                               json={'paper_uid': '2303.04137', 'column_id': 'method'})
+        assert response.status_code == 200, response.text
+    request = route.calls[0].request
+    assert request.headers['authorization'] == 'Bearer personal-secret'
+    assert request.headers['host'] == 'personal.example'
+    assert request.extensions['sni_hostname'] == 'personal.example'
+    assert json.loads(request.content)['model'] == 'personal-model'
+
+
 def test_immediate_pdf_before_parsing(tmp_path):
     import pymupdf
     from app.tenancy import data_dir

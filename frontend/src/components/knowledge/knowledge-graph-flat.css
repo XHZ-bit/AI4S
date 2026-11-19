@@ -11,9 +11,9 @@
 .kw-graph-first .kw-flat-graph :is(.kw-kind-paper,.kw-kind-report) rect { fill: var(--atlas-nav); }
 .kw-graph-first .kw-flat-graph .kw-graph-node:is(:hover,:focus-visible) rect { fill: var(--atlas-surface); stroke: var(--atlas-accent); stroke-width: 1.5; }
 .kw-graph-first .kw-flat-graph .kw-graph-node.kw-selected-node rect { fill: var(--atlas-accent-soft); stroke: var(--atlas-accent); stroke-width: 2; }
-.kw-graph-first .kw-flat-graph .kw-node-kind { font-size: 10.5px; fill: var(--atlas-muted); }
-.kw-graph-first .kw-flat-graph .kw-node-label { font-size: 13.5px; font-weight: 600; fill: var(--atlas-ink); }
-.kw-graph-first .kw-flat-graph .kw-node-evidence-count { font-size: 10px; fill: var(--atlas-muted); }
+.kw-graph-first .kw-flat-graph .kw-node-kind { font-size: 11.5px; fill: var(--atlas-muted); }
+.kw-graph-first .kw-flat-graph .kw-node-label { font-size: 14px; font-weight: 600; fill: var(--atlas-ink); }
+.kw-graph-first .kw-flat-graph .kw-node-evidence-count { font-size: 11px; fill: var(--atlas-muted); }
 .kw-graph-first .kw-flat-graph .kw-graph-lane text { font-size: 12px; font-weight: 500; }
 .kw-graph-first .kw-flat-graph .kw-graph-edge>.kw-edge-line { stroke-opacity: .65; stroke-width: 1.25; }
 .kw-graph-first .kw-flat-graph .kw-graph-edge.kw-muted-edge>.kw-edge-line { stroke-opacity: .14; }
@@ -56,6 +56,17 @@
 }
 .kw-path-panel {padding:12px 0;margin:0 0 12px;border-bottom:1px solid var(--atlas-line);color:var(--atlas-ink)}
 .kw-path-panel>summary {cursor:pointer;color:var(--atlas-accent);font-size:13px}
+.kw-path-panel>details>summary {cursor:pointer;color:var(--atlas-accent);font-size:13px}
+.kw-path-quick { display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px; }
+.kw-path-quick>span { color:var(--atlas-muted);font-size:12px; }
+@media(min-width:801px) {
+ .kw-path-panel { display:flex;align-items:center;flex-wrap:wrap;gap:12px; }
+ .kw-path-quick { margin:0; }
+ .kw-path-panel>details[open] { flex-basis:100%; }
+ .kw-graph-first .kw-flat-graph .kw-graph-canvas { min-height:400px; }
+ .kw-graph-first .kw-flat-graph .kw-node-inspector.kw-node-panel { height:max(440px,var(--kw-canvas-height,440px));max-height:max(440px,var(--kw-canvas-height,440px)); }
+ .kw-node-panel-body { flex:1 1 auto; }
+}
 .kw-path-panel p,.kw-path-sequence small {color:var(--atlas-muted);font-size:13px;line-height:1.7}
 .kw-path-panel .ant-select {min-width:190px;max-width:320px}
 .kw-path-sequence {display:flex;gap:12px;flex-wrap:wrap;list-style:none;margin:14px 0;padding:0}
@@ -64,7 +75,7 @@
 .kw-path-sequence small {display:block}
 .kw-node-question {margin:16px 0;padding:12px 0;border-top:1px solid var(--atlas-line)}
 .kw-node-question summary {cursor:pointer;color:var(--atlas-accent)}
-@media(min-width:801px) and (max-width:1599px){
- .kw-graph-first .kw-flat-graph .kw-graph-layout:is(.kw-has-inspector,.kw-has-editor){display:block}
- .kw-graph-first .kw-flat-graph :is(.kw-node-inspector,.kw-relation-dock){position:fixed;right:24px;bottom:24px;top:auto;width:360px;max-height:75dvh;z-index:25;box-shadow:0 8px 28px rgba(0,0,0,.12)}
+@media(min-width:801px) and (max-width:1199px){
+ .kw-graph-first .kw-flat-graph .kw-graph-layout:is(.kw-has-inspector,.kw-has-editor){grid-template-columns:minmax(0,1fr) 300px;gap:14px}
+ .kw-graph-first .kw-flat-graph :is(.kw-node-inspector,.kw-relation-dock){position:relative;inset:auto;width:auto;max-height:var(--kw-canvas-height,calc(100dvh - 280px));box-shadow:none}
 }

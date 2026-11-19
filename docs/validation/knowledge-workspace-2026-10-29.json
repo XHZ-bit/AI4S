@@ -1,0 +1,250 @@
+{
+  "date": "2026-10-29",
+  "runtime": "http://127.0.0.1:5173",
+  "project_id": "project-f7496c692dcb4d1faae1ee0d19f14f04",
+  "sources": [
+    {
+      "title": "CoorDex: Coordinating Body and Hand Priors for Continuous Dexterous Humanoid Loco-Manipulation",
+      "kind": "paper",
+      "version": "sha256:99b43f1d1120f416a840c2e9de9142879e7466bdf42ac2922d740f171dbea04b",
+      "node_count": 139,
+      "semantic_nodes": 71,
+      "latest_analysis_status": "partial"
+    },
+    {
+      "title": "Learning Reactive Dexterous Grasping via Hierarchical Task-Space RL Planning and Joint-Space QP Control",
+      "kind": "paper",
+      "version": "sha256:f9b1a18f369e194778ff11263c23512dcabf44a2b91882064a2986e679c44a70",
+      "node_count": 155,
+      "semantic_nodes": 67,
+      "latest_analysis_status": "partial"
+    },
+    {
+      "title": "Pixel2Catch: Multi-Agent Sim-to-Real Transfer for Agile Manipulation with a Single RGB Camera",
+      "kind": "paper",
+      "version": "sha256:cea55b1d40a3dc2b8062f5db19bb114cdc226c9cf0cd747eca62ec47f057cbd8",
+      "node_count": 87,
+      "semantic_nodes": 46,
+      "latest_analysis_status": "partial"
+    },
+    {
+      "title": "DexPBT: Scaling up Dexterous Manipulation for Hand-Arm Systems with Population Based Training",
+      "kind": "paper",
+      "version": "sha256:23036a354f37fa86563c34911d386434428c2f0066b1f0105305f85415a08613",
+      "node_count": 87,
+      "semantic_nodes": 53,
+      "latest_analysis_status": "partial"
+    },
+    {
+      "title": "臂手协同 PPO 论文探索阶段总结",
+      "kind": "report",
+      "version": "sha256:7fbd4e3df3ed658e8c2fdcd5962e9627f532d1a4f1a04ed12f2549f7dbd74a92",
+      "node_count": 69,
+      "semantic_nodes": 16,
+      "latest_analysis_status": "succeeded"
+    },
+    {
+      "title": "https://github.com/Skevinci/coordex",
+      "kind": "code",
+      "version": "sha256:ad6c7c7d687acb3f006e3129247e3370bcc4b097bae4d5769ab8c0a8dddbcbe0",
+      "node_count": 193,
+      "semantic_nodes": 62,
+      "latest_analysis_status": "partial"
+    },
+    {
+      "title": "CoorDex 协调残差策略源码（固定版本）",
+      "kind": "code",
+      "version": "sha256:ef2138c5e6411e3c039b0deca6e2cdeab084c5908201976d4e46ac781410bc76",
+      "node_count": 72,
+      "semantic_nodes": 19,
+      "latest_analysis_status": "succeeded"
+    }
+  ],
+  "validation_model_calls": 97,
+  "validation_tokens": 824716,
+  "transport_failures": 4,
+  "core_workflows": {
+    "version": "source-reviewed-v4",
+    "comparison_id": "8de2bb1ad3aecfa916e98ab4f673d951",
+    "focus_node_id": "5652b16709f5aeecfea704d0dadf168b",
+    "source_ids": [
+      "4fda069abba34bb9b1bfd3230e5eb2f3",
+      "04d19c83bddf4267a281127945f67cb3",
+      "bcbc89606b924bb98dcf44c4ce9f3222",
+      "e658c285c5be4974b2642aff55d7c601",
+      "50d8c5ad91c44c7c9087198d6292e0be"
+    ],
+    "learning_node_ids": [
+      "fdf83ee92c49f004f1bbf17f2b3dd805",
+      "9f0d804e4279921b8dfdcc9ee9a2eada",
+      "ac8f3de82261e9cbfb7f89ea331ef27b"
+    ],
+    "public_code_source_id": "c34188fc94c744a8b00523f5f216deb2",
+    "comparison_status": "ready",
+    "learning_statuses": [
+      "ready",
+      "ready",
+      "ready"
+    ],
+    "cache_call_count_before": 97,
+    "cache_call_count_after": 97,
+    "source_reviewed_by": "Codex",
+    "independent_experiment": false
+  },
+  "production_smoke": {
+    "runtime": "local",
+    "checks": [
+      {
+        "path": "/api/projects/project-f7496c692dcb4d1faae1ee0d19f14f04/sources",
+        "status_code": 200,
+        "seconds": 0.093,
+        "status": null,
+        "stale": null
+      },
+      {
+        "path": "/api/projects/project-f7496c692dcb4d1faae1ee0d19f14f04/knowledge/graph?overview=true",
+        "status_code": 200,
+        "seconds": 0.61,
+        "status": null,
+        "stale": null
+      },
+      {
+        "path": "/api/projects/project-f7496c692dcb4d1faae1ee0d19f14f04/knowledge/nodes/fdf83ee92c49f004f1bbf17f2b3dd805/learning",
+        "status_code": 200,
+        "seconds": 0.281,
+        "status": "ready",
+        "stale": false
+      },
+      {
+        "path": "/api/projects/project-f7496c692dcb4d1faae1ee0d19f14f04/knowledge/nodes/9f0d804e4279921b8dfdcc9ee9a2eada/learning",
+        "status_code": 200,
+        "seconds": 0.266,
+        "status": "ready",
+        "stale": false
+      },
+      {
+        "path": "/api/projects/project-f7496c692dcb4d1faae1ee0d19f14f04/knowledge/nodes/ac8f3de82261e9cbfb7f89ea331ef27b/learning",
+        "status_code": 200,
+        "seconds": 0.234,
+        "status": "ready",
+        "stale": false
+      },
+      {
+        "path": "/api/projects/project-f7496c692dcb4d1faae1ee0d19f14f04/knowledge/comparisons",
+        "status_code": 200,
+        "seconds": 0.203,
+        "status": null,
+        "stale": null
+      }
+    ],
+    "original_file_hashes_verified": 7,
+    "new_model_calls": 0
+  },
+  "migration": {
+    "status": "promoted",
+    "scopes": 8,
+    "copied_immutable_files": 7,
+    "identity_preferences_avatars_copied": false
+  },
+  "tests": {
+    "backend_full": 667,
+    "backend_final_focus": 66,
+    "backend_runtime_compatibility": 51,
+    "frontend_full": 237,
+    "frontend_final_focus": 20,
+    "frontend_focus_log": ".tmp/knowledge-ui-runtime-final-approved.log"
+  },
+  "review_scope": "Codex source review of selected artifacts; no human expert review or experimental reproduction",
+  "performance": {
+    "format": "paperstride-knowledge-performance-v1",
+    "created_at": "2026-10-29T10:35:47.893992+00:00",
+    "fixture": "50 synthetic documents with explicitly non-scientific sequence records; no model outputs or research results.",
+    "data_dir": "D:\\storage\\Codex_program\\AI4S\\.tmp\\knowledge-performance-images\\data",
+    "project_id": "project-c9efc486caf6434480e286135b13986a",
+    "counts": {
+      "sources": 50,
+      "nodes": 5200,
+      "edges": 10250,
+      "evidence": 5150
+    },
+    "image_metadata_nodes": 50,
+    "image_metadata_bytes": 5139720,
+    "build_seconds": 15.751,
+    "measurement": "Warm local FastAPI TestClient HTTP including account middleware, database access and JSON decoding; 3 warmups per endpoint.",
+    "results": {
+      "overview_50_sources": {
+        "samples": 25,
+        "median_ms": 1132.511,
+        "p95_ms": 1285.14,
+        "max_ms": 1308.801,
+        "min_ms": 955.73,
+        "response_bytes": 20773,
+        "endpoint": "/api/projects/project-c9efc486caf6434480e286135b13986a/knowledge/graph?overview=true&limit=100"
+      },
+      "default_graph_100_nodes": {
+        "samples": 25,
+        "median_ms": 1122.859,
+        "p95_ms": 1255.064,
+        "max_ms": 1266.074,
+        "min_ms": 954.257,
+        "response_bytes": 97044,
+        "endpoint": "/api/projects/project-c9efc486caf6434480e286135b13986a/knowledge/graph?limit=100"
+      },
+      "source_subgraph": {
+        "samples": 25,
+        "median_ms": 774.553,
+        "p95_ms": 1007.548,
+        "max_ms": 1010.397,
+        "min_ms": 723.72,
+        "response_bytes": 263673,
+        "endpoint": "/api/projects/project-c9efc486caf6434480e286135b13986a/knowledge/graph?source_id=9b1092307536475781bfd4a65a53a3ab&limit=200"
+      },
+      "root_detail_degree_101": {
+        "samples": 25,
+        "median_ms": 790.104,
+        "p95_ms": 994.936,
+        "max_ms": 1024.305,
+        "min_ms": 709.664,
+        "response_bytes": 108357,
+        "endpoint": "/api/projects/project-c9efc486caf6434480e286135b13986a/knowledge/nodes/6e94faa2bd7764cc47f945a0e0090fe7"
+      },
+      "leaf_detail": {
+        "samples": 25,
+        "median_ms": 755.043,
+        "p95_ms": 927.651,
+        "max_ms": 955.351,
+        "min_ms": 662.934,
+        "response_bytes": 7040,
+        "endpoint": "/api/projects/project-c9efc486caf6434480e286135b13986a/knowledge/nodes/811bb435203e95ee66cda227946cf8a8"
+      },
+      "sources_list": {
+        "samples": 25,
+        "median_ms": 56.666,
+        "p95_ms": 62.701,
+        "max_ms": 64.805,
+        "min_ms": 50.814,
+        "response_bytes": 22652,
+        "endpoint": "/api/projects/project-c9efc486caf6434480e286135b13986a/sources"
+      },
+      "image_node_detail": {
+        "samples": 25,
+        "median_ms": 749.883,
+        "p95_ms": 965.194,
+        "max_ms": 1018.417,
+        "min_ms": 717.294,
+        "response_bytes": 111236,
+        "endpoint": "/api/projects/project-c9efc486caf6434480e286135b13986a/knowledge/nodes/5f415d7b9d06875c2cd61605c3330f36"
+      }
+    },
+    "p95_under_2_seconds": true,
+    "limitations": [
+      "Synthetic database load only; not 50 real PDF parsing or model-analysis throughput.",
+      "Local in-process HTTP excludes network transport, browser rendering and graph layout costs."
+    ]
+  },
+  "runtime_capabilities": {
+    "knowledge_model": true,
+    "legacy_research_model": false,
+    "knowledge_parser": "Docling"
+  }
+}

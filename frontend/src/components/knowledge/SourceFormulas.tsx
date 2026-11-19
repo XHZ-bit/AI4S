@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import {Button} from 'antd';
 import type {FormulaSource,KnowledgeEvidence} from '../../api/knowledge';
-import MathText,{renderMath} from '../learning/MathText';
+import MathText,{displayMath,renderMath} from '../learning/MathText';
 import './source-formulas.css';
 
 function SourceFormula({item,evidence,onEvidence}:{item:FormulaSource;evidence:KnowledgeEvidence[];onEvidence:(e:KnowledgeEvidence)=>void}){
@@ -12,7 +12,8 @@ function SourceFormula({item,evidence,onEvidence}:{item:FormulaSource;evidence:K
  if(!latex&&!image&&!source)return null;
  const original=image?<div className={'kw-formula-image'+(expanded?' kw-formula-image-expanded':'')}><img src={image} alt={(item.page?'第 '+item.page+' 页':'原文')+'公式原图'} loading="lazy" onError={()=>setImageFailed(true)}/></div>:null;
  return <figure className="kw-source-formula" data-recognition={item.recognition}>
-  {latex?<><MathText text={'$$'+latex+'$$'}/>{original&&<details><summary>核对公式原图</summary>{original}</details>}</>:original}
+  {latex&&item.recognition==='platform_vision_unverified'&&<small>公式自动转写 · 待核对原图</small>}
+  {latex?<><MathText text={displayMath(latex)}/>{original&&<details><summary>核对公式原图</summary>{original}</details>}</>:original}
   <figcaption>{!latex&&<span>{image?'原文公式':'公式文本识别不完整'}{item.page?' · 第 '+item.page+' 页':''}</span>}{!latex&&image&&<Button size="small" type="link" aria-pressed={expanded} onClick={()=>setExpanded(value=>!value)}>{expanded?'适应宽度':'放大公式'}</Button>}{source&&<Button size="small" type="link" onClick={()=>onEvidence(source)}>查看公式原文</Button>}</figcaption>
  </figure>;
 }

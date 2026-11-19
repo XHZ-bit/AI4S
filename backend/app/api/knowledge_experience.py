@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.workbench import project_or_404
-from app.knowledge import experience, store
+from app.knowledge import experience, learning_checks, learning_experiences, learning_summary, store
 
 
 def project_scope(project_id: str):
@@ -36,6 +36,43 @@ class Question(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
 
 
+class ExperienceCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    content: str = Field(min_length=1, max_length=4000)
+    practice_id: str = Field(min_length=1, max_length=200)
+
+
+class CheckAnswer(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    answer_id: str = Field(min_length=1, max_length=80)
+    expected_context: str = Field(min_length=1, max_length=100)
+    explanation: str = Field(default='', max_length=4000)
+
+
+@router.get('/checks/recommendation')
+def check_recommendation(project_id: str):
+    with store.connection(project_id) as conn:
+        return learning_checks.recommendation(conn, project_id)
+
+
+@router.get('/nodes/{node_id}/checks')
+def node_checks(project_id: str, node_id: str):
+    with store.connection(project_id) as conn:
+        return learning_checks.get_checks(conn, project_id, node_id)
+
+
+@router.post('/nodes/{node_id}/checks/{check_id}', status_code=201)
+def answer_check(project_id: str, node_id: str, check_id: str, req: CheckAnswer):
+    with store.connection(project_id) as conn:
+        return learning_checks.submit(conn, project_id, node_id, check_id, req.answer_id, req.expected_context, req.explanation)
+
+
+@router.post('/nodes/{node_id}/checks/{attempt_id}/dismiss')
+def dismiss_check(project_id: str, node_id: str, attempt_id: str):
+    with store.connection(project_id) as conn:
+        return learning_checks.dismiss(conn, project_id, node_id, attempt_id)
+
+
 @router.get("/paths")
 def paths(project_id: str, source: str, target: str | None = None,
           kind: Literal["connection", "prerequisites"] = "connection", max_depth: int = Query(4, ge=1, le=6)):
@@ -49,10 +86,44 @@ def all_progress(project_id: str):
         return experience.all_progress(conn, project_id)
 
 
+@router.get("/progress/summary")
+def project_summary(project_id: str):
+    with store.connection(project_id) as conn:
+        return learning_summary.project_summary(conn, project_id)
+
+
+@router.post("/progress/summary")
+def explain_project_summary(project_id: str):
+    return learning_summary.explain_project(project_id)
+
+
 @router.get("/nodes/{node_id}/progress")
 def progress(project_id: str, node_id: str):
     with store.connection(project_id) as conn:
         return experience.progress(conn, project_id, node_id)
+
+
+@router.get("/nodes/{node_id}/experiences")
+def experiences(project_id: str, node_id: str):
+    with store.connection(project_id) as conn:
+        return {"items": learning_experiences.list_entries(conn, project_id, node_id)}
+
+
+@router.post("/nodes/{node_id}/experiences", status_code=201)
+def save_experience(project_id: str, node_id: str, req: ExperienceCreate):
+    with store.connection(project_id) as conn:
+        return learning_experiences.save(conn, project_id, node_id, req.practice_id, req.content)
+
+
+@router.get("/nodes/{node_id}/summary")
+def node_summary(project_id: str, node_id: str):
+    with store.connection(project_id) as conn:
+        return learning_summary.node_summary(conn, project_id, node_id)
+
+
+@router.post("/nodes/{node_id}/summary")
+def explain_node_summary(project_id: str, node_id: str):
+    return learning_summary.explain(project_id, node_id)
 
 
 @router.patch("/nodes/{node_id}/progress")

@@ -1,0 +1,98 @@
+{
+  "date": "2026-10-17",
+  "audience": "China mainland small public beta",
+  "status": "historical standard-price expansion reference; superseded as initial budget by confirmed CNY 500 per year",
+  "currency": "CNY",
+  "assumptions": {
+    "domain_budget_cny_year": 100,
+    "backup_and_request_budget_cny_month": 20,
+    "emails_month": 3000,
+    "email_cny_each": 0.0019,
+    "model_allocation_cny_month": 100,
+    "included_model_limit_implemented": false,
+    "registered_users_planning": 100,
+    "daily_active_users_planning": 20,
+    "capacity_load_tested": false,
+    "one_time_promotional_discounts_included": false
+  },
+  "plans": [
+    {
+      "name": "validation_2c4g",
+      "server_cny_month": 80.0,
+      "total_cny_month": 214.03,
+      "total_cny_year": 2568.4,
+      "with_15_percent_reserve_cny_month": 246.14,
+      "with_15_percent_reserve_cny_year": 2953.66
+    },
+    {
+      "name": "recommended_4c8g",
+      "server_cny_month": 230.0,
+      "total_cny_month": 364.03,
+      "total_cny_year": 4368.4,
+      "with_15_percent_reserve_cny_month": 418.64,
+      "with_15_percent_reserve_cny_year": 5023.66
+    },
+    {
+      "name": "expanded_4c16g",
+      "server_cny_month": 325.0,
+      "total_cny_month": 459.03,
+      "total_cny_year": 5508.4,
+      "with_15_percent_reserve_cny_month": 527.89,
+      "with_15_percent_reserve_cny_year": 6334.66
+    }
+  ],
+  "model_example": {
+    "provider": "Alibaba Cloud Model Studio",
+    "region": "Beijing",
+    "model": "qwen3.7-flash",
+    "input_tokens_per_call": 20000,
+    "output_tokens_per_call": 2000,
+    "input_cny_per_million_tokens": 0.2,
+    "output_cny_per_million_tokens": 0.8,
+    "cost_cny_per_call": 0.0056,
+    "scenarios": [
+      {
+        "active_users_daily": 20,
+        "tasks_per_user_day": 5,
+        "days": 30,
+        "calls_per_task": 4,
+        "calls": 12000,
+        "cost_cny": 67.2
+      },
+      {
+        "active_users_daily": 20,
+        "tasks_per_user_day": 5,
+        "days": 30,
+        "calls_per_task": 16,
+        "calls": 48000,
+        "cost_cny": 268.8
+      }
+    ],
+    "embeddings_retries_and_other_models_included": false,
+    "input_tier": "0 < input Tokens <= 32K, as named in provider pricing"
+  },
+  "sources": [
+    {
+      "topic": "server list price",
+      "url": "https://cloud.tencent.com/document/product/1207/119345",
+      "effective_date": "2025-06-11",
+      "checked_date": "2026-10-17"
+    },
+    {
+      "topic": "transactional email",
+      "url": "https://cloud.tencent.com/document/product/1288/47930",
+      "checked_date": "2026-10-17"
+    },
+    {
+      "topic": "object storage example",
+      "url": "https://cloud.tencent.com.cn/document/product/436/6241",
+      "checked_date": "2026-10-17"
+    },
+    {
+      "topic": "model pricing",
+      "url": "https://help.aliyun.com/zh/model-studio/model-pricing",
+      "checked_date": "2026-10-17"
+    }
+  ],
+  "current_budget_file": "public-beta-budget-500-2026-10-17.json"
+}

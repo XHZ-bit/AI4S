@@ -50,8 +50,8 @@ class Settings(BaseSettings):
     llm_parallel_requests: int = Field(default=3, ge=1, le=6)
     tutor_default_api_key: str = ""
 
-    # Explicit opt-in after approval of outbound data and model-call budget.
-    research_model_enabled: bool = False
+    # Set false to disable model assistance in research workflows.
+    research_model_enabled: bool = True
     research_model_enable_thinking: bool | None = None
     research_model_schema_require_all: bool = True
     research_model_response_format: Literal["json_object", "json_schema"] = "json_object"
@@ -60,20 +60,21 @@ class Settings(BaseSettings):
     research_model_max_input_chars: int = Field(default=60000, ge=1000, le=200000)
     research_model_max_requests: int = Field(default=16, ge=1, le=64)
     knowledge_model_enabled: bool = True
+    knowledge_hourly_request_limit: int = Field(default=0, ge=0, le=100000)
     knowledge_parser_timeout_seconds: int = Field(default=1200, ge=30, le=7200)
     knowledge_use_docling: bool = True
     knowledge_formula_vision_enabled: bool = True
 
     @model_validator(mode="after")
     def isolate_multiuser_providers(self):
-        # Shared graph namespaces and paid providers have no per-user quota
-        # ledger yet. A configured local key must never enable them here.
+        # Model provider credentials remain scoped to the active account.
         if self.access_mode == "multiuser" or self.offline_mode:
             if not self.offline_mode and not self.tutor_default_api_key:
                 self.tutor_default_api_key = self.dashscope_api_key
             self.dashscope_api_key = ""
-            self.research_model_enabled = False
-            self.knowledge_model_enabled = False
+            if self.offline_mode:
+                self.research_model_enabled = False
+                self.knowledge_model_enabled = False
         if self.offline_mode:
             self.tutor_default_api_key = ""
         return self

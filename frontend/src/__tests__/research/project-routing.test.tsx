@@ -11,6 +11,7 @@ vi.mock('../../components/knowledge/KnowledgeWorkbench',()=>({default:({projectI
 vi.mock('../../components/workbench/SceneSync',()=>({default:()=>null}));
 vi.mock('../../components/research/ProjectSettingsPanel',()=>({default:()=> <div>formal-settings</div>}));
 vi.mock('../../components/research/PlansPanel',()=>({default:()=> <div>formal-plans</div>}));
+vi.mock('../../components/workbench/ProjectWorkbench',()=>({default:()=> <div>historical-records</div>}));
 function Location(){return <output data-testid="route-location">{useLocation().search}</output>}
 function show(query=''){return render(<MemoryRouter initialEntries={['/research/project-1'+query]}><Routes><Route path="/research/:projectId" element={<><ResearchProjectPage/><Location/></>}/></Routes></MemoryRouter>)}
 beforeEach(()=>{api.getProject.mockReset().mockResolvedValue(project);api.apiGet.mockReset().mockResolvedValue({project,papers:[],records:[],features:{}})});
@@ -28,4 +29,24 @@ test.each([['settings','formal-settings'],['plans','formal-plans']])('explicit a
  await screen.findByText(content);
  expect(screen.queryByTestId('knowledge-workbench')).toBeNull();
  expect(api.getProject).toHaveBeenCalled();
+});
+
+test.each(['?tab=plans&snapshot=old-snapshot','?tab=settings'])('historical links created before the legacy flag remain reachable: %s',async(query)=>{
+ show(query);
+ await screen.findByText(query.includes('plans')?'formal-plans':'formal-settings');
+ expect(screen.queryByTestId('knowledge-workbench')).toBeNull();
+ if(query.includes('snapshot'))expect(screen.getByTestId('route-location').textContent).toContain('snapshot=old-snapshot');
+});
+
+test('explicit current view takes priority over a stale historical tab',async()=>{
+ show('?view=graph&tab=plans&snapshot=old-snapshot');
+ expect(await screen.findByTestId('knowledge-workbench')).toHaveTextContent('project-1:graph');
+ expect(api.getProject).not.toHaveBeenCalled();
+});
+
+test.each(['outcomes','workbench'])('historical %s record links preserve the record destination',async(tab)=>{
+ show('?tab='+tab+'&record=note-1');
+ await screen.findByText('historical-records');
+ expect(screen.getByTestId('route-location')).toHaveTextContent('record=note-1');
+ expect(screen.queryByTestId('knowledge-workbench')).toBeNull();
 });

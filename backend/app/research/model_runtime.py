@@ -13,6 +13,7 @@ from uuid import uuid4
 import httpx
 
 from app.config import get_settings
+from app import preferences
 
 logger = logging.getLogger(__name__)
 # Keep the metadata audit visible in local/Docker stderr even when the host
@@ -79,7 +80,14 @@ def structured_chat(messages: list[dict], *, schema: dict, prompt_version: str,
     settings = get_settings()
     if not settings.research_model_enabled:
         raise ResearchModelError("model_not_authorized")
-    if not settings.dashscope_api_key.strip():
+    try:
+        custom = preferences.provider()
+    except (ValueError, KeyError):
+        raise ResearchModelError("model_not_configured") from None
+    key = custom["api_key"] if custom else settings.dashscope_api_key or settings.tutor_default_api_key
+    base = custom["base_url"] if custom else settings.llm_api_base
+    selected_model = custom["model"] if custom else settings.llm_model
+    if not key.strip():
         raise ResearchModelError("model_not_configured")
     if len(json.dumps(messages, ensure_ascii=False)) > settings.research_model_max_input_chars:
         raise ResearchModelError("model_input_budget_exceeded")
@@ -95,7 +103,7 @@ def structured_chat(messages: list[dict], *, schema: dict, prompt_version: str,
             "schema": strict_schema(schema) if settings.research_model_schema_require_all else schema,
         }
     payload = {
-        "model": settings.llm_model, "messages": messages,
+        "model": selected_model, "messages": messages,
         "response_format": response_format, "temperature": 0,
         "max_tokens": settings.research_model_max_output_tokens,
     }
@@ -103,7 +111,7 @@ def structured_chat(messages: list[dict], *, schema: dict, prompt_version: str,
         payload["enable_thinking"] = settings.research_model_enable_thinking
     trace = {
         "call_id": uuid4().hex, "task_id": budget.task_id if budget else None,
-        "model": settings.llm_model, "prompt_version": prompt_version,
+        "model": selected_model, "prompt_version": prompt_version,
         "response_format": settings.research_model_response_format,
         "schema_require_all": settings.research_model_schema_require_all,
         "schema_version": schema_version, "usage": None, "status": "failed",
@@ -111,12 +119,21 @@ def structured_chat(messages: list[dict], *, schema: dict, prompt_version: str,
     started = time.monotonic()
     try:
         # Never follow redirects with credentials or retry a paid request implicitly.
-        with httpx.Client(timeout=settings.research_model_timeout_seconds,
-                          follow_redirects=False) as client:
+        options = {"timeout": settings.research_model_timeout_seconds, "follow_redirects": False}
+        if custom:
+            options["trust_env"] = False
+        with httpx.Client(**options) as client:
+            url = httpx.URL(f"{base.rstrip('/')}/chat/completions")
+            headers = {"Authorization": f"Bearer {key}"}
+            extensions = {}
+            if custom:
+                url = url.copy_with(host=custom["address"])
+                headers["Host"] = custom["host"]
+                extensions["sni_hostname"] = custom["host"]
             with client.stream(
-                "POST", f"{settings.llm_api_base.rstrip('/')}/chat/completions",
+                "POST", url,
                 json=payload,
-                headers={"Authorization": f"Bearer {settings.dashscope_api_key}"},
+                headers=headers, extensions=extensions,
             ) as response:
                 if response.status_code != 200:
                     raise ResearchModelError(

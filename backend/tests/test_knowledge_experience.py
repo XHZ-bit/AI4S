@@ -84,6 +84,48 @@ def test_cycles_and_withdrawn_nodes_do_not_create_false_paths(graph_fixture):
     assert all(n['id'] != nodes[1]['id'] for n in response['nodes'])
 
 
+def test_path_omits_cross_source_relationship_when_its_source_is_removed(graph_fixture):
+    client, pid, _, _, nodes, _ = graph_fixture
+    relation_source = sources.ingest(pid, b'# Relation\nA separate source describes this relation.', 'relation.md')
+    with store.connection(pid) as conn:
+        edge = extraction.edge(relation_source, nodes[2]['id'], nodes[0]['id'], 'PREREQUISITE_OF',
+                               'cross source', 'Relation from another source', [])
+        store.put_record(conn, 'kw_edges', edge)
+    url = f'/api/projects/{pid}/knowledge/paths'
+    before = client.get(url, params={'source': nodes[0]['id'], 'kind': 'prerequisites'}).json()
+    assert edge['id'] in {item['id'] for item in before['edges']}
+    with store.connection(pid) as conn:
+        conn.execute('UPDATE kw_sources SET removed=1 WHERE id=? AND project_id=?', (relation_source['id'], pid))
+    after = client.get(url, params={'source': nodes[0]['id'], 'kind': 'prerequisites'}).json()
+    assert edge['id'] not in {item['id'] for item in after['edges']}
+    assert edge['id'] not in {item for path in after['paths'] for item in path['edge_ids']}
+
+
+@pytest.mark.parametrize('change', ['removed', 'updated'])
+def test_path_omits_relation_when_its_cross_source_evidence_is_unavailable(graph_fixture, change):
+    client, pid, _, owner, nodes, _ = graph_fixture
+    other = sources.ingest(pid, b'# Evidence\nIndependent relation evidence.', 'evidence.md')
+    with store.connection(pid) as conn:
+        store.put_parse(conn, other['asset_id'], {'blocks': [{'kind': 'text', 'text': 'Independent relation evidence.', 'page': None}]})
+        evidence = store.add_evidence(conn, pid, other, store.source_blocks(conn, other['asset_id'])[0])
+        edge = extraction.edge(owner, nodes[2]['id'], nodes[0]['id'], 'PREREQUISITE_OF',
+                               'supported by another source', 'Cross-source prerequisite', [evidence], origin='inference')
+        store.put_record(conn, 'kw_edges', edge)
+    url = f'/api/projects/{pid}/knowledge/paths'
+    before = client.get(url, params={'source': nodes[0]['id'], 'kind': 'prerequisites'}).json()
+    assert edge['id'] in {item['id'] for item in before['edges']}
+    with store.connection(pid) as conn:
+        if change == 'removed':
+            conn.execute('UPDATE kw_sources SET removed=1 WHERE id=? AND project_id=?', (other['id'], pid))
+        else:
+            row = conn.execute('SELECT data FROM kw_sources WHERE id=? AND project_id=?', (other['id'], pid)).fetchone()
+            updated = json.loads(row[0])
+            updated['version'] = 'changed-source-version'
+            conn.execute('UPDATE kw_sources SET data=? WHERE id=? AND project_id=?', (store.encode(updated), other['id'], pid))
+    after = client.get(url, params={'source': nodes[0]['id'], 'kind': 'prerequisites'}).json()
+    assert edge['id'] not in {item['id'] for item in after['edges']}
+
+
 def test_progress_is_versioned_manual_and_not_shared(graph_fixture):
     client, pid, other, _, nodes, _ = graph_fixture
     nid = nodes[0]['id']
@@ -100,6 +142,75 @@ def test_progress_is_versioned_manual_and_not_shared(graph_fixture):
     current = next(n for n in graph['nodes'] if n['id'] == nid)
     assert current['metadata']['learning_progress'] == 'understood'
     assert current['metadata']['learning_progress_stale']
+
+
+def test_learning_summary_uses_saved_progress_and_is_scoped(graph_fixture):
+    client, pid, other, _, nodes, _ = graph_fixture
+    node_id = nodes[0]['id']
+    url = f'/api/projects/{pid}/knowledge/nodes/{node_id}/summary'
+    result = client.get(url)
+    assert result.status_code == 200
+    assert result.json()['run_count'] == 0
+    assert result.json()['progress']['status'] == 'not_started'
+    client.patch(f'/api/projects/{pid}/knowledge/nodes/{node_id}/progress',
+                 json={'status': 'review', 'expected_version': 0})
+    result = client.get(url).json()
+    assert result['progress']['status'] == 'review'
+    assert '复习' in result['recommendation']
+    assert result['suggested_node']['id'] in {nodes[1]['id'], nodes[2]['id']}
+    assert client.get(f'/api/projects/{other}/knowledge/nodes/{node_id}/summary').status_code == 404
+
+
+def test_learning_summary_model_is_explicit_and_cached(graph_fixture, monkeypatch):
+    client, pid, _, _, nodes, _ = graph_fixture
+    calls = []
+    monkeypatch.setattr(model, 'available', lambda: True)
+    def generate(*args, **kwargs):
+        calls.append(args)
+        return {'explanation': '建议先阅读定义，再运行练习。'}
+    monkeypatch.setattr(model, 'structured', generate)
+    url = f'/api/projects/{pid}/knowledge/nodes/{nodes[0]["id"]}/summary'
+    assert client.get(url).status_code == 200
+    assert calls == []
+    first = client.post(url).json()
+    assert first['explanation'] == '建议先阅读定义，再运行练习。'
+    assert first['cached'] is False
+    assert client.post(url).json()['cached'] is True
+    assert len(calls) == 1
+
+
+def test_project_learning_summary_only_lists_its_own_records(graph_fixture):
+    client, pid, other, _, nodes, _ = graph_fixture
+    client.patch(f'/api/projects/{pid}/knowledge/nodes/{nodes[0]["id"]}/progress',
+                 json={'status': 'review', 'expected_version': 0})
+    response = client.get(f'/api/projects/{pid}/knowledge/progress/summary')
+    assert response.status_code == 200
+    item = response.json()['items'][0]
+    assert item['node_id'] == nodes[0]['id']
+    assert item['status'] == 'review'
+    assert item['experience_entries'][0]['kind'] == 'self_review'
+    assert item['suggested_node']['id'] in {nodes[1]['id'], nodes[2]['id']}
+    assert client.get(f'/api/projects/{other}/knowledge/progress/summary').json()['items'] == []
+
+
+def test_project_ai_summary_is_explicit_cached_and_scoped(graph_fixture, monkeypatch):
+    client, pid, other, _, nodes, _ = graph_fixture
+    calls = []
+    monkeypatch.setattr(model, 'available', lambda: True)
+    def generate(system, payload, budget, purpose, **kwargs):
+        calls.append(payload)
+        return {'explanation': '建议先回看已标记复习的节点。'}
+    monkeypatch.setattr(model, 'structured', generate)
+    url = f'/api/projects/{pid}/knowledge/progress/summary'
+    assert client.get(url).json()['items'] == []
+    assert calls == []
+    client.patch(f'/api/projects/{pid}/knowledge/nodes/{nodes[0]["id"]}/progress',
+                 json={'status': 'review', 'expected_version': 0})
+    assert not client.post(url).json()['cached']
+    assert client.post(url).json()['cached']
+    assert len(calls) == 1
+    assert calls[0]['items'][0]['node_id'] == nodes[0]['id']
+    assert client.post(f'/api/projects/{other}/knowledge/progress/summary').json()['error']
 
 
 def test_research_assistant_tracks_unified_graph_versions(graph_fixture):
@@ -215,6 +326,25 @@ def test_question_filters_fabricated_references_and_caches_by_graph_version(grap
         store.edit_record(conn, 'kw_nodes', pid, node['id'], node['version'], {'summary': 'Different adjacent explanation'})
     assert not client.post(url, json={'question': 'Explain the rule'}).json()['cached']
     assert len(calls) == 2
+
+
+def test_question_cache_tracks_selected_model(graph_fixture, monkeypatch):
+    client, pid, _, _, nodes, _ = graph_fixture
+    selected = ['first']
+    calls = []
+    monkeypatch.setattr(model, 'available', lambda: True)
+    monkeypatch.setattr(model, 'identity', lambda: (selected[0], 'https://model.example'))
+    def generate(system, payload, budget, purpose, **kwargs):
+        calls.append(selected[0])
+        return {'answer': 'The source explains the chain rule [1].',
+                'evidence_ids': [payload['sources'][0]['id']], 'node_ids': [], 'edge_ids': []}
+    monkeypatch.setattr(model, 'structured', generate)
+    url = f'/api/projects/{pid}/knowledge/nodes/{nodes[0]["id"]}/question'
+    assert not client.post(url, json={'question': 'Explain the rule'}).json()['cached']
+    assert client.post(url, json={'question': 'Explain the rule'}).json()['cached']
+    selected[0] = 'second'
+    assert not client.post(url, json={'question': 'Explain the rule'}).json()['cached']
+    assert calls == ['first', 'second']
 
 
 def test_library_cannot_impersonate_project(graph_fixture):

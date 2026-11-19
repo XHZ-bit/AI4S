@@ -1,0 +1,10 @@
+.learning-math-display{display:block;max-width:100%;min-width:0;overflow-x:auto;overscroll-behavior-inline:contain;padding:4px 0}
+.learning-math-display .katex-display{margin:.5em 0}
+.learning-math-fallback{font:inherit;white-space:normal}
+.learning-math-source-needed{color:var(--atlas-muted);font-size:13px}
+.learning-math-source-toggle{border:0;background:none;color:var(--atlas-accent);font:inherit;font-size:13px;padding:2px 6px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.learning-math-source-toggle:focus-visible{outline:2px solid var(--atlas-accent);outline-offset:2px}
+.learning-math-original{display:block;max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:10px 12px;margin:6px 0;background:var(--atlas-surface-alt);color:var(--atlas-ink);font:13px/1.7 Consolas,monospace}
+.kw-evidence-code{max-width:100%;overflow:auto;white-space:pre;font:13px/1.7 Consolas,monospace}
+.kw-node-note-summary-body.is-collapsed{max-height:180px;overflow:hidden}
+.kw-math-preview,.kw-outcome-preview.kw-math-preview{white-space:normal;max-width:100%;min-width:0;overflow:auto}

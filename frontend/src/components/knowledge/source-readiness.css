@@ -1,0 +1,10 @@
+.kw-source-readiness { margin:10px 0 14px; color:var(--atlas-muted); font-size:13px; }
+.kw-source-readiness > summary { width:fit-content; cursor:pointer; line-height:1.7; }
+.kw-source-readiness > summary:hover { color:var(--atlas-accent); }
+.kw-source-readiness-body { padding:12px 0 0; max-width:780px; }
+.kw-source-readiness dl { display:flex; flex-wrap:wrap; gap:12px 28px; margin:0 0 12px; }
+.kw-source-readiness dl > div { display:flex; gap:10px; align-items:baseline; }
+.kw-source-readiness dt { color:var(--atlas-muted); }
+.kw-source-readiness dd { margin:0; color:var(--atlas-ink); }
+.kw-source-readiness .kw-stage-list { margin-block:8px; }
+.kw-source-readiness-note { font-size:12px; line-height:1.7; margin:10px 0; }

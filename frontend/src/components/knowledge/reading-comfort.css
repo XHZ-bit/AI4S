@@ -1,0 +1,33 @@
+/* Reading uses the viewport; shell padding and the footer must not reserve it twice. */
+@media (min-width: 801px) {
+ .atlas-shell.atlas-interface:has(.kw-view-learning) .atlas-global-header { height:48px; }
+ .atlas-shell.atlas-interface:has(.kw-view-learning) .atlas-content { max-width:none;min-height:0;padding:12px 20px; }
+ .atlas-shell.atlas-interface:has(.kw-view-learning) .atlas-footer { display:none; }
+ .kw-graph-first.kw-view-learning .kw-workspace-header.kw-space-heading { gap:16px;padding-bottom:8px;margin-bottom:8px; }
+ .kw-view-learning .kw-space-title { gap:12px; }
+ .kw-view-learning .kw-space-title>div { display:flex;align-items:baseline;gap:12px;min-width:0; }
+ .kw-view-learning .kw-space-title h1 { font-size:20px;line-height:1.4;max-width:34ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+ .kw-view-learning .kw-space-title p { margin:0;max-width:32ch; }
+ .kw-view-learning .kw-space-actions>.ant-btn { height:32px;padding-inline:10px;font-size:13px; }
+ .kw-view-learning .kw-space-options>summary { min-height:32px;padding:4px 8px; }
+ .kw-learning-studio .kw-learning-studio-header { grid-template-columns:minmax(0,1fr) auto auto;gap:8px 16px;padding-bottom:8px; }
+ .kw-learning-studio .kw-learning-studio-identity { display:flex;align-items:center;gap:12px;min-width:0; }
+ .kw-learning-studio .kw-learning-studio-identity>h2 { margin:0;font-size:21px;line-height:1.4;min-width:0; }
+ .kw-learning-studio .kw-learning-studio-identity>.ant-btn { flex-shrink:0; }
+ .kw-learning-studio .kw-learning-studio-meta { display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px; }
+ .kw-learning-studio-meta .ant-tag { margin-inline-end:0; }
+ .kw-learning-studio-header>.kw-personal-learning-action { grid-column:3;grid-row:1;min-width:156px;min-height:34px; }
+ .kw-learning-studio-header>.kw-learning-customize { grid-column:2;grid-row:1;margin:0; }
+ .kw-learning-studio-header>.kw-learning-customize[open] { grid-column:1/-1;grid-row:2; }
+ .kw-learning-studio .kw-learning-customize>summary { padding:4px 0;white-space:nowrap; }
+ .kw-learning-studio .kw-learning-customize>summary>small { margin-left:8px;max-width:8ch; }
+ .kw-learning-tool-dock .kw-learning-progress-feedback:empty { display:none; }
+ .kw-learning-tool-dock .kw-learning-progress-status { padding-block:10px; }
+ /* Focus is a reversible workspace state, without a second reader or modal. */
+ .atlas-shell.atlas-interface:has(.kw-learning-workspace.is-focused) { grid-template-columns:minmax(0,1fr); }
+ .atlas-shell.atlas-interface:has(.kw-learning-workspace.is-focused) .atlas-sidebar,
+ .atlas-shell.atlas-interface:has(.kw-learning-workspace.is-focused) .atlas-global-header,
+ .atlas-shell.atlas-interface:has(.kw-learning-workspace.is-focused) .atlas-footer,
+ .kw-workspace:has(.kw-learning-workspace.is-focused)>.kw-space-heading { display:none; }
+ .atlas-shell.atlas-interface:has(.kw-learning-workspace.is-focused) .atlas-content { max-width:none;min-height:0;padding:12px 20px; }
+}

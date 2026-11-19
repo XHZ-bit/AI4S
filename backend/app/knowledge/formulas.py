@@ -67,7 +67,7 @@ def enrich_result(path: Path, result, budget, *, max_items=4, selected_ordinals=
             continue
         block = blocks[index]
         block.setdefault('metadata', {})['original_text'] = block['metadata'].get('original_text', block.get('text', ''))
-        block['metadata'].update(latex=latex, recognition='platform_vision_unverified', transcription_model=get_settings().llm_model)
+        block['metadata'].update(latex=latex, recognition='platform_vision_unverified', transcription_model=model.identity()[0])
         block['text'] = latex
     formulas = [b for b in blocks if b['kind'] == 'formula']
     recognized = sum(bool(b.get('metadata', {}).get('latex')) for b in formulas)

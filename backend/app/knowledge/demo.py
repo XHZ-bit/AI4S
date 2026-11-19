@@ -16,7 +16,7 @@ from app.knowledge import comparison, experience, extraction, learning, practice
 from app.knowledge.learning_depth import coverage
 from app.models.research import ResearchProjectPatch
 
-VERSION = 3
+VERSION = 5
 NOTICE = "原创合成教学示例，仅用于软件流程演示；不是论文实验、模型生成结果或科研性能证据。"
 
 
@@ -90,6 +90,41 @@ for x in [-2.0, 0.0, 2.0]:
     assert abs(analytic-numeric) < 0.00001, "检查链式法则实现与数值差分"
 print("PAPERSTRIDE_VISUAL:" + json.dumps({"type":"table", "title":"同条件计算与导数核对", "columns":["x","y_A","y_B","解析导数 B","数值导数 B"], "rows":rows}))
 print("计算完成。检查 alpha=0、负值和较大值；残差有界不等于总输出有界。")
+'''
+
+GRADIENT_CODE = '''# 计算 f(x)=x² 的局部变化，比较解析导数与数值差分。
+import math
+x = float(inputs.get("x", 2))
+h = float(inputs.get("h", 0.001))
+if not (math.isfinite(x) and math.isfinite(h) and 0 < h <= 1 and abs(x) <= 100):
+    raise ValueError("请输入有限的 x，且 0 < h <= 1")
+derivative = 2 * x
+estimate = ((x + h) ** 2 - (x - h) ** 2) / (2 * h)
+print(f"x={x}, 解析导数={derivative:.6f}, 数值差分={estimate:.6f}")
+'''
+
+CHAIN_CODE = '''# 对 y=tanh(2x) 应用链式法则，并用数值差分核对。
+import math
+x = float(inputs.get("x", 0.5))
+h = float(inputs.get("h", 0.001))
+if not (math.isfinite(x) and math.isfinite(h) and 0 < h <= 1 and abs(x) <= 100):
+    raise ValueError("请输入有限的 x，且 0 < h <= 1")
+derivative = 2 * (1 - math.tanh(2 * x) ** 2)
+estimate = (math.tanh(2 * (x + h)) - math.tanh(2 * (x - h))) / (2 * h)
+print(f"x={x}, 链式法则导数={derivative:.6f}, 数值差分={estimate:.6f}")
+'''
+
+GRADIENT_TEST = '''assert math.isclose(derivative, 2*x, rel_tol=1e-6, abs_tol=1e-6), "解析导数应为 2*x"
+expected = ((x+h)**2 - (x-h)**2) / (2*h)
+assert math.isclose(estimate, expected, rel_tol=1e-6, abs_tol=1e-6), "检查中心差分公式"
+print("当前输入的导数与中心差分检查通过。")
+'''
+
+CHAIN_TEST = '''expected = 2*(1-math.tanh(2*x)**2)
+assert math.isclose(derivative, expected, rel_tol=1e-6, abs_tol=1e-6), "检查内层导数与外层导数的乘积"
+expected_difference = (math.tanh(2*(x+h))-math.tanh(2*(x-h)))/(2*h)
+assert math.isclose(estimate, expected_difference, rel_tol=1e-6, abs_tol=1e-6), "检查中心差分公式"
+print("当前输入的链式法则与中心差分检查通过。")
 '''
 
 GAUSSIAN_CODE = '''# 原创合成教学示例：固定种子只用于复算，不是统计性能评测。
@@ -172,7 +207,13 @@ def seed(conn, directory: Path, pid: str, *, final_directory: Path | None = None
     result_id = "portable-knowledge-demo-v3:" + pid
     previous = conn.execute("SELECT data FROM kw_migrations WHERE name=?", (result_id,)).fetchone()
     if previous:
-        return json.loads(previous[0])
+        result = json.loads(previous[0])
+        if result.get("version", 0) < VERSION:
+            _upgrade_beginner_practices(conn, pid, result)
+            result["version"] = VERSION
+            conn.execute("UPDATE kw_migrations SET data=? WHERE name=?", (store.encode(result), result_id))
+            conn.commit()
+        return result
     nodes, sources, evidence_by_key = {}, {}, {}
     for key, lesson in LESSONS.items():
         src = sources[key] = _source(conn, directory, final_directory, pid, key, lesson)
@@ -222,11 +263,59 @@ def seed(conn, directory: Path, pid: str, *, final_directory: Path | None = None
     return result
 
 
+def _upgrade_beginner_practices(conn, pid, result):
+    """Add improved examples only when the original exercise is untouched."""
+    lessons = {
+        "foundations:gradient": (GRADIENT_CODE, {"x": 2, "h": 0.001},
+            "练习计算 x² 在不同输入处的导数，并用数值差分核对。先预测 x=2 时的导数，再改为 x=0 观察。"),
+        "foundations:chain": (CHAIN_CODE, {"x": 0.5, "h": 0.001},
+            "练习计算 tanh(2x) 的导数，把外层与内层导数相乘，再用数值差分核对。"),
+    }
+    old_instruction = ("打开实际运行练习，将 alpha 从 0.5 改为 0，再改为 -0.5。程序计算两条残差曲线，"
+        "并用中心差分核对有界残差的解析导数。运行结果只检验本例代码，不代表已经理解或完成论文复现。")
+    for key, (code, inputs, instruction) in lessons.items():
+        nid = result.get("node_ids", {}).get(key)
+        if not nid:
+            continue
+        rows = conn.execute("SELECT data FROM kw_practice WHERE project_id=? AND node_id=? ORDER BY rowid DESC", (pid, nid)).fetchall()
+        if not rows:
+            continue
+        old = json.loads(rows[0][0])
+        original_default = len(rows) == 1 and old.get("starter_code") == PRACTICE_CODE and old.get("input_json") == json.dumps({"alpha": 0.5})
+        v4_default = (old.get("id") == store.identity("demo-practice-v4", pid, nid) or len(rows) == 1) and old.get("starter_code") == code and old.get("input_json") == json.dumps(inputs)
+        if (not old.get("demo") or old.get("revision") != 1 or not (original_default or v4_default)
+                or old.get("draft_code") != old.get("starter_code") or old.get("test_code")
+                or conn.execute("SELECT 1 FROM kw_practice_runs WHERE project_id=? AND practice_id=? LIMIT 1", (pid, old["id"])).fetchone()):
+            continue
+        node = store.record(conn, "kw_nodes", pid, nid)
+        if node["version"] != old.get("node_version"):
+            continue
+        upgraded = {**old, "id": store.identity("demo-practice-v5", pid, nid), "title": node["label"] + " · 基础练习（含检查）", "starter_code": code,
+                    "draft_code": code, "reference_code": code, "input_json": json.dumps(inputs),
+                    "test_code": GRADIENT_TEST if key == "foundations:gradient" else CHAIN_TEST,
+                    "expected_behavior": "输出解析导数和数值差分，修改 x 后比较结果。", "created_at": store.now()}
+        conn.execute("INSERT OR IGNORE INTO kw_practice VALUES(?,?,?,?,?)",
+                     (upgraded["id"], pid, nid, upgraded["fingerprint"], store.encode(upgraded)))
+        for fingerprint, raw in conn.execute(
+                "SELECT fingerprint,data FROM kw_learning WHERE project_id=? AND node_id=?", (pid, nid)).fetchall():
+            lesson = json.loads(raw)
+            if (lesson.get("demo") and lesson.get("revision", 1) == 1
+                    and lesson.get("sections", {}).get("implementation") == old_instruction):
+                lesson["sections"]["implementation"] = instruction
+                conn.execute("UPDATE kw_learning SET data=? WHERE project_id=? AND node_id=? AND fingerprint=?",
+                             (store.encode(lesson), pid, nid, fingerprint))
+
+
 def _learning_and_practice(conn, pid, key, node):
     nid = node["id"]
     lesson = learning.basic(conn, pid, nid)
     lesson["sections"]["overview"] = NOTICE + "\n\n" + node["summary"]
-    lesson["sections"]["implementation"] = ("在练习中调整 mu 与 sigma 后重新运行，观察同一随机种子下的样本和均值。" if "gaussian" in key else
+    instructions = {
+        "foundations:gradient": "练习计算 x² 在不同输入处的导数，并用数值差分核对。先预测 x=2 时的导数，再改为 x=0 观察。",
+        "foundations:chain": "练习计算 tanh(2x) 的导数，把外层与内层导数相乘，再用数值差分核对。",
+        "foundations:gaussian": "在练习中调整 mu 与 sigma 后重新运行，观察同一随机种子下的样本和均值。",
+    }
+    lesson["sections"]["implementation"] = instructions.get(key,
         "打开实际运行练习，将 alpha 从 0.5 改为 0，再改为 -0.5。程序计算两条残差曲线，并用中心差分核对有界残差的解析导数。运行结果只检验本例代码，不代表已经理解或完成论文复现。")
     lesson["sections"]["limitations"] = "本内容为人工编写的原创软件演示。参数范围、标量近似与浮点误差需要核对；没有真实论文实验或效果评测，不产生科研性能排名。学习状态请自行设置。"
     lesson.update(origin="user", status="basic", demo=True, user_edited_sections=list(lesson["sections"]))
@@ -239,18 +328,25 @@ def _learning_and_practice(conn, pid, key, node):
         # The sole change is correcting the original fixture's unrelated question.
         # Keep saved content exactly; user-edited revisions retain their old key.
         conn.execute("UPDATE kw_learning SET fingerprint=? WHERE project_id=? AND node_id=? AND fingerprint=?", (fp, pid, nid, previous[0]))
-    fp, current, src, evidence, goal, difficulty, adjustment, _, _ = practice.fingerprint(conn, pid, nid, "", "foundation")
-    code = GAUSSIAN_CODE if "gaussian" in key else PRACTICE_CODE
+    fp, current, src, evidence, goal, difficulty, adjustment, _, _, _ = practice.fingerprint(conn, pid, nid, "", "foundation")
+    code = {"foundations:gradient": GRADIENT_CODE, "foundations:chain": CHAIN_CODE,
+            "foundations:gaussian": GAUSSIAN_CODE}.get(key, PRACTICE_CODE)
+    inputs = {"x": 2, "h": 0.001} if key == "foundations:gradient" else (
+        {"x": 0.5, "h": 0.001} if key == "foundations:chain" else (
+        {"mu": 0, "sigma": 1} if key == "foundations:gaussian" else {"alpha": 0.5}))
     value = {"id": store.identity("demo-practice", pid, nid), "project_id": pid, "node_id": nid, "node_label": node["label"],
         "node_version": current["version"], "source_version": src["version"], "fingerprint": fp, "goal": goal,
         "difficulty": difficulty, "adjustment": adjustment, "status": "ready", "origin": "user_teaching_demo", "revision": 1,
         "previous_practice_id": None, "previous_context_hash": None, "created_at": store.now(), "cached": False,
         "evidence": evidence, "errors": [], "usage": {}, "demo": True,
-        "title": node["label"] + " · 原创可运行演示", "prompt": NOTICE + "\n改变输入参数，先写下预期，再运行并解释结果。",
-        "starter_code": code, "draft_code": code, "test_code": "", "reference_code": code,
-        "input_json": json.dumps({"mu": 0, "sigma": 1} if "gaussian" in key else {"alpha": 0.5}),
+        "title": node["label"] + (" · 基础练习（含检查）" if key in {"foundations:gradient", "foundations:chain"} else " · 原创可运行演示"), "prompt": NOTICE + "\n改变输入参数，先写下预期，再运行并解释结果。",
+        "starter_code": code, "draft_code": code,
+        "test_code": {"foundations:gradient": GRADIENT_TEST, "foundations:chain": CHAIN_TEST}.get(key, ""),
+        "reference_code": code,
+        "input_json": json.dumps(inputs),
         "hints": ["一次只改一个参数，比较两次运行。", "保留未知项，代码通过不等于已经掌握。"],
-        "expected_behavior": "输出实际计算的图表；修改参数后曲线或样本随之改变。", "learning_objectives": [goal],
+        "expected_behavior": ("输出解析导数和数值差分，修改 x 后比较结果。" if key in {"foundations:gradient", "foundations:chain"}
+                              else "输出实际计算的图表；修改参数后曲线或样本随之改变。"), "learning_objectives": [goal],
         "simplifications": [NOTICE, "仅依赖 Python 标准库，不训练模型或执行第三方仓库。"]}
     conn.execute("INSERT OR IGNORE INTO kw_practice VALUES(?,?,?,?,?)", (value["id"], pid, nid, fp, store.encode(value)))
 

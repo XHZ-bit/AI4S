@@ -42,6 +42,7 @@ class Provider(BaseModel):
     enabled: bool = False
     base_url: str = Field(default="", max_length=500)
     model: str = Field(default="", max_length=120)
+    embedding_model: str = Field(default="", max_length=120)
     api_key: str | None = Field(default=None, max_length=4096)
     clear_key: bool = False
 
@@ -63,7 +64,7 @@ def public():
     value = read()
     provider = value.get("provider", {})
     value["provider"] = {key: provider.get(key, default) for key, default in
-                         (("enabled", False), ("base_url", ""), ("model", ""))}
+                         (("enabled", False), ("base_url", ""), ("model", ""), ("embedding_model", ""))}
     value["provider"]["has_key"] = bool(provider.get("encrypted_key"))
     value["default_model"] = get_settings().llm_model
     value["avatar_url"] = "/api/preferences/avatar" if (data_dir() / "avatar.png").is_file() else None
@@ -110,6 +111,9 @@ def save(request: Preferences):
         if request.provider.api_key is not None and request.provider.api_key.strip():
             key = _cipher().encrypt(request.provider.api_key.strip().encode()).decode()
         if provider["enabled"]:
+            settings = get_settings()
+            provider["base_url"] = provider["base_url"].strip() or settings.llm_api_base
+            provider["model"] = provider["model"].strip() or settings.llm_model
             provider["base_url"] = validate_endpoint(provider["base_url"])
             old_base = old.get("provider", {}).get("base_url")
             if old_base and urlsplit(old_base).netloc != urlsplit(provider["base_url"]).netloc and key and not request.provider.api_key:
@@ -148,7 +152,8 @@ def provider():
         key = _cipher().decrypt(value["encrypted_key"].encode()).decode()
     except (InvalidToken, ValueError):
         raise ValueError("模型密钥无法解密，请重新填写并保存 API Key") from None
-    return {"base_url": base, "host": host, "address": addresses[0][4][0], "model": value["model"], "api_key": key}
+    return {"base_url": base, "host": host, "address": addresses[0][4][0], "model": value["model"],
+            "embedding_model": value.get("embedding_model", ""), "api_key": key}
 
 
 def enabled(name):

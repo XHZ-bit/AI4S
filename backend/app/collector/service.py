@@ -57,8 +57,8 @@ def run_collect(
                 merge_paper(doc.model_dump())
             except Exception:
                 logger.warning('Graph unavailable; collected paper remains in SQLite')
-        from app.config import get_settings
-        if get_settings().dashscope_api_key:
+        from app.llm.client import configured
+        if configured():
             from app.task_control import checkpoint
             checkpoint(conn, "index", .8)
             try:

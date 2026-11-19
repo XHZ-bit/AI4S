@@ -73,6 +73,18 @@ def test_key_encryption_endpoint_and_provider_transport(monkeypatch, isolated_se
         preferences.validate_endpoint("https://localhost/v1")
 
 
+def test_personal_key_uses_default_provider_when_address_is_empty(monkeypatch):
+    monkeypatch.setattr(preferences.socket, "getaddrinfo", lambda *a, **k: [(2, 1, 6, "", ("8.8.8.8", 443))])
+    with TestClient(app) as client:
+        value = draft(client)
+        value['provider'] = {'enabled': True, 'base_url': '', 'model': '', 'api_key': 'personal-key'}
+        result = client.put('/api/preferences', json=value)
+        assert result.status_code == 200, result.text
+        assert result.json()['provider']['base_url'] == get_settings().llm_api_base.rstrip('/')
+        assert result.json()['provider']['model'] == get_settings().llm_model
+        assert 'personal-key' not in result.text
+
+
 def test_lessons_grade_and_disabled_features_do_not_call_model(monkeypatch):
     def fail(*a, **k):
         raise AssertionError("disabled feature called model")

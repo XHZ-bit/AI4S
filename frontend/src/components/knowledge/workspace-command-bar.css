@@ -1,0 +1,83 @@
+/* Desktop graph commands share compact rows; reading and other tools keep their layout. */
+@media (min-width: 801px) {
+ .kw-view-graph.kw-graph-first .kw-workspace-header.kw-space-heading {
+  gap: 12px;
+  padding-bottom: 5px;
+  margin-bottom: 5px;
+ }
+ .kw-view-graph .kw-space-actions { gap: 5px; }
+ .kw-view-graph .kw-space-actions > .ant-btn { height: 28px; padding-inline: 8px; }
+ .kw-view-graph .kw-space-options > summary { min-height: 28px; padding: 2px 7px; }
+ .kw-view-graph.kw-graph-first .kw-space-title { gap: 10px; }
+ .kw-view-graph .kw-space-title h1 { max-width: 42ch; }
+
+ .kw-view-graph .kw-question {
+  margin: 0 0 6px;
+  padding: 0 0 5px;
+ }
+ .kw-view-graph .kw-question-command {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 28px;
+ }
+ .kw-view-graph .kw-question-heading {
+  flex: 1;
+  justify-content: flex-start;
+  min-width: 0;
+  gap: 8px;
+ }
+ .kw-view-graph .kw-question-label { flex-shrink: 0; font-size: 12px; color: var(--atlas-muted); }
+ .kw-view-graph .kw-question h2 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 550;
+ }
+ .kw-view-graph .kw-question-expanded .kw-question-command { align-items: flex-start; }
+ .kw-view-graph .kw-question-expanded .kw-question-heading { flex-wrap: wrap; }
+ .kw-view-graph .kw-question-expanded h2 { flex-basis: calc(100% - 72px); white-space: pre-wrap; }
+ .kw-view-graph .kw-question-heading > .ant-btn { flex-shrink: 0; }
+ .kw-view-graph .kw-question-context { flex-shrink: 0; margin: 0 0 0 auto; gap: 0; }
+ .kw-view-graph .kw-question-command .ant-btn { height: 28px; padding-inline: 8px; font-size: 13px; }
+ .kw-view-graph .kw-question-editor { max-width: none; margin-top: 7px; }
+ .kw-view-graph .kw-question-editor textarea { min-width: 0; }
+ .kw-view-graph .kw-question > .ant-alert { margin-top: 7px; }
+
+ .kw-view-graph.kw-graph-first .kw-flat-graph .kw-canvas-tools { gap: 6px; margin-bottom: 5px; }
+ .kw-view-graph .kw-canvas-tools > .ant-input-search { min-width: 150px; max-width: 360px; }
+ .kw-view-graph .kw-canvas-tools > .kw-graph-source-scope { min-width: 140px; flex-basis: 190px; }
+ .kw-view-graph .kw-canvas-tools > .ant-btn { height: 28px; padding-inline: 8px; font-size: 13px; }
+ .kw-view-graph .kw-canvas-tools > .ant-select { height: 28px; }
+ .kw-view-graph .kw-canvas-tools .ant-input,
+ .kw-view-graph .kw-canvas-tools .ant-input-affix-wrapper,
+ .kw-view-graph .kw-canvas-tools .ant-input-group-addon > .ant-btn { min-height: 28px; height: 28px; font-size: 13px; }
+ .kw-view-graph .kw-canvas-tools .ant-input-affix-wrapper { padding-block: 2px; }
+ .kw-view-graph .kw-canvas-tools .ant-input-affix-wrapper > .ant-input { min-height: 22px; height: 22px; }
+ .kw-view-graph .kw-graph-display-switch { padding: 1px; }
+ .kw-view-graph .kw-graph-display-switch button { min-height: 24px; padding: 2px 8px; }
+ .kw-view-graph .kw-graph-viewbar { min-height: 24px; margin-bottom: 3px; }
+
+ .kw-view-graph .kw-path-panel {
+  display: block;
+  padding: 0 0 4px;
+  margin: 0 0 5px;
+ }
+ .kw-view-graph .kw-path-toolbar { display: flex; align-items: center; gap: 6px; min-height: 28px; }
+ .kw-view-graph .kw-path-toolbar > .ant-btn { height: 28px; padding-inline: 8px; font-size: 13px; }
+ .kw-view-graph .kw-path-toolbar > .ant-btn:not(:first-child) { color: var(--atlas-muted); }
+ .kw-view-graph .kw-path-toolbar > .ant-btn:not(:first-child):hover { color: var(--atlas-accent); }
+ .kw-view-graph .kw-path-detail { padding-top: 5px; }
+ .kw-view-graph .kw-path-detail > p:first-child { margin: 0 0 8px; }
+ .kw-view-graph .kw-path-detail .ant-space { gap: 8px !important; }
+ .kw-view-graph .kw-graph-secondary-tools { display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;padding-bottom:4px;margin-bottom:5px;border-bottom:1px solid var(--atlas-line); }
+ .kw-view-graph .kw-graph-secondary-tools:empty { display:none; }
+ .kw-view-graph .kw-graph-secondary-tools>.kw-graph-viewbar { flex:1;min-width:0;margin:0; }
+ .kw-view-graph .kw-graph-secondary-tools>.kw-path-panel { border:0;padding:0;margin:0; }
+ .kw-view-graph .kw-graph-secondary-tools>.kw-path-expanded { flex-basis:100%; }
+}

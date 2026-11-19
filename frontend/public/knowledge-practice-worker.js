@@ -16,6 +16,21 @@ self.onmessage = async ({data}) => {
   let namespace;
   try {
     namespace = python.toPy({inputs: data.inputs});
+    await python.runPythonAsync(`
+_paperstride_stdin = inputs.get("stdin", []) if isinstance(inputs, dict) else []
+if isinstance(_paperstride_stdin, str):
+    _paperstride_stdin = _paperstride_stdin.splitlines()
+if not isinstance(_paperstride_stdin, list):
+    _paperstride_stdin = []
+_paperstride_input_iter = iter(_paperstride_stdin)
+def input(prompt=""):
+    if prompt:
+        print(prompt, end="")
+    try:
+        return str(next(_paperstride_input_iter))
+    except StopIteration:
+        raise EOFError('请在输入值 JSON 的 stdin 数组中提供每次 input() 的内容')
+`, {globals: namespace});
     await python.runPythonAsync(data.code, {globals: namespace});
     if (data.tests) await python.runPythonAsync(data.tests, {globals: namespace});
     self.postMessage({type: 'result', status: 'success', passed: data.tests ? true : null,

@@ -1,0 +1,308 @@
+{
+  "scope": "structural and provenance checks; no independent teaching or learning-effect labels",
+  "runtime": {
+    "python": "3.13.9",
+    "sqlite": "3.51.0"
+  },
+  "code_sha256": {
+    "evaluation/research_atlas/evaluate_second_demo_next.py": "c4fb9e08bf1d58f982f0ddb7ceb59f4e2b8b257fac1b63e5a02d609f847cd7b7",
+    "backend/scripts/prepare_second_demo.py": "21ae7e9189334e0911f34eecb9b4f5c1625bdc3a64733ce29e611c77ef396008",
+    "backend/app/roadmap/auto_evaluate.py": "54b648bc4d8fa0377a41248650b61a11c6fcee98e76790329e6717aac472efc9",
+    "backend/app/roadmap/generate.py": "98a449eb52018af60222ee4194e3047642c2c23159cf6973eeb3688ebcaa3102",
+    "backend/app/api/roadmap.py": "75ac2d398ecd748d01ba7f844fd199f8332fae57d939729f10067677fbcd561b",
+    "backend/app/roadmap/trusted_queries.py": "29b96bba7b9fe09b7968e96630b3d50966e61082e6ef278db99e8bee8171c9d5"
+  },
+  "source_pdf_sha256": {
+    "arxiv-2006.11239v2.pdf": "aee5e07a802e8dfd2a386374c94fd61d1d056cb7e1e0fec4f28e8120ff5d8505",
+    "arxiv-2108.03298v2.pdf": "18283ff9cbb9645de4ccf32ca2de472f452e89761287e7ed578e3a1066bea5f1",
+    "arxiv-2303.04137v4.pdf": "75a57946e2cef790775ca5c667b00befc8ea7d64c3a02c5ced3e3d173354640c"
+  },
+  "baseline_gate": {
+    "passed": true,
+    "checked_relations": 5,
+    "checked_profiles": 2,
+    "routes": {
+      "robotics": [
+        "concept:diffusion-models",
+        "method:diffusion-policy"
+      ],
+      "generative_models": [
+        "concept:imitation-learning",
+        "method:diffusion-policy"
+      ]
+    },
+    "failures": [],
+    "scope": "mechanical source, graph, and profile checks only"
+  },
+  "baseline_preview_http_status": {
+    "robotics": 200,
+    "generative_models": 200
+  },
+  "baselines": {
+    "static_all_papers": {
+      "robotics": [
+        "arxiv-2006.11239v2",
+        "arxiv-2108.03298v2",
+        "arxiv-2303.04137v4"
+      ],
+      "generative_models": [
+        "arxiv-2006.11239v2",
+        "arxiv-2108.03298v2",
+        "arxiv-2303.04137v4"
+      ]
+    },
+    "target_only": {
+      "robotics": [
+        "arxiv-2303.04137v4"
+      ],
+      "generative_models": [
+        "arxiv-2303.04137v4"
+      ]
+    },
+    "evidence_route": {
+      "robotics": [
+        "arxiv-2006.11239v2",
+        "arxiv-2303.04137v4"
+      ],
+      "generative_models": [
+        "arxiv-2108.03298v2",
+        "arxiv-2303.04137v4"
+      ]
+    }
+  },
+  "baseline_personalization": {
+    "static_all_papers": false,
+    "target_only": false,
+    "evidence_route": true
+  },
+  "recommended_passages_exist": true,
+  "faults": {
+    "altered_quote": {
+      "gate_passed": false,
+      "preview_http_status": 422,
+      "failures": [
+        "1: evidence quote is not located"
+      ],
+      "ungated_planner_routes_diagnostic": {
+        "robotics": {
+          "phases": [
+            "concept:diffusion-models",
+            "method:diffusion-policy"
+          ],
+          "papers": [
+            "arxiv-2006.11239v2",
+            "arxiv-2303.04137v4"
+          ],
+          "evidence_ids": [
+            "3e9668dc364ff0bbb24c582a7c41cb5c-0",
+            "ce271ec8fb10b723820b70a7df2d6abb-0"
+          ]
+        },
+        "generative_models": {
+          "phases": [
+            "concept:imitation-learning",
+            "method:diffusion-policy"
+          ],
+          "papers": [
+            "arxiv-2108.03298v2",
+            "arxiv-2303.04137v4"
+          ],
+          "evidence_ids": [
+            "4e377cff100d22d239fdc1ebed668936-0",
+            "ce271ec8fb10b723820b70a7df2d6abb-0"
+          ]
+        }
+      }
+    },
+    "wrong_document": {
+      "gate_passed": false,
+      "preview_http_status": 422,
+      "failures": [
+        "1: source document mismatch"
+      ],
+      "ungated_planner_routes_diagnostic": {
+        "robotics": {
+          "phases": [
+            "concept:diffusion-models",
+            "method:diffusion-policy"
+          ],
+          "papers": [
+            "arxiv-2006.11239v2",
+            "arxiv-2303.04137v4"
+          ],
+          "evidence_ids": [
+            "3e9668dc364ff0bbb24c582a7c41cb5c-0",
+            "ce271ec8fb10b723820b70a7df2d6abb-0"
+          ]
+        },
+        "generative_models": {
+          "phases": [
+            "concept:imitation-learning",
+            "method:diffusion-policy"
+          ],
+          "papers": [
+            "arxiv-2108.03298v2",
+            "arxiv-2303.04137v4"
+          ],
+          "evidence_ids": [
+            "4e377cff100d22d239fdc1ebed668936-0",
+            "ce271ec8fb10b723820b70a7df2d6abb-0"
+          ]
+        }
+      }
+    },
+    "invalid_endpoint": {
+      "gate_passed": false,
+      "preview_http_status": 422,
+      "failures": [
+        "1: invalid relation structure"
+      ],
+      "ungated_planner_routes_diagnostic": {
+        "robotics": {
+          "phases": [
+            "concept:diffusion-models",
+            "method:diffusion-policy"
+          ],
+          "papers": [
+            "arxiv-2006.11239v2",
+            "arxiv-2303.04137v4"
+          ],
+          "evidence_ids": [
+            "3e9668dc364ff0bbb24c582a7c41cb5c-0",
+            "ce271ec8fb10b723820b70a7df2d6abb-0"
+          ]
+        },
+        "generative_models": {
+          "phases": [
+            "method:diffusion-policy"
+          ],
+          "papers": [
+            "arxiv-2303.04137v4"
+          ],
+          "evidence_ids": [
+            "ce271ec8fb10b723820b70a7df2d6abb-0"
+          ]
+        }
+      }
+    },
+    "missing_passage": {
+      "gate_passed": false,
+      "preview_http_status": 422,
+      "failures": [
+        "1: evidence quote is not located",
+        "1: source document mismatch"
+      ],
+      "ungated_planner_routes_diagnostic": {
+        "robotics": {
+          "phases": [
+            "concept:diffusion-models",
+            "method:diffusion-policy"
+          ],
+          "papers": [
+            "arxiv-2006.11239v2",
+            "arxiv-2303.04137v4"
+          ],
+          "evidence_ids": [
+            "3e9668dc364ff0bbb24c582a7c41cb5c-0",
+            "ce271ec8fb10b723820b70a7df2d6abb-0"
+          ]
+        },
+        "generative_models": {
+          "phases": [
+            "method:diffusion-policy"
+          ],
+          "papers": [
+            "arxiv-2303.04137v4"
+          ],
+          "evidence_ids": [
+            "ce271ec8fb10b723820b70a7df2d6abb-0"
+          ]
+        }
+      }
+    },
+    "prerequisite_cycle": {
+      "gate_passed": false,
+      "preview_http_status": 422,
+      "failures": [
+        "prerequisite cycle"
+      ],
+      "ungated_planner_routes_diagnostic": {
+        "error": "prerequisite cycle detected"
+      }
+    },
+    "withdrawn_prerequisite": {
+      "gate_passed": true,
+      "preview_http_status": 200,
+      "failures": [],
+      "ungated_planner_routes_diagnostic": {
+        "robotics": {
+          "phases": [
+            "concept:diffusion-models",
+            "method:diffusion-policy"
+          ],
+          "papers": [
+            "arxiv-2006.11239v2",
+            "arxiv-2303.04137v4"
+          ],
+          "evidence_ids": [
+            "3e9668dc364ff0bbb24c582a7c41cb5c-0",
+            "ce271ec8fb10b723820b70a7df2d6abb-0"
+          ]
+        },
+        "generative_models": {
+          "phases": [
+            "method:diffusion-policy"
+          ],
+          "papers": [
+            "arxiv-2303.04137v4"
+          ],
+          "evidence_ids": [
+            "ce271ec8fb10b723820b70a7df2d6abb-0"
+          ]
+        }
+      }
+    },
+    "semantic_swap": {
+      "gate_passed": true,
+      "preview_http_status": 200,
+      "failures": [],
+      "ungated_planner_routes_diagnostic": {
+        "robotics": {
+          "phases": [
+            "concept:diffusion-models",
+            "method:diffusion-policy"
+          ],
+          "papers": [
+            "arxiv-2006.11239v2",
+            "arxiv-2303.04137v4"
+          ],
+          "evidence_ids": [
+            "3e9668dc364ff0bbb24c582a7c41cb5c-0",
+            "ce271ec8fb10b723820b70a7df2d6abb-0"
+          ]
+        },
+        "generative_models": {
+          "phases": [
+            "method:diffusion-policy"
+          ],
+          "papers": [
+            "arxiv-2303.04137v4"
+          ],
+          "evidence_ids": [
+            "ce271ec8fb10b723820b70a7df2d6abb-0"
+          ]
+        }
+      }
+    }
+  },
+  "mechanical_faults_rejected": {
+    "altered_quote": true,
+    "wrong_document": true,
+    "invalid_endpoint": true,
+    "missing_passage": true,
+    "prerequisite_cycle": true
+  },
+  "withdrawal_changed_route_without_expanding_it": true,
+  "semantic_blind_spot_observed": true,
+  "passed": true
+}

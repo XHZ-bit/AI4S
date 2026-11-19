@@ -8,6 +8,7 @@ import json
 import re
 
 from app.knowledge import store
+from app.knowledge.graph_validity import valid_evidence
 
 
 _DATE = re.compile(
@@ -84,7 +85,7 @@ def _resource_paths(conn, pid, src, node, blocks):
     block_map = {b["id"]: (index, b) for index, b in enumerate(blocks)}
     selected = {}
     for evidence in store.evidence(conn, pid, node.get("evidence_ids", [])):
-        if evidence.get("source_id") != src["id"] or evidence.get("block_id") not in block_map:
+        if not valid_evidence(evidence) or evidence.get("source_id") != src["id"] or evidence.get("block_id") not in block_map:
             continue
         index, block = block_map[evidence["block_id"]]
         if evidence.get("quote") not in block.get("text", ""):

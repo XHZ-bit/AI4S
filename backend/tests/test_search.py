@@ -24,6 +24,41 @@ def test_index_and_search(monkeypatch):
     assert results[0]["score"] > results[1]["score"]
 
 
+def test_search_uses_only_matching_embedding_space(monkeypatch):
+    conn = connect(":memory:")
+    selected = ["https://a.example", "model-a"]
+    monkeypatch.setattr("app.search.service.embedding_identity", lambda: tuple(selected))
+    monkeypatch.setattr("app.search.service.embed", lambda texts: [[1.0, 2.0] for _ in texts])
+    index_paper(conn, "p1", "some text")
+    assert semantic_search(conn, "question")[0]["uid"] == "p1"
+    selected[:] = ["https://b.example", "model-b"]
+    with pytest.raises(ValueError, match="重新建立索引"):
+        semantic_search(conn, "question")
+
+
+def test_unlabelled_old_embeddings_work_with_default_provider(monkeypatch):
+    import struct
+    conn = connect(":memory:")
+    conn.execute("INSERT INTO paper_embeddings VALUES(?,?)", ("old", struct.pack("d", 1.0)))
+    monkeypatch.setattr("app.search.service.embed", lambda texts: [[1.0] for _ in texts])
+    assert semantic_search(conn, "question")[0]["uid"] == "old"
+
+
+def test_reindex_uses_current_embedding_model(monkeypatch, tmp_path):
+    path = str(tmp_path / "reindex.sqlite3")
+    with closing(connect(path)) as conn:
+        conn.execute("INSERT INTO papers(uid,title,abstract) VALUES('p1','Paper','Abstract')")
+        conn.commit()
+    monkeypatch.setattr("app.api.search._connect", lambda: connect(path))
+    monkeypatch.setattr("app.search.service.embedding_identity", lambda: ("https://example.test", "test-embedding"))
+    monkeypatch.setattr("app.search.service.embed", lambda texts: [[1.0, 2.0] for _ in texts])
+    result = TestClient(app).post("/api/search/reindex")
+    assert result.status_code == 200
+    assert result.json()["indexed"] == 1
+    with closing(connect(path)) as conn:
+        assert semantic_search(conn, "test")[0]["uid"] == "p1"
+
+
 def test_search_api(monkeypatch):
     conn = connect(":memory:")
     monkeypatch.setattr("app.search.service.embed", lambda texts: [[1.0] for _ in texts])

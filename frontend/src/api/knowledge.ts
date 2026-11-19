@@ -1,7 +1,7 @@
 import { authenticatedFetch } from './session';
 
 export type WorkspaceMode = 'explore' | 'research' | 'reproduce';
-export type WorkspaceView = 'graph' | 'reading' | 'learning' | 'compare' | 'practice' | 'materials';
+export type WorkspaceView = 'graph' | 'reading' | 'learning' | 'compare' | 'practice' | 'materials' | 'route';
 export type SourceKind = 'paper' | 'report' | 'results' | 'code';
 export interface KnowledgePreferences { mode: WorkspaceMode; view: string | null }
 export interface AnalysisRun {
@@ -15,6 +15,7 @@ export interface SourceBlock {
   bbox?: number[] | null; metadata: Record<string, unknown>;
 }
 export interface KnowledgeSource {
+  availability?:{original:boolean;parsed:boolean;blocks:number;semantic_nodes:number;parse_partial:boolean};
   id: string; project_id: string; asset_id: string; version: string; title: string;
   filename: string; kind: SourceKind; media_type: string; paper_uid?: string | null;
   url?: string | null; removed: boolean; created_at: string; analysis?: AnalysisRun; blocks?: SourceBlock[];
@@ -25,17 +26,20 @@ export interface KnowledgeNode {
   id: string; project_id: string; source_id: string; kind: string; label: string; summary: string;
   parent_id: string | null; origin: string; research_status: string; version: number;
   hidden: boolean; source_missing: boolean; evidence_ids: string[]; metadata: Record<string, unknown>;
+  quality_status?: string; quality_review_stale?: boolean;
 }
 export interface KnowledgeEdge {
   id: string; project_id: string; source_id: string; source: string; target: string;
   kind: string; label: string; explanation: string; origin: string; version: number;
   hidden: boolean; source_missing: boolean; evidence_ids: string[]; metadata?: Record<string, unknown>;
+  quality_status?: string; quality_review_stale?: boolean;
 }
 export interface FormulaSource {
   evidence_id:string;block_id:string;source_id:string;label:string;latex?:string;recognition:string;
   page?:number|null;image_url?:string;
 }
 export interface KnowledgeEvidence {
+  source_missing?:boolean; source_changed?:boolean; unresolved?:boolean;
   formula?:FormulaSource;
   id: string; source_id: string; source_title: string; block_id: string; quote: string;
   locator: {page?: number | null; bbox?: number[] | null; heading?: string | null; ordinal?: number | null;
@@ -43,19 +47,34 @@ export interface KnowledgeEvidence {
     path?:string | null; commit?:string | null; url?:string | null};
   source_version: string; origin: string;
 }
-export interface LearningResource { title?: string; name?: string; url?: string; reason?: string; description?: string; kind?: string; type?: string; fetched?: boolean; status?: string; content?: string }
+export interface LearningResource { title?: string; name?: string; url?: string; reason?: string; description?: string; kind?: string; type?: string; fetched?: boolean; status?: string; content?: string; origin?:string; access_status?:string; checked_at?:string; evidence?:KnowledgeEvidence }
 export type LearningSection = 'overview' | 'definition' | 'derivation' | 'prerequisites' | 'implementation' | 'limitations';
 export interface LearningOptions {goal?:string;depth?:'standard'|'deep'}
 export interface LearningCoverage {status:'complete'|'partial';checks:{key:string;label:string;status:'complete'|'missing'|'not_applicable';required:boolean;note:string}[];missing:string[];verification:string}
+export interface NodeStudyGuide {
+  kind?:'reading_outline';
+  topic:string; title:string; version:string; origin:'authored_teaching';
+  overview:string; why_it_matters:string;
+  flow:{label:string;text:string}[];
+  example:{title:string;body:string};
+  key_points:string[];
+  common_confusions:{claim:string;explanation:string}[];
+  questions:string[];
+  demo_ids:string[];
+  boundary?:string;
+  references?:{title:string;url:string}[];
+}
 export interface NodeDetail {
+  study_guide?:NodeStudyGuide|null;
   formula_sources?:FormulaSource[];
   node: KnowledgeNode; edges: KnowledgeEdge[]; neighbors: KnowledgeNode[]; evidence: KnowledgeEvidence[];
-  prerequisites: KnowledgeNode[]; resources: LearningResource[]; demos: string[];
+  prerequisites: KnowledgeNode[]; suggested_foundations?:KnowledgeNode[]; resources: LearningResource[]; demos: string[];
 }
 export interface KnowledgeGraph {
   nodes: KnowledgeNode[]; edges: KnowledgeEdge[]; total_nodes: number; total_edges: number; truncated: boolean;
 }
 export interface LearningArtifact {
+  last_generation?:{stage:'generation'|'review';code:string;message:string;retryable:boolean;retained:'previous'|'basic'|'generated';review_count:number;issues?:(string|{section?:string;category?:string;blocking?:boolean;description?:string})[]};
   goal?:string;depth?:'standard'|'deep';rules_version?:string;coverage?:LearningCoverage;
   variants?:{id:string;goal:string;depth:'standard'|'deep';status:string}[];
   context_summary?:{evidence_count:number;prerequisite_count:number;linked_code_sources:{id:string;title:string;version:string}[];source_versions:{id:string;version:string}[]};
@@ -66,12 +85,15 @@ export interface LearningArtifact {
   revision?: number; user_edited_sections?: LearningSection[]; hidden_sections?: LearningSection[]; origin?: string;
 }
 export interface KnowledgeComparison {
+  template?:'method'|'study';
+  stale_changes?:{source_id:string;title:string;reason:string;dimensions:string[]}[];
   id: string; source_ids: string[]; title: string; revision?:number; dimensions?:string[]; auto_filled?:boolean;
   focus_node_ids?: string[]; focus_nodes?: {id:string;source_id:string;label:string}[];
-  rows: {dimension: string; values: {source_id: string; text: string; node_ids: string[]; evidence_ids: string[]; origin: string}[]; compatibility: string}[];
+  rows: {dimension: string; values: {source_id: string; text: string; node_ids: string[]; evidence_ids: string[]; origin: string;evidence_snapshot?:KnowledgeEvidence[];reviewed?:boolean;review_stale?:boolean;reviewed_by?:string;reviewed_at?:string}[]; compatibility: string}[];
   evidence: KnowledgeEvidence[]; status: string; cached: boolean; stale: boolean; usage: Record<string, unknown>; errors: string[];
 }
 export interface SourcesResponse { items: KnowledgeSource[]; preferences: KnowledgePreferences; model: { configured: boolean; enabled: boolean } }
+export interface SourceSubmission {source:KnowledgeSource;analysis:AnalysisRun;scheduled?:boolean;notice?:string}
 
 const BASE = import.meta.env.VITE_API_BASE ?? '';
 const root = (project: string) => `/api/projects/${encodeURIComponent(project)}`;
@@ -96,10 +118,10 @@ export const sourceImageUrl = (project: string, source: string, block: string) =
 export const listKnowledgeSources = (project: string, signal?: AbortSignal) => request<SourcesResponse>(`${root(project)}/sources?include_removed=true`, 'GET', undefined, signal);
 export function uploadKnowledgeSource(project: string, file: File, kind?: SourceKind, signal?: AbortSignal) {
   const body = new FormData(); body.append('file', file); if(kind) body.append('kind', kind);
-  return request<{source: KnowledgeSource; analysis: AnalysisRun}>(`${root(project)}/sources`, 'POST', body, signal);
+  return request<SourceSubmission>(`${root(project)}/sources`, 'POST', body, signal);
 }
-export const linkKnowledgeSource = (project: string, url: string, kind?: SourceKind) => request<{source: KnowledgeSource; analysis: AnalysisRun}>(`${root(project)}/sources/link`, 'POST', {url,kind});
-export const attachKnowledgePaper = (project: string, paper_uid: string) => request<{source: KnowledgeSource; analysis: AnalysisRun}>(`${root(project)}/sources/attach`, 'POST', {paper_uid});
+export const linkKnowledgeSource = (project: string, url: string, kind?: SourceKind) => request<SourceSubmission>(`${root(project)}/sources/link`, 'POST', {url,kind});
+export const attachKnowledgePaper = (project: string, paper_uid: string) => request<SourceSubmission>(`${root(project)}/sources/attach`, 'POST', {paper_uid});
 export const getKnowledgeSource = (project: string, source: string, signal?: AbortSignal) => request<KnowledgeSource>(`${root(project)}/sources/${encodeURIComponent(source)}`, 'GET', undefined, signal);
 export const patchKnowledgeSource = (project: string, source: string, body: {removed?: boolean; title?: string}) => request<KnowledgeSource>(`${root(project)}/sources/${encodeURIComponent(source)}`, 'PATCH', body);
 export const analyzeKnowledgeSource = (project: string, source_id: string, retry = false) => request<AnalysisRun>(`${root(project)}/analysis`, 'POST', {source_id,retry});
@@ -119,15 +141,16 @@ export const getNodeLearning = (project:string,node:string,signal?:AbortSignal,o
 export const generateNodeLearning = (project:string,node:string,refresh=false,signal?:AbortSignal,options?:LearningOptions) => request<LearningArtifact>(`${root(project)}/knowledge/nodes/${encodeURIComponent(node)}/learning`,'POST',{refresh,...options},signal);
 export const patchNodeLearning = (project:string,node:string,body:{expected_revision:number;sections?:Partial<Record<LearningSection,string>>;hidden_sections?:LearningSection[];goal?:string;depth?:'standard'|'deep'},signal?:AbortSignal) => request<LearningArtifact>(`${root(project)}/knowledge/nodes/${encodeURIComponent(node)}/learning`,'PATCH',body,signal);
 export const listKnowledgeComparisons = (project: string, signal?: AbortSignal) => request<{items: KnowledgeComparison[]}>(`${root(project)}/knowledge/comparisons`, 'GET', undefined, signal);
-export const compareKnowledgeSources = (project: string, source_ids: string[], refresh = false, signal?: AbortSignal, focus_node_ids:string[] = [], dimensions?:string[]) => request<KnowledgeComparison>(`${root(project)}/knowledge/comparisons`, 'POST', {source_ids,refresh,focus_node_ids,dimensions}, signal);
+export const compareKnowledgeSources = (project: string, source_ids: string[], refresh = false, signal?: AbortSignal, focus_node_ids:string[] = [], dimensions?:string[],template?:'method'|'study') => request<KnowledgeComparison>(`${root(project)}/knowledge/comparisons`, 'POST', {source_ids,refresh,focus_node_ids,dimensions,template}, signal);
 
 export const nodeKindLabels: Record<string,string> = {paper:'论文',report:'研究报告',results:'实验结果',code:'代码',problem:'研究问题',contribution:'贡献',method:'方法',module:'模块',experiment:'实验',finding:'结果',limitation:'局限',concept:'概念',formula:'公式',algorithm:'算法',resource:'资源',hypothesis:'研究设想'};
 export const originLabels: Record<string,string> = {source:'原文明示',inference:'平台归纳',user:'用户补充'};
 export const researchStatusLabels: Record<string,string> = {unspecified:'未说明',proposed:'设想',implemented:'已实现',reported_result:'报告中已完成',pending_validation:'待验证'};
 export const analysisStatusLabels: Record<string,string> = {queued:'等待处理',running:'正在处理',succeeded:'已完成',partial:'部分完成',failed:'处理失败',interrupted:'已中断',cancelled:'已取消'};
 
-export const previewKnowledgeComparison = (project:string, sourceIds:string[], focusIds:string[]=[], dimensions?:string[], signal?:AbortSignal) => {
+export const previewKnowledgeComparison = (project:string, sourceIds:string[], focusIds:string[]=[], dimensions?:string[], signal?:AbortSignal,template?:'method'|'study') => {
  const params=new URLSearchParams();sourceIds.forEach(id=>params.append('source_ids',id));focusIds.forEach(id=>params.append('focus_node_ids',id));dimensions?.forEach(d=>params.append('dimensions',d));
+ if(template)params.set('template',template);
  return request<KnowledgeComparison>(`${root(project)}/knowledge/comparisons/preview?${params}`,'GET',undefined,signal);
 };
 export const reviseKnowledgeComparison=(project:string,id:string,body:{source_ids:string[];focus_node_ids?:string[];dimensions?:string[];expected_revision:number;dimension:string;source_id:string;text:string})=>request<KnowledgeComparison>(`${root(project)}/knowledge/comparisons/${encodeURIComponent(id)}`,'PATCH',body);

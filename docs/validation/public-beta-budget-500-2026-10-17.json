@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-17",
+  "currency": "CNY",
+  "period": "year",
+  "user_confirmed_total_budget": 500,
+  "status": "planning only; accounts and quotas not implemented; no resources purchased",
+  "items": {
+    "server": 99,
+    "domain_budget": 100,
+    "backup_and_requests_budget": 60,
+    "transactional_email_budget": 20,
+    "model_allocation": 100,
+    "contingency": 121
+  },
+  "planned_allocation_excluding_contingency": 379,
+  "total": 500,
+  "price_source": {
+    "url": "https://www.aliyun.com/activity/ecs/99program",
+    "checked_date": "2026-10-17",
+    "plan": "ECS economy e, 2 CPU, 2GB RAM, 3Mbps fixed bandwidth, 40GB system disk",
+    "advertised_cny_year": 99,
+    "purchase_and_renewal_subject_to_offer_terms_and_checkout": true
+  },
+  "assumptions": {
+    "registration_places_initial": 20,
+    "per_user_documents": 20,
+    "per_user_storage_mb": 100,
+    "global_private_storage_gb": 5,
+    "uploaded_pdf_max_mb": 5,
+    "uploaded_pdf_max_pages": 50,
+    "parse_concurrency": 1,
+    "model_enabled_initially": false,
+    "model_budget_scope": "all users and all model routes, CNY 100 total per year after metering implemented",
+    "external_services_not_running": [
+      "Neo4j",
+      "GROBID",
+      "Redis",
+      "local model inference"
+    ],
+    "capacity_load_tested": false,
+    "domain_email_backup_amounts_are_budget_allowances_not_vendor_quotes": true
+  }
+}

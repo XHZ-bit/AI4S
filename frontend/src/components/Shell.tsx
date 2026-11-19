@@ -12,6 +12,7 @@ import { useAccessMode,useCurrentAccount } from "./SessionContext";
 import { useAtlasTheme } from "../theme";
 import "./workspace/workspace.css";
 import "./interface.css";
+import "./core-workspace-space.css";
 const links = [
  {path:"/",title:"工作台",short:"工作台",group:"工作空间",icon:<HomeOutlined/>},
  {path:"/graph",title:"知识图谱",short:"图谱",group:"工作空间",icon:<ApartmentOutlined/>},

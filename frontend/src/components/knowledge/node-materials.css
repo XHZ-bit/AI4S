@@ -1,0 +1,35 @@
+.kw-node-materials { margin:0 0 24px; color:var(--atlas-ink); }
+.kw-node-materials>header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
+.kw-node-materials h3 { margin:0; }
+.kw-node-materials p { font-size:13px; line-height:1.8; overflow-wrap:anywhere; }
+.kw-node-material-form { display:grid; gap:16px; margin:16px 0 22px; padding-bottom:18px; border-bottom:1px solid var(--atlas-line); }
+.kw-node-material-form label { display:grid; gap:8px; font-size:13px; }
+.kw-node-material-form .ant-select { width:100%; }
+.kw-node-material-form>div>.ant-btn { margin:0 8px 8px 0; }
+.kw-material-existing { display:grid; gap:10px; justify-items:start; }
+.kw-material-existing label { width:100%; }
+.kw-material-existing select { width:100%; min-width:0; padding:8px 10px; border:1px solid var(--atlas-line); border-radius:7px; background:var(--atlas-surface); color:var(--atlas-ink); font:inherit; }
+.kw-material-existing select:focus-visible { outline:2px solid var(--atlas-focus); outline-offset:3px; }
+.kw-material-file { position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; clip-path:inset(50%); }
+.kw-material-filename { margin:0 0 10px; }
+.kw-node-material-list { list-style:none; padding:0; margin:0; }
+.kw-node-material-list>li { border-top:1px solid var(--atlas-line); padding:16px 0; overflow-wrap:anywhere; }
+.kw-node-material-list strong { display:block; font-size:14px; line-height:1.7; }
+.kw-node-material-list details { margin-top:12px; }
+.kw-node-material-list details p { font-size:12px; }
+.kw-node-material-list small,.kw-material-empty { color:var(--atlas-muted); }
+.kw-material-note { white-space:pre-wrap; margin:8px 0 12px; }
+.kw-material-actions { display:flex; flex-wrap:wrap; gap:6px; }
+.kw-node-materials .ant-btn { max-width:100%; height:auto; min-height:28px; white-space:normal; }
+.kw-node-materials :is(summary,button,input):focus-visible { outline:2px solid var(--atlas-focus); outline-offset:3px; }
+.kw-node-create { margin:0 0 24px; padding:20px; border:1px solid var(--atlas-line); border-radius:10px; background:var(--atlas-surface); color:var(--atlas-ink); }
+.kw-node-create>header { display:flex; justify-content:space-between; align-items:baseline; gap:18px; }
+.kw-node-create h3 { font-size:19px; margin:0 0 18px; }
+.kw-node-create-fields { display:grid; grid-template-columns:minmax(0,1fr) 180px; gap:16px; max-width:850px; }
+.kw-node-create label { display:grid; gap:8px; font-size:13px; }
+.kw-node-create label:last-child { grid-column:1/-1; }
+.kw-node-create-actions { display:flex; gap:10px; margin-top:16px; }
+.kw-node-note-summary { margin:0 0 22px; padding-bottom:16px; border-bottom:1px solid var(--atlas-line); }
+.kw-node-note-summary>header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.kw-node-note-summary p { white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; line-height:1.8; }
+.kw-node-note-entry { margin:0 0 16px; }

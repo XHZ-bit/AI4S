@@ -34,6 +34,83 @@ def fixture_node(label="Scale function"):
     return pid, node
 
 
+def test_code_review_requires_model_and_never_executes_user_code(monkeypatch):
+    pid, node = fixture_node()
+    exercise = practice.get(pid, node["id"])
+    monkeypatch.setattr(model, "available", lambda: False)
+    with pytest.raises(HTTPException) as exc:
+        practice.review_code(pid, exercise["id"], "print('hello')")
+    assert exc.value.status_code == 503
+
+    calls = []
+    monkeypatch.setattr(model, "available", lambda: True)
+    def structured(system, payload, budget, purpose, **kwargs):
+        calls.append((payload, purpose))
+        return {"feedback": "请检查张量的维度。"}
+    monkeypatch.setattr(model, "structured", structured)
+    code = "import torch\nraise RuntimeError('must not execute')"
+    result = practice.review_code(pid, exercise["id"], code, "ModuleNotFoundError")
+    assert result["feedback"] == "请检查张量的维度。"
+    assert calls[0][0]["code"] == code
+    assert calls[0][1] == "practice_code_review"
+
+
+def test_user_saved_feedback_is_persistent_idempotent_and_scoped():
+    from app.main import app as main_app
+
+    project_id, node = fixture_node()
+    other_id, other_node = fixture_node("Other project")
+    artifact = practice.get(project_id, node["id"])
+    path = f'/api/projects/{project_id}/knowledge/nodes/{node["id"]}/experiences'
+    payload = {"practice_id": artifact["id"], "content": "检查维度，再结合运行结果核对。"}
+    with TestClient(main_app) as client:
+        first = client.post(path, json=payload)
+        assert first.status_code == 201, first.text
+        entry = first.json()
+        assert entry["origin"] == "user_saved_ai_feedback"
+        assert client.post(path, json=payload).json()["id"] == entry["id"]
+        assert client.get(path).json()["items"] == [entry]
+        summary = client.get(f'/api/projects/{project_id}/knowledge/progress/summary').json()
+        assert summary["items"][0]["saved_experiences"][0]["id"] == entry["id"]
+        assert summary["items"][0]["status"] == "not_started"
+        other_path = f'/api/projects/{other_id}/knowledge/nodes/{other_node["id"]}/experiences'
+        assert client.get(other_path).json()["items"] == []
+        assert client.post(other_path, json=payload).status_code == 404
+
+
+def test_generated_exercise_supports_standard_input(monkeypatch):
+    pid, node = fixture_node()
+    prompts = []
+    monkeypatch.setattr(model, "available", lambda: True)
+
+    def structured(system, payload, budget, purpose, **kwargs):
+        prompts.append(system)
+        if purpose == "practice_review":
+            return {"accepted": True, "issues": [], "corrections": {}}
+        return {
+            "title": "两数相加", "prompt": "输入两行整数并输出它们的和。",
+            "starter_code": "a = int(input())\nb = int(input())\nprint(a + b)",
+            "test_code": "assert a + b == 5", "reference_code": "",
+            "input_json": '{"stdin":["2","3"]}', "expected_behavior": "输出 5",
+            "hints": [], "learning_objectives": [], "simplifications": [],
+            "evidence_ids": [payload["sources"][0]["id"]],
+        }
+
+    monkeypatch.setattr(model, "structured", structured)
+    exercise = practice.generate(pid, node["id"])
+    assert exercise["status"] == "ready"
+    assert json.loads(exercise["input_json"])["stdin"] == ["2", "3"]
+    assert "可使用 input()" in prompts[0]
+    assert "不要再次调用 input()" in prompts[0]
+
+
+def test_generated_exercise_rejects_invalid_standard_input():
+    value = {"title": "Input", "prompt": "Read input", "starter_code": "print(input())",
+             "input_json": '{"stdin":42}', "hints": [], "learning_objectives": [], "simplifications": []}
+    with pytest.raises(model.ModelUnavailable, match="程序输入"):
+        practice.validate_exercise(value, [])
+
+
 @pytest.fixture
 def generated(monkeypatch):
     calls = []

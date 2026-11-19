@@ -55,20 +55,37 @@ class Record(BaseModel):
     document_id: str | None = Field(default=None, max_length=150)
     document_version: str | None = Field(default=None, max_length=150)
     passage_id: str | None = Field(default=None, max_length=150)
+    knowledge_node_id: str | None = Field(default=None, max_length=150)
+    source_id: str | None = Field(default=None, max_length=150)
+    block_id: str | None = Field(default=None, max_length=150)
+    source_version: str | None = Field(default=None, max_length=150)
+    node_version: int | None = Field(default=None, ge=1)
+    unresolved_questions: str | None = Field(default=None, max_length=12000)
+    content_origin: Literal["user", "saved_ai_answer"] | None = None
+    evidence_references: list[dict] | None = Field(default=None, max_length=40)
     version: int = Field(default=0, ge=0)
 
 
 @router.get("/records")
-def records(project_id: str | None = None, paper_uid: str | None = None):
+def records(project_id: str | None = None, paper_uid: str | None = None, knowledge_node_id: str | None = None):
     with closing(connect()) as conn:
         initialize(conn)
         if project_id:
             project_or_404(conn, project_id)
+        if knowledge_node_id:
+            if not project_id:
+                raise HTTPException(422, "节点笔记需要指定研究空间")
+            from app.knowledge import store as knowledge_store
+            knowledge_store.init(conn)
+            knowledge_store.record(conn, "kw_nodes", project_id, knowledge_node_id)
         rows = conn.execute(
-            "SELECT * FROM workspace_records WHERE (? IS NULL OR project_id=?) AND (? IS NULL OR paper_uid=?) ORDER BY updated_at DESC,id LIMIT 500",
-            (project_id, project_id, paper_uid, paper_uid),
+            "SELECT * FROM workspace_records WHERE (? IS NULL OR project_id=?) AND (? IS NULL OR paper_uid=?) "
+            "AND (? IS NULL OR json_extract(CASE WHEN json_valid(source_json) THEN source_json ELSE '{}' END,'$.knowledge_node_id')=?) "
+            "ORDER BY updated_at DESC,id LIMIT 500",
+            (project_id, project_id, paper_uid, paper_uid, knowledge_node_id, knowledge_node_id),
         ).fetchall()
-        return {"items": [dict(r) for r in rows]}
+        from app.knowledge.outcomes import present_note
+        return {"items": [present_note(conn, project_id, r) if project_id else dict(r) for r in rows]}
 
 
 @router.get("/records/{identity}")
@@ -122,7 +139,8 @@ def save_record(req: Record):
         previous_source = (
             json.loads(previous["source_json"] or "{}") if previous else {}
         )
-        fields = ("page", "quote", "document_id", "document_version", "passage_id")
+        fields = ("page", "quote", "document_id", "document_version", "passage_id", "knowledge_node_id",
+                  "source_id", "block_id", "source_version", "node_version", "unresolved_questions", "content_origin", "evidence_references")
         source_data = (
             previous_source if previous and previous["paper_uid"] == paper_uid else {}
         )
@@ -130,6 +148,13 @@ def save_record(req: Record):
         for key in fields:
             if key in supplied:
                 source_data[key] = getattr(req, key)
+        if source_data.get("knowledge_node_id"):
+            if previous and previous_source.get("knowledge_node_id") and previous["project_id"] != project_id:
+                raise HTTPException(422, "节点笔记不能移到另一个研究空间")
+            from app.knowledge.outcomes import validate_note_context
+            source_data = validate_note_context(conn, project_id, source_data, previous_source if previous else None)
+        elif any(source_data.get(key) for key in ("source_id", "block_id", "source_version", "node_version", "evidence_references")):
+            raise HTTPException(422, "知识来源必须关联当前节点")
         if source_data.get("passage_id"):
             passage = conn.execute(
                 "SELECT p.document_id,p.page,d.content_hash FROM passages p JOIN documents d ON d.id=p.document_id WHERE p.id=? AND d.paper_uid=?",
@@ -181,6 +206,53 @@ def save_record(req: Record):
                 "SELECT * FROM workspace_records WHERE id=?", (req.id,)
             ).fetchone()
         )
+
+
+class OutcomeLesson(BaseModel):
+    artifact_id: str = Field(min_length=1, max_length=150)
+    revision: int = Field(ge=1)
+    section: Literal["overview", "definition", "derivation", "prerequisites", "implementation", "limitations"]
+
+
+class OutcomeComparison(BaseModel):
+    comparison_id: str = Field(min_length=1, max_length=150)
+    revision: int = Field(ge=1)
+    dimension: str = Field(min_length=1, max_length=150)
+    source_id: str = Field(min_length=1, max_length=150)
+
+
+class OutcomeLessonMapping(BaseModel):
+    id: str = Field(min_length=1, max_length=150)
+    revision: int = Field(ge=1)
+
+
+class OutcomeSelection(BaseModel):
+    note_ids: list[str] = Field(default_factory=list, max_length=50)
+    evidence_ids: list[str] = Field(default_factory=list, max_length=50)
+    learning_sections: list[OutcomeLesson] = Field(default_factory=list, max_length=50)
+    practice_ids: list[str] = Field(default_factory=list, max_length=30)
+    mappings: list[OutcomeLessonMapping] = Field(default_factory=list, max_length=50)
+    comparison_cells: list[OutcomeComparison] = Field(default_factory=list, max_length=50)
+
+
+@router.get("/projects/{project_id}/nodes/{node_id}/outcomes")
+def node_outcomes(project_id: str, node_id: str, response: Response):
+    from app.knowledge import store as knowledge_store
+    from app.knowledge.outcomes import catalog
+    response.headers["Cache-Control"] = "no-store"
+    with knowledge_store.connection(project_id) as conn:
+        initialize(conn)
+        return catalog(conn, project_id, node_id)
+
+
+@router.post("/projects/{project_id}/nodes/{node_id}/outcomes/preview")
+def preview_node_outcomes(project_id: str, node_id: str, req: OutcomeSelection, response: Response):
+    from app.knowledge import store as knowledge_store
+    from app.knowledge.outcomes import preview
+    response.headers["Cache-Control"] = "no-store"
+    with knowledge_store.connection(project_id) as conn:
+        initialize(conn)
+        return preview(conn, project_id, node_id, req.model_dump())
 
 
 class ProjectFeatures(BaseModel):

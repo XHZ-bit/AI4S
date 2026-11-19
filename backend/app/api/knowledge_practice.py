@@ -17,6 +17,8 @@ class Generate(BaseModel):
     adjustment: str = Field(default="", max_length=1500)
     refresh: bool = False
     previous_practice_id: str | None = Field(default=None, min_length=1, max_length=100)
+    mapping_id: str | None = Field(default=None, min_length=1, max_length=150)
+    mapping_revision: int | None = Field(default=None, ge=1)
 
 
 class Draft(BaseModel):
@@ -33,14 +35,30 @@ class BrowserRun(BaseModel):
     elapsed_ms: int = Field(ge=0, le=3600000)
     checked: bool = False
     passed: bool | None = None
+    mapping_id: str | None = Field(default=None, max_length=150)
+    mapping_revision: int | None = Field(default=None, ge=1)
+    prediction: str = Field(default="", max_length=4000)
+    explanation: str = Field(default="", max_length=4000)
+
+
+class RunExplanation(BaseModel):
+    explanation: str = Field(max_length=4000)
+
+
+class CodeReview(BaseModel):
+    code: str = Field(min_length=1, max_length=30000)
+    output: str = Field(default="", max_length=10000)
 
 
 @router.get("/nodes/{node_id}/practice")
 def get_practice(project_id: str, node_id: str, goal: str | None = Query(default=None, max_length=1000),
-                 difficulty: Difficulty | None = None, adjustment: str | None = Query(default=None, max_length=1500)):
-    if goal is None and difficulty is None and adjustment is None:
+                 difficulty: Difficulty | None = None, adjustment: str | None = Query(default=None, max_length=1500),
+                 mapping_id: str | None = Query(default=None, min_length=1, max_length=150),
+                 mapping_revision: int | None = Query(default=None, ge=1)):
+    if goal is None and difficulty is None and adjustment is None and mapping_id is None and mapping_revision is None:
         return practice.resume(project_id, node_id)
-    return practice.get(project_id, node_id, goal or "", difficulty or "foundation", adjustment or "")
+    return practice.get_for_mapping(project_id, node_id, goal or "", difficulty or "foundation", adjustment or "",
+                                   mapping_id=mapping_id, mapping_revision=mapping_revision)
 
 
 @router.post("/nodes/{node_id}/practice")
@@ -63,3 +81,13 @@ def save_draft(project_id: str, practice_id: str, body: Draft):
 @router.post("/practice/{practice_id}/runs", status_code=201)
 def save_run(project_id: str, practice_id: str, body: BrowserRun):
     return practice.save_run(project_id, practice_id, body.model_dump())
+
+
+@router.patch("/practice/{practice_id}/runs/{run_id}")
+def update_run(project_id: str, practice_id: str, run_id: str, body: RunExplanation):
+    return practice.update_run_explanation(project_id, practice_id, run_id, body.explanation)
+
+
+@router.post("/practice/{practice_id}/review")
+def review_code(project_id: str, practice_id: str, body: CodeReview):
+    return practice.review_code(project_id, practice_id, body.code, body.output)

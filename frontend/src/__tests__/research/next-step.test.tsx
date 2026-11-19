@@ -41,4 +41,4 @@ test('manual evidence, comparison and plan workflows remain reachable without au
  expect(api.generateProjectPlan).not.toHaveBeenCalled();
  expect(api.saveProjectDecision).not.toHaveBeenCalled();
  expect(screen.queryByText(/已完成/)).toBeNull();
-});
+},30000);

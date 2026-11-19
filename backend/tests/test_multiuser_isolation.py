@@ -213,8 +213,46 @@ def test_unified_knowledge_graph_source_file_and_learning_remain_account_scoped(
     for path in ("/knowledge/graph", f"/sources/{source['id']}/file", f"/knowledge/nodes/{node['id']}/learning"):
         assert bob.get(root + path).status_code == 404
         assert shared.anonymous.get(root + path).status_code == 401
-    assert not shared.settings.knowledge_model_enabled
+    assert shared.settings.knowledge_model_enabled
     assert not (shared.root / "atlas.db").exists()
+
+
+def test_knowledge_model_quota_is_per_account(shared, isolated_services):
+    import httpx
+    from app.knowledge import model
+
+    shared.settings.knowledge_hourly_request_limit = 1
+    alice = _project(shared.clients["alice"], "Alice model quota")["id"]
+    bob = _project(shared.clients["bob"], "Bob model quota")["id"]
+    route = isolated_services.post(shared.settings.llm_api_base + "/chat/completions").mock(
+        return_value=httpx.Response(200, json={"choices": [{"message": {"content": '{"ok": true}'}}]})
+    )
+    with user_scope(shared.users["alice"]):
+        future = submit_task(model.structured, "test", {}, model.Budget(alice, "first"), "test")
+        assert future.result(timeout=10) == {"ok": True}
+        with pytest.raises(model.ModelUnavailable, match="请求上限"):
+            model.structured("test", {}, model.Budget(alice, "second"), "test")
+    with user_scope(shared.users["bob"]):
+        assert model.structured("test", {}, model.Budget(bob, "first"), "test") == {"ok": True}
+    assert route.call_count == 2
+
+
+def test_saved_learning_experiences_are_private(shared):
+    from app.knowledge import extraction, practice, sources, store
+    alice, bob = shared.clients["alice"], shared.clients["bob"]
+    pid = _project(alice, "Private experience")["id"]
+    with user_scope(shared.users["alice"]):
+        source = sources.ingest(pid, b"Example learning material.", "example.md", "report")
+        node = extraction.node(source, "private-experience", "concept", "Private concept", "Example", [])
+        with store.connection(pid) as conn:
+            store.put_record(conn, "kw_nodes", node)
+        artifact = practice.get(pid, node["id"])
+    path = f'/api/projects/{pid}/knowledge/nodes/{node["id"]}/experiences'
+    saved = alice.post(path, json={"practice_id": artifact["id"], "content": "Private feedback"})
+    assert saved.status_code == 201, saved.text
+    assert alice.get(path).json()["items"][0]["content"] == "Private feedback"
+    assert bob.get(path).status_code == 404
+    assert bob.post(path, json={"practice_id": artifact["id"], "content": "Other"}).status_code == 404
 
 
 def test_research_task_reads_cancellation_and_retry_are_private(shared, monkeypatch):
@@ -356,18 +394,27 @@ def test_disabled_account_stops_running_worker_at_next_checkpoint(shared):
         assert conn.execute("SELECT phase FROM task_controls").fetchone()[0] == "before-disable"
 
 
-def test_multiuser_disables_paid_models_and_remote_fetch_but_allows_local_graph(shared):
+def test_multiuser_uses_account_models_and_limits_remote_fetch(shared, isolated_services):
     from app.db.neo4j_client import get_driver
     from app.llm.client import embed
-    from app.research.model_runtime import ResearchModelError, structured_chat
+    from app.research.model_runtime import structured_chat
+    import httpx
 
-    assert shared.settings.dashscope_api_key == "" and not shared.settings.research_model_enabled
+    assert shared.settings.dashscope_api_key == "" and shared.settings.research_model_enabled
     with pytest.raises(ServiceUnavailable, match="多人模式"):
         get_driver()
-    with pytest.raises(RuntimeError, match="not configured"):
-        embed(["private user data"])
-    with pytest.raises(ResearchModelError, match="model_not_authorized"):
-        structured_chat([], schema={}, prompt_version="test", schema_version="test")
+    embedding_route = isolated_services.post(shared.settings.llm_api_base + "/embeddings").mock(
+        return_value=httpx.Response(200, json={"data": [{"index": 0, "embedding": [0.1, 0.2]}]})
+    )
+    with user_scope(shared.users["alice"]):
+        assert embed(["private user data"]) == [[0.1, 0.2]]
+    assert embedding_route.call_count == 1
+    route = isolated_services.post(shared.settings.llm_api_base + "/chat/completions").mock(
+        return_value=httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": "{}"}}]})
+    )
+    with user_scope(shared.users["alice"]):
+        assert structured_chat([], schema={}, prompt_version="test", schema_version="test") == "{}"
+    assert route.call_count == 1
     client = shared.clients["alice"]
     local_graph = client.get('/api/graph/nodes')
     assert local_graph.status_code == 200
@@ -379,7 +426,7 @@ def test_multiuser_disables_paid_models_and_remote_fetch_but_allows_local_graph(
     runtime = client.get("/api/system/status")
     assert runtime.status_code == 200
     assert runtime.json()["capabilities"]["graph"]
-    assert not runtime.json()["capabilities"]["research_model"]
+    assert runtime.json()["capabilities"]["research_model"]
     assert str(shared.root) not in runtime.json()["data_dir"]
     assert "pid" not in runtime.json() and "runtime_id" not in runtime.json()
 

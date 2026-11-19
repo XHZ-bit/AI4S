@@ -14,7 +14,7 @@ from app.storage_lock import StorageBusyError, data_writer  # noqa: E402
 
 
 def _password():
-    first = getpass.getpass("New password (at least 12 characters): ")
+    first = getpass.getpass(f"New password (at least {accounts.PASSWORD_MIN_LENGTH} characters): ")
     second = getpass.getpass("Repeat password: ")
     if first != second:
         raise accounts.AccountError("两次输入的密码不一致")

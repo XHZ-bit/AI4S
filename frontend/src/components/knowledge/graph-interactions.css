@@ -1,0 +1,19 @@
+.kw-flat-graph .kw-graph-node { transition: opacity .16s ease; }
+.kw-flat-graph .kw-graph-node.kw-muted-node { opacity: .4; }
+.kw-flat-graph .kw-graph-node.kw-muted-node:is(:hover,:focus-visible) { opacity: 1; }
+.kw-arranging-nodes .kw-graph-node { cursor: grab; touch-action: none; user-select: none; }
+.kw-arranging-nodes .kw-graph-node.kw-dragging-node { cursor: grabbing; }
+.kw-arranging-nodes .kw-graph-node.kw-dragging-node rect { stroke: var(--atlas-accent); stroke-width: 2; }
+.kw-flat-graph .kw-layout-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.kw-flat-graph .kw-layout-controls .ant-btn { height: 30px; font-size: 12px; padding-inline: 8px; }
+.kw-graph-first .kw-flat-graph .kw-canvas-navigation { flex-wrap: wrap; gap: 8px 12px; }
+.kw-layout-help { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 20px; color: var(--atlas-muted); font-size: 12px; padding-top: 8px; }
+.kw-layout-help [role="status"] { color: var(--atlas-accent); }
+.kw-layout-save-error { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--atlas-muted); }
+@media (max-width:800px) {
+ .kw-flat-graph .kw-layout-controls { margin-left: 0; }
+ .kw-flat-graph .kw-canvas-navigation > .ant-space-compact { margin-left: auto; }
+ .kw-layout-help { line-height: 1.7; }
+}
+@media (prefers-reduced-motion:reduce) { .kw-flat-graph .kw-graph-node { transition: none; } }
+@media (forced-colors:active) { .kw-flat-graph .kw-graph-node.kw-muted-node { opacity: .65; } }

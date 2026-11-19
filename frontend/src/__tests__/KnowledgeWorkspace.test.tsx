@@ -12,6 +12,7 @@ import {project} from './research/fixtures';
 import type {KnowledgeNode,KnowledgeSource} from '../api/knowledge';
 
 const api=vi.hoisted(()=>({sources:vi.fn(),graph:vi.fn(),node:vi.fn(),learning:vi.fn(),generate:vi.fn(),source:vi.fn(),comparisons:vi.fn(),compare:vi.fn(),preview:vi.fn(),revise:vi.fn(),prefs:vi.fn(),patchNode:vi.fn(),patchLearning:vi.fn()}));
+beforeEach(()=>sessionStorage.clear());
 vi.mock('../api/projects',()=>({getProject:vi.fn(async()=>project)}));
 vi.mock('../api/client',()=>({apiGet:vi.fn(async()=>({project,papers:[],records:[],sessions:[]})),apiPost:vi.fn()}));
 vi.mock('../api/knowledge',async()=>{const actual=await vi.importActual<typeof import('../api/knowledge')>('../api/knowledge');return {...actual,listKnowledgeSources:api.sources,getKnowledgeGraph:api.graph,getKnowledgeNode:api.node,getNodeLearning:api.learning,generateNodeLearning:api.generate,getKnowledgeSource:api.source,listKnowledgeComparisons:api.comparisons,compareKnowledgeSources:api.compare,previewKnowledgeComparison:api.preview,reviseKnowledgeComparison:api.revise,saveKnowledgePreferences:api.prefs,patchKnowledgeNode:api.patchNode,patchNodeLearning:api.patchLearning}});
@@ -29,13 +30,53 @@ async function findAction(queries:ButtonQueries,name:string){return waitFor(()=>
 function show(query=''){return render(<MemoryRouter initialEntries={['/research/project-1'+query]}><Routes><Route path="/research/:projectId" element={<><KnowledgeWorkbench projectId="project-1"/><Location/></>}/></Routes></MemoryRouter>)}
 beforeEach(()=>{localStorage.clear();vi.clearAllMocks();api.sources.mockResolvedValue({items:['s1','s2','s3','s4'].map(source),preferences:{mode:'research',view:null},model:{configured:true,enabled:true}});api.graph.mockResolvedValue({nodes:[node],edges:[],total_nodes:1,total_edges:0,truncated:false});api.node.mockResolvedValue({node,neighbors:[],edges:[],evidence:[evidence],prerequisites:[],resources:[],demos:['gating']});api.learning.mockResolvedValue(basic);api.generate.mockResolvedValue({...basic,status:'ready',sections:{...basic.sections,derivation:'已保存推导'}});api.source.mockResolvedValue({...source('s1'),blocks:[]});api.comparisons.mockResolvedValue({items:[]});api.preview.mockImplementation(async(_project:string,ids:string[])=>({id:'preview',source_ids:ids,title:'基础比较',status:'basic',stale:false,cached:true,usage:{},errors:[],rows:[],evidence:[]}));api.prefs.mockResolvedValue({mode:'research',view:'graph'})});
 
-test('four-source workspace opens the whole graph and node learning never calls a model on page load',async()=>{
- show();const nodeButton=await screen.findByLabelText('公式：状态条件门控');expect(nodeButton).toHaveAttribute('role','button');expect(nodeButton).toBeVisible();expect(api.graph).toHaveBeenLastCalledWith('project-1',expect.objectContaining({source_id:undefined}),expect.any(AbortSignal));fireEvent.click(nodeButton);const inspector=within(await screen.findByLabelText('知识节点详情',{selector:'aside'}));fireEvent.click(await findAction(inspector,'深入学习'));await screen.findByText('基础解释');expect(api.generate).not.toHaveBeenCalled();const heading=within(screen.getByText('状态条件门控',{selector:'h2'}).closest('header')!);fireEvent.click(action(heading,'准备深入讲解'));await screen.findByText('已保存推导');expect(api.generate).toHaveBeenCalledTimes(1);expect(screen.getByTestId('location').textContent).toContain('view=learning');
+test('a beginner learning request inherits the workspace question and starts at standard depth',async()=>{
+ render(<KnowledgeLearning projectId="project-1" nodeId="n1" initialGoal="为什么需要缩放？" workspaceMode="explore" onNode={vi.fn()} onEvidence={vi.fn()} onBack={vi.fn()}/>);
+ await screen.findByText('基础解释');
+ expect(screen.getByLabelText('深入学习目标')).toHaveValue('为什么需要缩放？');
+ expect(screen.getByLabelText('讲解深度')).toHaveValue('standard');
+ expect(api.generate).not.toHaveBeenCalled();
+ fireEvent.click(action(screen,'生成个性化讲解'));
+ await waitFor(()=>expect(api.generate).toHaveBeenCalledWith('project-1','n1',false,expect.any(AbortSignal),{goal:'为什么需要缩放？',depth:'standard'}));
+});
+
+test('an existing personal explanation takes precedence over new beginner defaults',async()=>{
+ api.learning.mockResolvedValue({...basic,status:'ready',goal:'我的张量维度问题',depth:'deep'});
+ render(<KnowledgeLearning projectId="project-1" nodeId="n1" initialGoal="为什么需要缩放？" workspaceMode="explore" onNode={vi.fn()} onEvidence={vi.fn()} onBack={vi.fn()}/>);
+ await screen.findByText('基础解释');
+ expect(screen.getByLabelText('深入学习目标')).toHaveValue('我的张量维度问题');
+ expect(screen.getByLabelText('讲解深度')).toHaveValue('deep');
+ expect(api.generate).not.toHaveBeenCalled();
+});
+
+test('opening the graph preserves an unresolved judgment and its original evidence version',async()=>{
+ const taskKey='paperstride:local:task:project-1';
+ localStorage.setItem(taskKey,JSON.stringify({projectId:'project-1',title:'空间',url:'/research/project-1?view=learning&node=n1',view:'learning',question:'缩放',nodeId:'n1',nodeLabel:'缩放公式',sourceId:'s1',sourceVersion:'old-version',unresolvedQuestions:'4.0是概率吗？'}));
+ localStorage.setItem('paperstride:knowledge-scene:project-1',JSON.stringify({view:'learning',node:'n1',source:'s1'}));
+ show();
+ await waitFor(()=>expect(screen.getByTestId('location')).toHaveTextContent('node=n1'),{timeout:10000});
+ await screen.findByLabelText('知识节点详情',{selector:'aside'},{timeout:20000});
+ await waitFor(()=>{
+  const saved=JSON.parse(localStorage.getItem(taskKey)!);
+  expect(saved.unresolvedQuestions).toBe('4.0是概率吗？');
+  expect(saved.judgmentSourceVersion||saved.sourceVersion).toBe('old-version');
+ });
+ expect(api.generate).not.toHaveBeenCalled();
+});
+
+test('the graph remains read only and entering deeper learning prepares the explanation without a second click',async()=>{
+ show('?view=graph&node=n1');
+ const inspector=within(await screen.findByLabelText('知识节点详情',{selector:'aside'}));
+ expect(api.graph).toHaveBeenLastCalledWith('project-1',expect.objectContaining({source_id:undefined}),expect.any(AbortSignal));
+ expect(api.generate).not.toHaveBeenCalled();
+ fireEvent.click(await findAction(inspector,'深入学习'));
+ await screen.findByText('已保存推导');
+ expect(api.generate).toHaveBeenCalledTimes(1);expect(screen.getByTestId('location').textContent).toContain('view=learning');
 });
 // These two multi-view flows mount Ant Design repeatedly in JSDOM. Their timing
 // is not a product performance benchmark; actual browser timings are validated separately.
 test('comparison to learning and source evidence retain a return path and exact source page',async()=>{
- const comparison={id:'c1',source_ids:['s1','s2'],title:'协调机制比较',status:'ready',stale:false,cached:true,usage:{},errors:[],evidence:[evidence],rows:[{dimension:'信息路径',compatibility:'定性对照',values:[{source_id:'s1',text:'状态条件',node_ids:['n1'],evidence_ids:['e1'],origin:'source'},{source_id:'s2',text:'共享表示',node_ids:[],evidence_ids:[],origin:'source'}]}]};api.comparisons.mockResolvedValue({items:[comparison]});api.preview.mockResolvedValue(comparison);show('?view=compare&comparison=c1');fireEvent.click(await findAction(screen,'展开相关知识'));await screen.findByText('基础解释');fireEvent.click(action(screen,'论文 s1 第 4 页'));await waitFor(()=>expect(screen.getByTestId('source-pdf').textContent).toContain('4 /api/projects/project-1/sources/s1/file'));expect(screen.getByTestId('location').textContent).toContain('block=b1');fireEvent.click(action(screen,'返回原位置'));await screen.findByText('基础解释');
+ const comparison={id:'c1',source_ids:['s1','s2'],title:'协调机制比较',status:'ready',stale:false,cached:true,usage:{},errors:[],evidence:[evidence],rows:[{dimension:'信息路径',compatibility:'定性对照',values:[{source_id:'s1',text:'状态条件',node_ids:['n1'],evidence_ids:['e1'],origin:'source'},{source_id:'s2',text:'共享表示',node_ids:[],evidence_ids:[],origin:'source'}]}]};api.comparisons.mockResolvedValue({items:[comparison]});api.preview.mockResolvedValue(comparison);show('?view=compare&comparison=c1');fireEvent.click(await findAction(screen,'展开相关知识'));await screen.findByText('基础解释');fireEvent.click(screen.getByRole('tab',{name:'原文依据'}));fireEvent.click(action(screen,'打开原文'));await waitFor(()=>expect(screen.getByTestId('source-pdf').textContent).toContain('4 /api/projects/project-1/sources/s1/file'));expect(screen.getByTestId('location').textContent).toContain('block=b1');fireEvent.click(action(screen,'返回原位置'));await screen.findByRole('tabpanel',{name:'原文依据'});expect(screen.getByRole('tab',{name:'原文依据'})).toHaveAttribute('aria-selected','true');
 },30000);
 test('report reader uses document blocks and preserves formula content without inventing PDF pages',async()=>{
  api.source.mockResolvedValue({...source('report'),kind:'report',filename:'study.docx',media_type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',blocks:[{id:'formula',ordinal:7,kind:'formula',heading:'门控公式',text:'s=sigmoid(z)',page:null,metadata:{latex:'s=\\sigma(z)'}}]});render(<SourceReader projectId="project-1" sourceId="report"/>);expect(await screen.findByRole('heading',{name:'门控公式'})).toBeTruthy();expect(screen.queryByTestId('source-pdf')).toBeNull();expect(document.querySelector('.katex')).toBeTruthy();expect(screen.queryByText('第 8 页')).toBeNull();
@@ -46,12 +87,12 @@ test('gating demo updates real residual calculations when message changes',()=>{
 
 test('selected report block offers its own linked knowledge without per-block footers',async()=>{
  const openNode=vi.fn(),openLearning=vi.fn();api.source.mockResolvedValue({...source('report'),kind:'report',filename:'study.docx',media_type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',blocks:[{id:'b1',ordinal:0,kind:'text',heading:'方法结构',text:'共享表示',page:null,metadata:{}},{id:'b2',ordinal:1,kind:'text',heading:'门控设计',text:'外置门控',page:null,metadata:{}}],knowledge_nodes:[{id:'n1',label:'共享表示',kind:'module',block_ids:['b1']},{id:'n2',label:'门控',kind:'concept',block_ids:['b2']}]});
- render(<SourceReader projectId="project-1" sourceId="report" onNode={openNode} onLearn={openLearning}/>);await screen.findByRole('heading',{name:'门控设计'});fireEvent.click(screen.getByRole('heading',{name:'门控设计'}));expect(screen.getAllByRole('button',{name:'查看关联知识'})).toHaveLength(1);fireEvent.click(action(screen,'查看关联知识'));expect(openNode).toHaveBeenCalledWith('n2',{block:'b2',page:undefined});fireEvent.click(action(screen,'深入学习此处'));expect(openLearning).toHaveBeenCalledWith('n2',{block:'b2',page:undefined});
+ render(<SourceReader projectId="project-1" sourceId="report" onNode={openNode} onLearn={openLearning}/>);await screen.findByRole('heading',{name:'门控设计'});fireEvent.click(screen.getByRole('heading',{name:'门控设计'}));expect(document.querySelector('.kw-related-knowledge')).not.toHaveAttribute('open');fireEvent.click(screen.getByText(/当前段落关联知识/,{selector:'summary'}));expect(screen.getAllByRole('button',{name:'查看关联知识'})).toHaveLength(1);fireEvent.click(action(screen,'查看关联知识'));expect(openNode).toHaveBeenCalledWith('n2',{block:'b2',page:undefined});fireEvent.click(action(screen,'深入学习此处'));expect(openLearning).toHaveBeenCalledWith('n2',{block:'b2',page:undefined});
 });
 
 test('source to learning returns to its selected block and PDF evidence target remains stable while scrolling',async()=>{
  api.source.mockResolvedValue({...source('s1'),blocks:[{id:'b1',ordinal:0,kind:'text',heading:'Method',text:'Gate formula',page:4,bbox:[10,20,40,50],metadata:{}}],knowledge_nodes:[{id:'n1',label:'状态条件门控',kind:'formula',block_ids:['b1']}]});
- show('?view=reading&source=s1&page=4&targetPage=4&block=b1&bbox=10,20,40,50');await findAction(screen,'深入学习此处');fireEvent.click(action(screen,'深入学习此处'));await screen.findByText('基础解释');fireEvent.click(action(screen,'返回原位置'));await screen.findByTestId('source-pdf');expect(screen.getByTestId('location').textContent).toContain('block=b1');fireEvent.click(action(screen,'模拟连续滚动到第六页'));await waitFor(()=>expect(screen.getByTestId('source-pdf').textContent).toContain('6 /api/'));expect(screen.getByTestId('target-page').textContent).toBe('4');
+ show('?view=reading&source=s1&page=4&targetPage=4&block=b1&bbox=10,20,40,50');fireEvent.click(await screen.findByText(/第 4 页关联知识/,{selector:'summary'}));await findAction(screen,'深入学习此处');fireEvent.click(action(screen,'深入学习此处'));await screen.findByText('基础解释');fireEvent.click(action(screen,'返回原位置'));await screen.findByTestId('source-pdf');expect(screen.getByTestId('location').textContent).toContain('block=b1');fireEvent.click(action(screen,'模拟连续滚动到第六页'));await waitFor(()=>expect(screen.getByTestId('source-pdf').textContent).toContain('6 /api/'));expect(screen.getByTestId('target-page').textContent).toBe('4');
 },30000);
 
 test('opening a space restores the graph scope while explicit reading URLs retain their saved page',async()=>{
@@ -60,12 +101,41 @@ test('opening a space restores the graph scope while explicit reading URLs retai
  api.source.mockClear();show('?view=reading&source=s1&page=6');await screen.findByTestId('source-pdf');expect(api.source).toHaveBeenCalledWith('project-1','s1',expect.any(AbortSignal));expect(screen.getByTestId('location').textContent).toBe('?view=reading&source=s1&page=6');
 });
 
+test('continue restores the saved reading position without persisting source text',async()=>{
+ localStorage.setItem('paperstride:knowledge-scene:project-1',JSON.stringify({view:'reading',source:'s1',page:'6',block:'b1',quote:'private source text'}));
+ show('?resume=1');
+ await screen.findByTestId('source-pdf');
+ await waitFor(()=>expect(screen.getByTestId('location').textContent).toContain('page=6'));
+ expect(screen.getByTestId('location').textContent).toContain('block=b1');
+ expect(screen.getByTestId('location').textContent).not.toContain('private');
+ expect(localStorage.getItem('paperstride:local:lastWorkspace')).toBe('/research/project-1?resume=1');
+});
+
+test('continue restores the scoped graph canvas and tolerates unavailable saved scenes',async()=>{
+ const sceneKey='paperstride:knowledge-scene:project-1';
+ localStorage.setItem(sceneKey,JSON.stringify({view:'graph',source:'s1',node:'n1'}));
+ localStorage.setItem(sceneKey+':canvas',JSON.stringify({scope:'project-1/s1',search:'',query:'',kind:'',focus:'n1',zoom:1.4,includeHidden:false,showStructure:false,scrollLeft:50,scrollTop:220,displayMode:'graph'}));
+ const mounted=show('?resume=1');
+ await screen.findByLabelText('公式：状态条件门控');
+ await waitFor(()=>expect(screen.getByTestId('location').textContent).toContain('source=s1'));
+ await waitFor(()=>expect(screen.getByLabelText('研究知识图谱画布').scrollTop).toBe(220));
+ expect(screen.getByLabelText('研究知识图谱画布').scrollLeft).toBe(50);
+ mounted.unmount();
+ localStorage.setItem(sceneKey+':canvas',JSON.stringify({scope:'project-1/s1',search:'',query:'',kind:'',focus:'n1',zoom:1.4,includeHidden:false,showStructure:false,scrollLeft:50,scrollTop:220,displayMode:'graph'}));
+ const explicit=show('?view=graph&source=s1&node=n1&resumeCanvas=1');
+ await screen.findByLabelText('公式：状态条件门控');
+ await waitFor(()=>expect(screen.getByLabelText('研究知识图谱画布').scrollTop).toBe(220));
+ explicit.unmount();localStorage.setItem(sceneKey,'invalid-json');
+ show('?resume=1');
+ expect(await screen.findByLabelText('公式：状态条件门控')).toBeTruthy();
+});
+
 test('repository viewer names the frozen snapshot and shows file path plus commit',async()=>{
  api.source.mockResolvedValue({...source('repo'),kind:'code',filename:'method.repo.json',media_type:'application/json',blocks:[{id:'code',ordinal:0,kind:'code',heading:'Gate.forward',text:'def forward(x):\n    return x',page:null,metadata:{path:'models/gate.py',commit:'1234567890abcdef',symbol:'Gate.forward',start_line:20,end_line:21}}]});render(<SourceReader projectId="project-1" sourceId="repo"/>);expect(await screen.findByRole('link',{name:'下载仓库快照'})).toBeTruthy();expect(screen.getByText('models/gate.py')).toBeTruthy();expect(screen.getByText('版本 12345678')).toBeTruthy();
 });
 
 test('formula correction submits versioned LaTeX for the current space without rewriting source text',async()=>{
- api.patchNode.mockResolvedValue({...node,version:2,origin:'user'});show('?view=graph&node=n1&source=s1');const inspector=within(await screen.findByLabelText('知识节点详情',{selector:'aside'}));fireEvent.click(await findAction(inspector,'修订内容'));const field=inspector.getByLabelText('公式 LaTeX');fireEvent.change(field,{target:{value:'\\delta=c\\sigma(z)\\tanh(m)'}});fireEvent.click(action(inspector,'保存修订'));await waitFor(()=>expect(api.patchNode).toHaveBeenCalledWith('project-1','n1',expect.objectContaining({expected_version:1,latex:'\\delta=c\\sigma(z)\\tanh(m)'})));expect(api.generate).not.toHaveBeenCalled();
+ api.patchNode.mockResolvedValue({...node,version:2,origin:'user'});show('?view=graph&node=n1&source=s1');const inspector=within(await screen.findByLabelText('知识节点详情',{selector:'aside'}));fireEvent.click(await findAction(inspector,'编辑节点'));const field=inspector.getByLabelText('公式 LaTeX');fireEvent.change(field,{target:{value:'\\delta=c\\sigma(z)\\tanh(m)'}});fireEvent.click(action(inspector,'保存修订'));await waitFor(()=>expect(api.patchNode).toHaveBeenCalledWith('project-1','n1',expect.objectContaining({expected_version:1,latex:'\\delta=c\\sigma(z)\\tanh(m)'})));expect(api.generate).not.toHaveBeenCalled();
 });
 
 test('method comparison explicitly focuses D2 within the chosen report and omits deselected sources',async()=>{
@@ -80,7 +150,7 @@ test('method comparison explicitly focuses D2 within the chosen report and omits
 
 test('saved comparison restores its exact focused method without generating content',async()=>{
  const saved={id:'saved',source_ids:['s1','s2'],title:'历史 D2 比较',focus_node_ids:['d2'],focus_nodes:[{id:'d2',source_id:'s2',label:'D2'}],rows:[],evidence:[],status:'ready',stale:false,cached:true,usage:{},errors:[]};api.comparisons.mockResolvedValue({items:[saved]});api.preview.mockResolvedValue(saved);
- render(<KnowledgeComparison projectId="project-1" sources={[source('s1'),source('s2')]} comparisonId="saved" onComparison={vi.fn()} onNode={vi.fn()} onEvidence={vi.fn()}/>);await screen.findByText('历史 D2 比较');fireEvent.click(screen.getByText('调整资料、聚焦方法与比较关注点'));expect(screen.getByLabelText('聚焦方法：论文 s2')).toHaveValue('d2');expect(api.compare).not.toHaveBeenCalled();
+ render(<KnowledgeComparison projectId="project-1" sources={[source('s1'),source('s2')]} comparisonId="saved" onComparison={vi.fn()} onNode={vi.fn()} onEvidence={vi.fn()}/>);await screen.findByRole('heading',{name:'历史 D2 比较',level:3});fireEvent.click(screen.getByText('调整资料、聚焦方法与比较关注点'));expect(screen.getByLabelText('聚焦方法：论文 s2')).toHaveValue('d2');expect(api.compare).not.toHaveBeenCalled();
 });
 
 test('learning correction and section hide use successive saved revisions without model calls',async()=>{
@@ -112,7 +182,7 @@ test('a focused graph keeps nodes distinct and inside a bounded canvas',()=>{
 });
 
 test('node practice expands from the graph and returns to its selected node and canvas position',async()=>{
- show();fireEvent.click(await screen.findByLabelText('公式：状态条件门控'));const inspector=within(await screen.findByLabelText('知识节点详情',{selector:'aside'}));await findAction(inspector,'动态练习');const canvas=screen.getByLabelText('研究知识图谱画布');canvas.scrollTop=220;canvas.scrollLeft=50;fireEvent.scroll(canvas);fireEvent.click(action(inspector,'动态练习'));await screen.findByText('练习绑定节点：n1');expect(screen.getByTestId('location').textContent).toContain('view=practice');expect(screen.getByTestId('location').textContent).toContain('graphFrom=');fireEvent.click(action(screen,'返回研究图谱'));await screen.findByLabelText('公式：状态条件门控');await waitFor(()=>expect(screen.getByLabelText('研究知识图谱画布').scrollTop).toBe(220));expect(screen.getByTestId('location').textContent).toContain('node=n1');expect(api.prefs).not.toHaveBeenCalled();expect(api.generate).not.toHaveBeenCalled();
+ show();fireEvent.click(await screen.findByLabelText('公式：状态条件门控'));const inspector=within(await screen.findByLabelText('知识节点详情',{selector:'aside'}));await findAction(inspector,'动态练习');const canvas=screen.getByLabelText('研究知识图谱画布');canvas.scrollTop=220;canvas.scrollLeft=50;fireEvent.scroll(canvas);fireEvent.click(action(inspector,'动态练习'));await screen.findByText('练习绑定节点：n1');expect(screen.getByTestId('location').textContent).toContain('view=practice');expect(screen.getByTestId('location').textContent).toContain('graphFrom=');expect(document.querySelector('.kw-context-heading')).toBeNull();fireEvent.click(action(screen,'返回原位置'));await screen.findByLabelText('公式：状态条件门控');await waitFor(()=>expect(screen.getByLabelText('研究知识图谱画布').scrollTop).toBe(220));expect(screen.getByTestId('location').textContent).toContain('node=n1');expect(api.prefs).not.toHaveBeenCalled();expect(api.generate).not.toHaveBeenCalled();
 },30000);
 
 test('graph failure is visible and recoverable rather than leaving an empty canvas',async()=>{

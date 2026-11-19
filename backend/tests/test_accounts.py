@@ -84,6 +84,25 @@ def test_user_validation_casefold_duplicates_and_capacity(identity):
     assert len(accounts.list_users()) == 1
 
 
+def test_six_character_passwords_work_across_account_requests(identity, client):
+    response = client.post("/api/auth/register", json={"username": "newuser", "password": "123456"})
+    assert response.status_code == 201
+    assert _sign_in(client, "newuser", "123456").status_code == 200
+    user = next(item for item in accounts.list_users() if item["username"] == "newuser")
+    accounts.reset_password(user["id"], "654321")
+    assert _sign_in(client, "newuser", "654321").status_code == 200
+    for request_type, field, extras in [
+        (api.RegisterRequest, "password", {"username": "newuser"}),
+        (api.CreateUserRequest, "password", {"username": "newuser"}),
+        (api.PasswordRequest, "new_password", {"current_password": "123456"}),
+        (api.RecoveryReset, "new_password", {"username": "newuser", "code": "recovery"}),
+        (api.ResetPasswordRequest, "new_password", {"token": "token"}),
+    ]:
+        request_type(**extras, **{field: "123456"})
+        with pytest.raises(ValueError):
+            request_type(**extras, **{field: "12345"})
+
+
 def test_sessions_are_hashed_expire_and_revoke_independently(identity, monkeypatch):
     user = accounts.create_user("alice", PASSWORD)
     monkeypatch.setattr(accounts.time, "time", lambda: 1000)

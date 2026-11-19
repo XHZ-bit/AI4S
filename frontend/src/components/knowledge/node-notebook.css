@@ -1,0 +1,24 @@
+.kw-node-notebook { margin:20px 0; padding-top:18px; border-top:1px solid var(--atlas-line); }
+.kw-node-notebook>header { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:10px; }
+.kw-node-notebook>header h3 { margin:0; }
+.kw-node-notebook details { margin-block:10px; }
+.kw-node-notebook details>summary { cursor:pointer; color:var(--atlas-muted); font-size:12px; padding:4px 0; }
+.kw-node-notebook details>.ant-input { margin-top:8px; }
+.kw-node-note-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:10px; }
+.kw-node-note-actions [role=status],.kw-node-note-export>p { color:var(--atlas-muted); font-size:12px; }
+.kw-node-note-error { color:var(--atlas-ink); font-size:12px; margin-top:10px; }
+.kw-node-note-conflict { margin-top:12px; padding:12px; background:var(--atlas-surface-alt); border-radius:7px; }
+.kw-node-note-conflict pre,.kw-outcome-preview { white-space:pre-wrap; overflow-wrap:anywhere; font:inherit; font-size:12px; line-height:1.75; max-height:280px; overflow:auto; }
+.kw-node-note-export { margin-top:16px; padding-top:12px; border-top:1px solid var(--atlas-line); }
+.kw-outcome-choices { display:grid; gap:10px; margin-bottom:14px; }
+.kw-outcome-choices .ant-checkbox-wrapper { margin-inline-start:0; align-items:flex-start; font-size:12px; }
+.kw-outcome-choices details .ant-checkbox-wrapper { display:flex; margin-block:8px; }
+.kw-outcome-preview { background:var(--atlas-surface-alt); padding:12px; border-radius:7px; }
+.kw-note-references { margin-top:16px; }
+.kw-note-references h4 { margin:0 0 8px; font-size:14px; }
+.kw-note-references ul { list-style:none; padding:0; margin:0; }
+.kw-note-references li { padding:10px 0; border-bottom:1px solid var(--atlas-line); }
+.kw-note-references .ant-btn-link { height:auto; padding-inline:0; white-space:normal; text-align:left; }
+.kw-note-references blockquote { margin:8px 0; white-space:pre-wrap; overflow-wrap:anywhere; font-size:14px; line-height:1.7; }
+.kw-note-references small { display:block; color:var(--atlas-muted); overflow-wrap:anywhere; }
+.kw-note-references [role=note] { display:block; color:var(--atlas-ink); font-size:13px; line-height:1.6; }

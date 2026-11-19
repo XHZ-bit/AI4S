@@ -20,8 +20,9 @@ const priority:Record<string,number>={method:0,module:1,problem:2,algorithm:3,co
 const rank=(node:KnowledgeNode)=>(node.metadata?.semantic?0:20)+(priority[node.kind]??12);
 
 /** Space -> material is the only browse hierarchy. Details stay directly reachable. */
-export function selectGraphScene(graph:KnowledgeGraph,sourceId?:string,focus?:string,maximum=16){
- const center=graph.nodes.find(n=>n.id===focus)||(sourceId?graph.nodes.find(n=>n.source_id===sourceId&&!n.parent_id):undefined);
+export function selectGraphScene(graph:KnowledgeGraph,sourceId?:string,focus?:string,maximum=16,selectedId?:string){
+ const selected=graph.nodes.find(n=>n.id===selectedId);
+ const center=graph.nodes.find(n=>n.id===focus)||selected||(sourceId?graph.nodes.find(n=>n.source_id===sourceId&&!n.parent_id):undefined);
  maximum=Math.min(maximum,center||sourceId?16:14);
  const chosen:KnowledgeNode[]=[],visibleKeys=new Set<string>();
  const byId=new Map(graph.nodes.map(n=>[n.id,n]));
@@ -47,6 +48,21 @@ export function selectGraphScene(graph:KnowledgeGraph,sourceId?:string,focus?:st
  };
  if(center||sourceId){
   add(center);
+  add(selected);
+  if(selected||focus){
+   // Keep the source and actual one-hop relations before kind-based quotas.
+   // Structure relations are meaningful context too, especially on return
+   // from an original-text location. No edge is inferred from parent_id.
+   const sourceRoot=graph.nodes.find(n=>n.source_id===(selected||center)?.source_id&&!n.parent_id&&roots.has(n.kind));
+   add(sourceRoot);
+   const anchors=new Set([center?.id,selected?.id].filter(Boolean));
+   const incident=graph.edges.filter(e=>anchors.has(e.source)||anchors.has(e.target));
+   const neighborIds=new Set(incident.flatMap(e=>[e.source,e.target]));
+   const neighbors=graph.nodes.filter(n=>neighborIds.has(n.id)&&!anchors.has(n.id));
+   const edgeWeight=(n:KnowledgeNode)=>incident.filter(e=>e.source===n.id||e.target===n.id).reduce((sum,e)=>sum+1+(e.evidence_ids.length?3:0),0);
+   neighbors.sort((a,b)=>edgeWeight(b)-edgeWeight(a)||rank(a)-rank(b)||a.label.localeCompare(b.label));
+   for(const neighbor of neighbors)add(neighbor);
+  }
   let candidates=graph.nodes.filter(n=>n.id!==center?.id);
   if(focus&&center){
    const context=new Set([center.id]);
@@ -78,6 +94,44 @@ export function selectGraphScene(graph:KnowledgeGraph,sourceId?:string,focus?:st
  const nodes=chosen.slice(0,maximum),ids=new Set(nodes.map(n=>n.id));
  return {graph:{...graph,nodes,edges:graph.edges.filter(e=>ids.has(e.source)&&ids.has(e.target))},center,
   omitted:graph.nodes.filter(n=>!ids.has(n.id))};
+}
+
+/** Rank only existing records and preserve their real relations and source identity. */
+export function selectQuestionGraphScene(graph:KnowledgeGraph,question:string,maximum=9,selectedId?:string){
+ const terms=new Set<string>();
+ for(const word of question.toLocaleLowerCase().match(/[a-z0-9_]{2,}|[\u3400-\u9fff]{2,}/g)||[]){
+  terms.add(word);
+  if(/[\u3400-\u9fff]/.test(word))for(let index=0;index<word.length-1;index++)terms.add(word.slice(index,index+2));
+ }
+ const scores=new Map(graph.nodes.map(node=>{
+  const label=node.label.toLocaleLowerCase(),summary=node.summary.toLocaleLowerCase();
+  const score=[...terms].reduce((sum,term)=>sum+(label.includes(term)?6:summary.includes(term)?1:0),0);
+  return [node.id,score];
+ }));
+ const ordered=[...graph.nodes].filter(node=>!roots.has(node.kind)).sort((a,b)=>(scores.get(b.id)||0)-(scores.get(a.id)||0)||rank(a)-rank(b)||a.label.localeCompare(b.label));
+ const chosen:KnowledgeNode[]=[];
+ const add=(node?:KnowledgeNode)=>{
+  if(node&&chosen.length<maximum&&!chosen.some(item=>item.id===node.id))chosen.push(node);
+ };
+ const selected=graph.nodes.find(node=>node.id===selectedId);
+ const anchor=selected||ordered.find(node=>(scores.get(node.id)||0)>0);
+ add(anchor);
+ if(!anchor)for(const root of graph.nodes.filter(node=>!node.parent_id&&roots.has(node.kind)).slice(0,2))add(root);
+ if(anchor){
+  add(graph.nodes.find(node=>node.source_id===anchor.source_id&&!node.parent_id&&roots.has(node.kind)));
+  const neighborIds=new Set(graph.edges.filter(edge=>edge.source===anchor.id||edge.target===anchor.id).flatMap(edge=>[edge.source,edge.target]));
+  for(const kind of ['problem','method','formula','experiment','finding','concept','module'])add(ordered.find(node=>node.kind===kind&&neighborIds.has(node.id)));
+ }
+ // Every supported paper type gets a chance before repeated methods consume the canvas.
+ for(const kind of ['problem','method','formula','experiment','finding','concept','module'])add(ordered.find(node=>node.kind===kind));
+ for(const node of ordered)add(node);
+ if(!chosen.length)for(const node of graph.nodes)add(node);
+ const ids=new Set(chosen.map(node=>node.id));
+ return {
+  graph:{...graph,nodes:chosen,edges:graph.edges.filter(edge=>ids.has(edge.source)&&ids.has(edge.target))},
+  center:anchor,
+  omitted:graph.nodes.filter(node=>!ids.has(node.id)),
+ };
 }
 
 export interface Point{x:number;y:number;depth:number}
@@ -163,9 +217,9 @@ export function routeGraphEdges(graph:KnowledgeGraph,layout:GraphLayout):EdgeRou
  return orderedEdges.flatMap(edge=>{
   const a=layout.points.get(edge.source),b=layout.points.get(edge.target);if(!a||!b)return [];
   const ap=ends.get(edge.id+':s')!,bp=ends.get(edge.id+':t')!,start=port(a,ap.side,ap.part),end=port(b,bp.side,bp.part);
-  const middle=gridPath(start.outside,end.outside,boxes,layout,used);
-  // Layout points never overlap; their free perimeter grid therefore always has a route.
-  if(!middle)throw new Error('No safe route for knowledge relation '+edge.id);
+  // A card can temporarily cross another card during a manual drag. Keep its
+  // relation visible until the drop handler finds a non-overlapping position.
+  const middle=gridPath(start.outside,end.outside,boxes,layout,used)||[start.outside,{x:start.outside.x,y:end.outside.y},end.outside];
   const points=clean([start.p,...middle,end.p]);
   points.forEach((p,i)=>{if(i)used.push([points[i-1],p])});
   return [{edge,points,d:points.map((p,i)=>(i?'L':'M')+p.x+' '+p.y).join(' ')}];

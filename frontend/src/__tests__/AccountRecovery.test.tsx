@@ -24,6 +24,20 @@ test("registration checks confirmation before creating an account and forwards o
   expect(fetch).toHaveBeenCalledWith("/api/auth/register", expect.objectContaining({ body: JSON.stringify({ username: "alice", password: "correct horse battery", email: "alice@example.com" }) }));
 });
 
+test("registration accepts a six-character password and rejects five characters", async () => {
+  const onAuthenticated = vi.fn();
+  globalThis.fetch = vi.fn().mockResolvedValue(response(member));
+  render(<AuthenticationForm registrationEnabled onAuthenticated={onAuthenticated}/>);
+  fireEvent.click(screen.getByRole("button", { name: "创建新账号" }));
+  fill("用户名", "alice"); fill("密码", "12345"); fill("确认密码", "12345");
+  fireEvent.click(screen.getByRole("button", { name: "注册并进入" }));
+  expect(await screen.findByText("密码至少需要 6 个字符")).toBeTruthy();
+  expect(fetch).not.toHaveBeenCalled();
+  fill("密码", "123456"); fill("确认密码", "123456");
+  fireEvent.click(screen.getByRole("button", { name: "注册并进入" }));
+  await waitFor(() => expect(onAuthenticated).toHaveBeenCalledWith(member));
+});
+
 test("email recovery shows a neutral receipt and offers the offline recovery path", async () => {
   globalThis.fetch = vi.fn().mockResolvedValue(response({ ok: true, message: "如果邮箱已绑定账号，重置邮件将发送到邮箱。" }));
   render(<AuthenticationForm emailRecoveryEnabled onAuthenticated={vi.fn()}/>);

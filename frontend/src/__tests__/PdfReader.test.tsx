@@ -71,7 +71,7 @@ async function loaded() {
   await waitFor(() => expect(window.document.querySelector("canvas")?.style.width).toMatch(/^\d/));
 }
 async function resizeTo(width: number) {
-  await act(async () => { resize?.([{ contentRect: { width } } as ResizeObserverEntry]); });
+  await act(async () => { resize?.([{ target: screen.getByLabelText("PDF 阅读器"), contentRect: { width } } as unknown as ResizeObserverEntry]); });
 }
 async function chooseZoom(label: string) {
   const input = screen.getByLabelText("PDF 缩放", {selector: 'input'});
@@ -252,4 +252,48 @@ test("scroll position reports the visible page without snapping when the saved p
   await waitFor(() => expect(changed).toHaveBeenLastCalledWith(3));
   view.rerender(<PdfReader resource={resource} initialPage={3} onPageChange={changed} />);
   expect(viewport.scrollTop).toBe(2100);
+});
+
+test("responsive width and zoom preserve the page and relative reading position deep in a paper", async () => {
+  document.numPages = 21;
+  const changed = vi.fn(), view = render(<PdfReader resource={resource} onPageChange={changed} />); await loaded();
+  const viewport = screen.getByLabelText("连续阅读页面");
+  const elements = [...viewport.querySelectorAll<HTMLElement>("[data-pdf-page]")];
+  // Browser page offsets follow all preceding page heights after every resize.
+  elements.forEach((element, index) => Object.defineProperty(element, "offsetTop", { configurable: true, get: () => 12 + elements.slice(0, index).reduce((sum, before) => sum + parseFloat(before.style.height) + 16, 0) }));
+  Object.defineProperty(viewport, "clientHeight", { value: 600 });
+  view.rerender(<PdfReader resource={resource} initialPage={12} onPageChange={changed} />);
+  await waitFor(() => expect(screen.getByLabelText("PDF 页码")).toHaveValue("12"));
+  const selected = elements[11];
+  viewport.scrollTop = selected.offsetTop + parseFloat(selected.style.height) * .35;
+  await act(async () => { fireEvent.scroll(viewport); await new Promise(resolve => setTimeout(resolve, 160)); });
+  expect(screen.getByLabelText("PDF 页码")).toHaveValue("12");
+  changed.mockClear();
+  await resizeTo(936);
+  await waitFor(() => expect(viewport.scrollTop).toBeCloseTo(selected.offsetTop + parseFloat(selected.style.height) * .35));
+  expect(screen.getByLabelText("PDF 页码")).toHaveValue("12");
+  await chooseZoom("150%");
+  await waitFor(() => expect(viewport.scrollTop).toBeCloseTo(selected.offsetTop + parseFloat(selected.style.height) * .35));
+  expect(screen.getByLabelText("PDF 页码")).toHaveValue("12");
+  expect(changed).not.toHaveBeenCalled();
+});
+
+test("the PDF viewport follows the actual top and toolbar changes without reloading the document", async () => {
+  let top = 220;
+  Object.defineProperty(window, "innerHeight", { configurable: true, value: 768 });
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function(this: HTMLElement) {
+    const pageTop = this.classList.contains("atlas-pdf-pages") ? top : 100;
+    return { width: 0, height: 0, top: pageTop, bottom: pageTop, left: 0, right: 0, x: 0, y: pageTop, toJSON: () => ({}) };
+  });
+  render(<PdfReader resource={resource} quote="A saved evidence fragment." />); await loaded();
+  const host = screen.getByLabelText("PDF 阅读器"), viewport = screen.getByLabelText("连续阅读页面"), canvas = window.document.querySelector("canvas");
+  expect(host.style.getPropertyValue("--ps-reader-height")).toBe("536px");
+  const citation = screen.getByText("定位依据片段", { selector: "summary" }).closest("details")!;
+  expect(citation.closest(".ps-pdf-toolbar")).not.toBeNull();
+  viewport.scrollTop = 140; top = 280;
+  await act(async () => { resize?.([{ target: host.querySelector(".ps-pdf-toolbar"), contentRect: { width: 900 } } as unknown as ResizeObserverEntry]); });
+  expect(host.style.getPropertyValue("--ps-reader-height")).toBe("476px");
+  top = 160; fireEvent(window, new Event("resize"));
+  await waitFor(() => expect(host.style.getPropertyValue("--ps-reader-height")).toBe("596px"));
+  expect(screen.getByLabelText("连续阅读页面")).toBe(viewport); expect(window.document.querySelector("canvas")).toBe(canvas); expect(viewport.scrollTop).toBe(140); expect(pdf.getDocument).toHaveBeenCalledTimes(1);
 });

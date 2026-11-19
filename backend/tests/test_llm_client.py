@@ -47,3 +47,57 @@ def test_chat_raises_after_retries(monkeypatch):
     import pytest
     with pytest.raises(httpx.HTTPError):
         chat([{"role": "user", "content": "hi"}])
+
+
+@respx.mock
+def test_chat_uses_personal_provider_with_pinned_address(monkeypatch):
+    from app import preferences
+    monkeypatch.setattr(preferences, "provider", lambda: {
+        "api_key": "personal-key", "base_url": "https://personal.example/v1",
+        "model": "personal-model", "address": "8.8.8.8", "host": "personal.example",
+    })
+    route = respx.post("https://8.8.8.8/v1/chat/completions").mock(
+        return_value=httpx.Response(200, json={"choices": [{"message": {"content": "hello"}}]})
+    )
+    assert chat([{"role": "user", "content": "hi"}]) == "hello"
+    request = route.calls[0].request
+    assert request.headers["authorization"] == "Bearer personal-key"
+    assert request.headers["host"] == "personal.example"
+    assert request.extensions["sni_hostname"] == "personal.example"
+    import json
+    assert json.loads(request.content)["model"] == "personal-model"
+
+
+@respx.mock
+def test_default_provider_embedding_uses_personal_key(monkeypatch):
+    from app import preferences
+    from app.config import get_settings
+    settings = get_settings()
+    monkeypatch.setattr(preferences, "read", lambda: {"provider": {
+        "enabled": True, "base_url": settings.llm_api_base, "embedding_model": ""
+    }})
+    monkeypatch.setattr(preferences, "provider", lambda: {
+        "api_key": "personal-key", "base_url": settings.llm_api_base,
+        "model": "chat-model", "address": "8.8.8.8", "host": "personal.example"
+    })
+    path = httpx.URL(settings.llm_api_base.rstrip("/") + "/embeddings").path
+    route = respx.post("https://8.8.8.8" + path).mock(
+        return_value=httpx.Response(200, json={"data": [{"index": 0, "embedding": [0.1, 0.2]}]})
+    )
+    assert embed(["test"]) == [[0.1, 0.2]]
+    request = route.calls[0].request
+    assert request.headers["authorization"] == "Bearer personal-key"
+    import json
+    assert json.loads(request.content)["model"] == settings.llm_embed_model
+
+
+def test_other_provider_requires_explicit_embedding_model(monkeypatch):
+    from app import preferences
+    from app.llm.client import embedding_identity
+    import pytest
+    selected = {"enabled": True, "base_url": "https://other.example/v1", "embedding_model": ""}
+    monkeypatch.setattr(preferences, "read", lambda: {"provider": selected})
+    with pytest.raises(RuntimeError, match="向量模型"):
+        embedding_identity()
+    selected["embedding_model"] = "custom-embed"
+    assert embedding_identity() == ("https://other.example/v1", "custom-embed")

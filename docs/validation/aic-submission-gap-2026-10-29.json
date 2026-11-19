@@ -1,0 +1,172 @@
+{
+  "checked_on": "2026-10-29",
+  "timezone": "Asia/Shanghai",
+  "competition": "2026年第八届全球校园人工智能算法精英大赛 算法主题赛 AI+开源",
+  "official_track_url": "https://www.aicomp.cn/tracks/tracks-5/4924.html",
+  "schedule_notice_url": "https://www.aicomp.cn/notice/notice-3/5435.html",
+  "submission_deadline": "2026-10-30T20:00:00+08:00",
+  "official_attachment_texts_match_existing_local_texts": true,
+  "source_verification": ".tmp/aic-rule-audit/source-verification.json",
+  "requirements": [
+    {
+      "id": "entry",
+      "priority": "P0",
+      "rule": "团队信息、参赛方向、报名缴费",
+      "status": "requires_human_backend_confirmation"
+    },
+    {
+      "id": "title_abstract",
+      "priority": "P0",
+      "rule": "作品名不超过20字，简介不超过300字",
+      "status": "final_values_needed"
+    },
+    {
+      "id": "report",
+      "priority": "P0",
+      "rule": "PDF不超过10MB，正文建议15页内",
+      "status": "old_draft_exists_update_needed",
+      "old_pdf_bytes": 1306913,
+      "old_pdf_pages_including_appendices": 23,
+      "cover_fields_blank": true
+    },
+    {
+      "id": "video",
+      "priority": "P0",
+      "rule": "原则上必交MP4，3-5分钟，不超过300MB",
+      "status": "no_submission_mp4_found_in_reports_or_aic_review"
+    },
+    {
+      "id": "result_link",
+      "priority": "P0",
+      "rule": "评审期间有效的成果访问链接，附必要安装使用说明",
+      "status": "public_repo_stale_current_package_needed",
+      "public_repo": "https://github.com/XHZ-bit/AI4S",
+      "verified_public_main": "6c69be79f27d61922ef113919e2f07230ce7ba2a",
+      "current_release_packages_observed": "2026-10-22"
+    },
+    {
+      "id": "resources",
+      "priority": "P0",
+      "rule": "第三方资源清单作为报告附件",
+      "status": "old_inventory_exists_new_core_dependencies_missing"
+    },
+    {
+      "id": "ai_disclosure",
+      "priority": "P0",
+      "rule": "说明AI辅助环节及团队审核、修改、验证、来源权利核查",
+      "status": "old_disclosure_exists_final_team_review_confirmation_needed"
+    },
+    {
+      "id": "anonymity",
+      "priority": "P0",
+      "rule": "评审材料不得出现参赛学校名称、学校LOGO、指导教师信息",
+      "status": "final_artifacts_need_check"
+    },
+    {
+      "id": "ppt",
+      "priority": "stage_dependent",
+      "rule": "总决赛晋级后按通知提交PDF",
+      "status": "not_an_initial_submission_blocker_by_itself"
+    },
+    {
+      "id": "evidence",
+      "priority": "optional",
+      "rule": "测试、用户反馈、截图、仓库记录等可选佐证",
+      "status": "evidence_exists_requires_scope_and_date_labels"
+    }
+  ],
+  "score_weights": {
+    "problem_value": 15,
+    "innovation_design": 20,
+    "ai_opensource_integration": 20,
+    "implementation_verifiable_effect": 25,
+    "open_reuse_value": 15,
+    "materials_expression": 5
+  },
+  "not_universal_requirements": [
+    "公网部署",
+    "企业级账号系统",
+    "大模型训练",
+    "专用硬件",
+    "专利",
+    "企业合同",
+    "必须提交上游PR"
+  ],
+  "private_review_submission_permitted": true,
+  "root_license_selected": false,
+  "license_choice_made_by_audit": false,
+  "published_or_submitted_by_audit": false,
+  "additional_resources_not_in_2026_10_28_inventory": [
+    {
+      "name": "docling",
+      "version": "2.144.0",
+      "license_metadata": "MIT"
+    },
+    {
+      "name": "docling-core",
+      "version": "2.105.0",
+      "license_metadata": "MIT"
+    },
+    {
+      "name": "docling-ibm-models",
+      "version": "4.0.4",
+      "license_metadata": "MIT"
+    },
+    {
+      "name": "docling-parse",
+      "version": "7.24.1",
+      "license_metadata": "MIT"
+    },
+    {
+      "name": "openpyxl",
+      "version": "3.1.5",
+      "license_metadata": "MIT"
+    },
+    {
+      "name": "python-docx",
+      "version": "1.2.0",
+      "license_metadata": "MIT"
+    },
+    {
+      "name": "torch",
+      "version": "2.9.1+cpu",
+      "license_metadata": "BSD-3-Clause"
+    },
+    {
+      "name": "torchvision",
+      "version": "0.24.1+cpu",
+      "license_metadata": "BSD"
+    },
+    {
+      "name": "rapidocr",
+      "version": "3.10.0",
+      "license_metadata": "Apache-2.0"
+    },
+    {
+      "name": "CodeFormulaV2",
+      "source": "https://huggingface.co/docling-project/CodeFormulaV2",
+      "license_card": "CDLA-Permissive-2.0"
+    },
+    {
+      "name": "docling-layout-heron",
+      "source": "https://huggingface.co/docling-project/docling-layout-heron",
+      "license_card": "Apache-2.0"
+    },
+    {
+      "name": "docling-models / TableFormer",
+      "source": "https://huggingface.co/docling-project/docling-models",
+      "license_card": "CDLA/Apache; verify actual component"
+    },
+    {
+      "name": "RapidOCR model files and dictionary",
+      "source": "local model manifest",
+      "license_card": "component_specific_review_needed"
+    }
+  ],
+  "important_limits": [
+    "Local source inspection does not prove competition registration/payment/submission.",
+    "Test correctness is not an independent model semantic accuracy or learning outcome result.",
+    "Public accessibility is not redistribution permission.",
+    "Restricted review does not waive third-party license obligations."
+  ]
+}

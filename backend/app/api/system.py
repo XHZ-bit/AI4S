@@ -73,8 +73,9 @@ def runtime_status():
     from importlib.util import find_spec
     artifacts = Path(__file__).resolve().parents[3] / '.tmp/models/docling/paperstride-models.json'
     parser['knowledge_backend'] = 'Docling' if s.knowledge_use_docling and find_spec('docling') is not None and artifacts.is_file() else 'PyMuPDF'
-    from app.knowledge.model import available as knowledge_model_available
-    model = {"status": "configured" if s.dashscope_api_key else "unconfigured",
+    from app.knowledge.model import available as knowledge_model_available, configured as model_configured
+    configured = model_configured()
+    model = {"status": "configured" if configured else "unconfigured",
              "research_enabled": s.research_model_enabled,
              'knowledge_enabled': bool(s.knowledge_model_enabled and not s.offline_mode),
              "reason": "配置状态不代表模型调用已经验证"}
@@ -94,7 +95,7 @@ def runtime_status():
                              "automatic_actions": database["status"] == "available",
                              "graph": graph["status"] == "available",
                              'knowledge_model': knowledge_model_available(),
-                             "research_model": bool(s.dashscope_api_key and s.research_model_enabled)}}
+                             "research_model": bool(configured and s.research_model_enabled and not s.offline_mode)}}
     if private:
         result.pop("pid")
         result.pop("runtime_id")

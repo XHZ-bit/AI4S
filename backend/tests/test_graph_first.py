@@ -2,6 +2,7 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.knowledge import extraction, store
 from tests import test_knowledge_workspace as workspace_fixtures
 from tests.test_knowledge_workspace import project, semantic, upload
 
@@ -37,6 +38,10 @@ def test_comparison_auto_fills_without_a_model_request_and_preserves_edits(synch
         changed = client.get(url, params=ids).json()
         assert changed['id'] != value['id']
         assert next(r for r in changed['rows'] if r['dimension'] == patch['dimension'])['values'][0]['text'] == patch['text']
+        saved = client.get(f'/api/projects/{pid}/knowledge/comparisons').json()['items']
+        old = next(item for item in saved if item['id'] == value['id'])
+        assert old['stale'] and old['revision'] == regenerated['revision']
+        assert next(r for r in old['rows'] if r['dimension'] == patch['dimension'])['values'][0]['text'] == patch['text']
 
 
 def test_custom_comparison_dimensions_are_grounded_or_unknown(synchronous, fake_model):
@@ -51,3 +56,31 @@ def test_custom_comparison_dimensions_are_grounded_or_unknown(synchronous, fake_
         assert [r['dimension'] for r in value['rows']] == ['方法与模块划分', '未出现的物理约束']
         assert all(not c['evidence_ids'] for c in value['rows'][1]['values'])
         assert len(fake_model) == before
+
+
+def test_preview_does_not_claim_unsupported_or_unfocused_node(synchronous, fake_model):
+    with TestClient(app) as client:
+        pid = project(client)
+        a, b = upload(client, pid), upload(client, pid, 'b.md', b'# Method\nState Gate scales another bounded residual.\n')
+        focus = semantic(client, pid, a['id'])
+        with store.connection(pid) as conn:
+            src = store.source(conn, pid, a['id'])
+            unsupported = extraction.node(src, 'unsupported', 'concept', 'Unverified claim',
+                                          'Unverified claim states a result.', [],
+                                          metadata={'semantic': True})
+            store.put_record(conn, 'kw_nodes', unsupported)
+            sibling = extraction.node(src, 'other-method', 'method', 'Sibling condition',
+                                      'Sibling condition does not describe the focused method.',
+                                      focus['evidence_ids'], metadata={'semantic': True})
+            store.put_record(conn, 'kw_nodes', sibling)
+        url = f'/api/projects/{pid}/knowledge/comparisons/preview'
+        ids = [('source_ids', a['id']), ('source_ids', b['id'])]
+        unsupported_comparison = client.get(url, params=ids + [('dimensions', 'Unverified claim')]).json()
+        entry = unsupported_comparison['rows'][0]['values'][0]
+        assert entry['evidence_ids'] == []
+        assert '尚无可定位' in entry['text'] and 'states a result' not in entry['text']
+        focused_comparison = client.get(url, params=ids + [('focus_node_ids', focus['id']),
+                                                             ('dimensions', 'Sibling condition')]).json()
+        focused = focused_comparison['rows'][0]['values'][0]
+        assert sibling['id'] not in focused['node_ids']
+        assert '尚无可定位' in focused['text']

@@ -10,7 +10,9 @@ from fastapi import HTTPException
 from app.config import get_settings
 from app.db import projects
 from app.knowledge import extraction, model, store
-from app.knowledge.unified import active
+from app.knowledge.graph_validity import active, current_records, project_teaching_edge, project_teaching_node, teaching_node, valid_evidence
+from app.knowledge.foundations import catalog as foundation_catalog, sections as foundation_sections
+from app.knowledge.node_guides import get_guide
 
 CATALOG = {
     "chain_rule": {"pattern": r"chain.?rule|链式|反向传播|backprop|局部导数", "label": "链式法则",
@@ -32,11 +34,16 @@ CATALOG = {
                  "summary": "共享表示、分支输出与显式跨分支通路描述不同的信息路径。分支划分本身不等于独立智能体。",
                  "url": "https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html"},
 }
+CATALOG.update(foundation_catalog())
 
 
 def demos_for(node):
     text = node["label"] + " " + node.get("summary", "") + " " + str(node.get("metadata", {}).get("heading", ""))
     result = [key for key, value in CATALOG.items() if re.search(value["pattern"], text, re.I)]
+    if "scaled_attention" in result and not re.search(r"dot[ -]?product|点积|softmax|transformer|query|key vector|键向量|查询向量|multi.?head|多头|QK|d_k", text, re.I):
+        result.remove("scaled_attention")
+    if "branches" in result and "scaled_attention" in result and not re.search(r"branch|分支|共享主干|shared.?trunk", text, re.I):
+        result.remove("branches")
     if node["kind"] == "formula":
         latex = str(node.get("metadata", {}).get("latex", ""))
         if "\\partial" in latex:
@@ -47,6 +54,14 @@ def demos_for(node):
                 result.append("gating")
         if "clip" in latex:
             result.append("ppo")
+        if "softmax" in latex:
+            result.append("softmax")
+        if re.search(r"QK\s*(?:\^|\\top)|\\sqrt\s*\{?d_?k", latex):
+            result.append("scaled_attention")
+    if "scaled_attention" in result:
+        result += ["dot_product", "softmax", "probability"]
+    elif "softmax" in result:
+        result.append("probability")
     return list(dict.fromkeys(result))
 
 
@@ -54,7 +69,7 @@ def add_prerequisites(conn, pid, sid):
     src = store.source(conn, pid, sid)
     nodes = [json.loads(r[0]) for r in conn.execute("SELECT data FROM kw_nodes WHERE project_id=? AND source_id=? AND hidden=0", (pid, sid))]
     for item in nodes:
-        if not (item.get("metadata", {}).get("semantic") or item["kind"] == "formula") or item["kind"] not in {"method", "module", "formula", "algorithm", "concept"}:
+        if not (item.get("metadata", {}).get("semantic") or item["kind"] == "formula") or item["kind"] not in {"method", "module", "formula", "algorithm", "concept", "experiment", "finding"}:
             continue
         keys = demos_for(item)
         if "gating" in keys:
@@ -63,31 +78,55 @@ def add_prerequisites(conn, pid, sid):
             lesson = CATALOG[key]
             if item["label"].casefold() == lesson["label"].casefold():
                 continue
-            prerequisite = extraction.node(src, "prerequisite:" + key, "concept", lesson["label"], lesson["summary"], item["evidence_ids"],
+            prerequisite = extraction.node(src, "prerequisite:" + key, "concept", lesson["label"], lesson["summary"], [],
                                             parent_id=store.identity(pid, sid, "root"), origin="inference",
-                                            metadata={"educational": True, "demo": key, "url": lesson["url"]})
+                                            metadata={"educational": True, "demo": key, "url": lesson["url"], "knowledge_role": "teaching_supplement"})
             store.put_record(conn, "kw_nodes", prerequisite)
-            store.put_record(conn, "kw_edges", extraction.edge(src, prerequisite["id"], item["id"], "PREREQUISITE_OF", "帮助理解",
-                "系统按知识类型匹配的教学建议，可按需展开或修订；不表示作者明确声明该学习依赖。", item["evidence_ids"], origin="inference"))
+            store.put_record(conn, "kw_edges", extraction.edge(src, prerequisite["id"], item["id"], "SUPPLEMENTS", "补充学习",
+                "按知识类型匹配的可选教学补充，不是论文声明的先修关系。", [], origin="inference"))
+
+
+def current_neighbors(conn, pid, node_id):
+    rows = [json.loads(r[0]) for r in conn.execute(
+        "SELECT data FROM kw_edges WHERE project_id=? AND hidden=0 AND (source=? OR target=?)", (pid, node_id, node_id))]
+    ids = list(dict.fromkeys(endpoint for edge in rows for endpoint in (edge['source'], edge['target'])))
+    nodes = {}
+    for nid in ids:
+        try:
+            nodes[nid] = project_teaching_node(store.record(conn, 'kw_nodes', pid, nid))
+        except HTTPException as exc:
+            if exc.status_code != 404:
+                raise
+    nodes = {value['id']: value for value in current_records(conn, pid, list(nodes.values()))}
+    edges = current_records(conn, pid, [project_teaching_edge(edge, nodes) for edge in rows])
+    edges = [edge for edge in edges if edge['source'] in nodes and edge['target'] in nodes]
+    return nodes, edges
 
 
 def prerequisites(conn, pid, node_id, max_depth=3):
-    rows = [json.loads(r[0]) for r in conn.execute("SELECT data FROM kw_edges WHERE project_id=? AND hidden=0", (pid,))]
     visited, frontier, result = {node_id}, {node_id}, []
     for _ in range(max_depth):
-        ids = {e["source"] for e in rows if active(e) and e["kind"] == "PREREQUISITE_OF" and e["target"] in frontier} - visited
-        frontier = set()
-        for nid in sorted(ids):
-            value = store.record(conn, "kw_nodes", pid, nid)
-            if active(value) and not value["source_missing"]:
-                result.append(value)
-                frontier.add(nid)
-            visited.add(nid)
-            if len(result) >= 30:
-                return result
+        next_ids = set()
+        for target in sorted(frontier):
+            nodes, edges = current_neighbors(conn, pid, target)
+            for edge in edges:
+                if edge['kind'] == 'PREREQUISITE_OF' and edge['target'] == target and edge['source'] not in visited:
+                    next_ids.add(edge['source'])
+                    if not any(value['id'] == edge['source'] for value in result):
+                        result.append(nodes[edge['source']])
+                        if len(result) >= 30:
+                            return result
+        visited.update(next_ids)
+        frontier = next_ids
         if not frontier:
             break
     return result
+
+
+def suggested_foundations(conn, pid, node_id):
+    nodes, edges = current_neighbors(conn, pid, node_id)
+    ids = {edge['source'] for edge in edges if edge['target'] == node_id and edge['kind'] == 'SUPPLEMENTS'}
+    return [nodes[nid] for nid in sorted(ids)][:10]
 
 
 def resources_for(node):
@@ -96,7 +135,9 @@ def resources_for(node):
         item = CATALOG[key]
         resources.append({"title": item["label"] + " · 官方资料", "url": item["url"], "reason": "与当前节点匹配的补充学习资料，非论文本身的结论", "type": "official_doc", "fetched": False})
     if node.get("metadata", {}).get("url"):
-        resources.append({"title": "节点关联资源", "url": node["metadata"]["url"], "reason": "资料中保存的资源链接", "type": "source_link", "fetched": False})
+        resources.append({"title": "节点关联资源", "url": node["metadata"]["url"],
+                          "reason": "教学目录提供的补充资料" if teaching_node(node) else "资料中保存的资源链接",
+                          "type": "source_link", "fetched": False})
     return list({r["url"]: r for r in resources}.values())
 
 
@@ -107,7 +148,7 @@ def discover_resources(pid, node, initial):
     resources = list(initial)
     with store.connection(pid) as conn:
         src = store.source(conn, pid, node["source_id"], blocks=True, include_removed=True)
-        evidence = store.evidence(conn, pid, node["evidence_ids"])
+        evidence = [e for e in store.evidence(conn, pid, node["evidence_ids"]) if valid_evidence(e)]
         block_ids = {e["block_id"] for e in evidence}
         relevant = [b for b in src["blocks"] if b["id"] in block_ids]
         for block in relevant:
@@ -211,20 +252,18 @@ def fetch_resources(pid, resources):
 
 
 def detail(conn, pid, nid):
-    current = store.record(conn, "kw_nodes", pid, nid)
-    adjacent = [json.loads(r[0]) for r in conn.execute("SELECT data FROM kw_edges WHERE project_id=? AND hidden=0 AND (source=? OR target=?)", (pid, nid, nid))]
-    adjacent = [edge for edge in adjacent if active(edge)]
+    current = project_teaching_node(store.record(conn, "kw_nodes", pid, nid))
+    nodes, adjacent = current_neighbors(conn, pid, nid)
     neighbor_ids = list(dict.fromkeys(x for e in adjacent for x in [e["source"], e["target"]] if x != nid))
-    neighbors = [store.record(conn, "kw_nodes", pid, x) for x in neighbor_ids[:40]]
-    neighbors = [n for n in neighbors if active(n) and not n['source_missing']]
-    valid_ids = {nid} | {n['id'] for n in neighbors}
-    adjacent = [edge for edge in adjacent if edge['source'] in valid_ids and edge['target'] in valid_ids]
+    neighbors = [nodes[x] for x in neighbor_ids[:40]]
     ids = current["evidence_ids"] + [i for e in adjacent for i in e["evidence_ids"]]
     evidence = store.evidence(conn, pid, ids)
     own_ids = set(current["evidence_ids"])
     return {"node": current, "edges": adjacent, "neighbors": neighbors, "evidence": evidence,
             "formula_sources": [e["formula"] for e in evidence if e["id"] in own_ids and e.get("formula")],
-            "prerequisites": prerequisites(conn, pid, nid), "resources": resources_for(current), "demos": demos_for(current)}
+            "prerequisites": prerequisites(conn, pid, nid), "suggested_foundations": suggested_foundations(conn, pid, nid),
+            "resources": resources_for(current), "demos": demos_for(current),
+            "study_guide": get_guide(current) if current_records(conn, pid, [current]) else None}
 
 
 def _learning_dependencies(conn, pid, nid):
@@ -246,11 +285,11 @@ def learning_fingerprint(conn, pid, nid, goal="", depth="deep"):
     node, related, edges, versions = _learning_dependencies(conn, pid, nid)
     project = projects.get_project(conn, pid)
     evidence_ids = node['evidence_ids'] + [eid for item in related + edges for eid in item.get('evidence_ids', [])]
-    return store.identity(node, [(n["id"], n["version"], n.get("hidden")) for n in related], edges, store.evidence(conn, pid, evidence_ids),
+    return store.identity('grounded-context-v2-optional-supplements', node, [(n["id"], n["version"], n.get("hidden")) for n in related], edges, store.evidence(conn, pid, evidence_ids),
         [(sid, s["version"], s["removed"], s["title"]) for sid, s in versions],
         {"question": project.research_question, "objective": project.constraints.objective},
         {"mode": store.preferences(conn, pid)["mode"], "goal": goal, "depth": depth},
-        get_settings().llm_model, get_settings().llm_api_base, RULES_VERSION)
+        *model.identity(), RULES_VERSION)
 
 
 def basic(conn, pid, nid, goal="", depth="deep"):
@@ -259,16 +298,18 @@ def basic(conn, pid, nid, goal="", depth="deep"):
     goal, depth = parameters(goal, depth)
     data = detail(conn, pid, nid)
     n = data["node"]
-    own = store.evidence(conn, pid, n["evidence_ids"])
+    own = [e for e in store.evidence(conn, pid, n["evidence_ids"]) if valid_evidence(e)]
     latex = usable_latex(n["metadata"].get("latex"))
     sections = {"overview": n["summary"] if n["kind"] != "formula" else "",
         "definition": "\n\n".join(learning_quote(e) for e in own[:3] if not e.get("formula")),
         "derivation": ("$$" + latex + "$$") if latex and not data["formula_sources"] else "",
         "prerequisites": "\n".join(p["label"] + "：" + p["summary"] for p in data["prerequisites"]),
         "implementation": "", "limitations": "基础内容来自当前资料。深入讲解属于教学补充，需结合原文的条件和范围理解。"}
+    if teaching_node(n):
+        sections = foundation_sections(n["metadata"].get("demo")) or sections
     return {"id": store.identity(pid, nid, n["version"], goal, depth), "node_id": nid, "node_version": n["version"],
         "goal": goal, "depth": depth, "rules_version": RULES_VERSION, "status": "basic", "stale": False, "cached": False,
-        "revision": 1, "origin": "source", "user_edited_sections": [], "hidden_sections": [], "sections": sections,
+        "revision": 1, "origin": n["origin"], "user_edited_sections": [], "hidden_sections": [], "sections": sections,
         "evidence": data["evidence"], "formula_sources": data["formula_sources"], "resources": data["resources"],
         "demos": data["demos"], "usage": {}, "errors": [],
         "coverage": coverage(sections, n, depth=depth, prerequisites=data["prerequisites"])}
@@ -331,11 +372,13 @@ def revise(pid, nid, expected_revision, sections=None, hidden_sections=None, goa
 
 
 def related_source_context(conn, pid, node, max_blocks=24):
+    if teaching_node(node):
+        return []
     terms = set(re.findall(r"[A-Za-z][A-Za-z_\d-]{2,}", (node["label"] + " " + node["summary"]).casefold()))
     for pattern, words in [(r"门控", ["gate", "gating"]), (r"残差", ["residual"]), (r"分支", ["branch", "head"]), (r"裁剪", ["clip", "ratio"])]:
         if re.search(pattern, node["label"] + node["summary"]):
             terms.update(words)
-    cited = store.evidence(conn, pid, node['evidence_ids'])
+    cited = [e for e in store.evidence(conn, pid, node['evidence_ids']) if valid_evidence(e)]
     ordinals = [e['locator']['ordinal'] for e in cited if e['source_id'] == node['source_id'] and e['locator'].get('ordinal') is not None]
     headings = {e['locator'].get('heading') for e in cited if e['source_id'] == node['source_id']}
     own, other = [], []
@@ -343,12 +386,10 @@ def related_source_context(conn, pid, node, max_blocks=24):
     # identity. Pull foreign code only through an explicit implementation link.
     implementation_sources = set()
     implementation_blocks = set()
-    for row in conn.execute("SELECT data FROM kw_edges WHERE project_id=? AND hidden=0 AND (source=? OR target=?)", (pid, node['id'], node['id'])):
-        edge = json.loads(row[0])
-        if not active(edge):
-            continue
+    current_nodes, current_edges = current_neighbors(conn, pid, node['id'])
+    for edge in current_edges:
         if edge['kind'] in {'IMPLEMENTS', 'IMPLEMENTED_BY'}:
-            neighbor = store.record(conn, 'kw_nodes', pid, edge['target'] if edge['source'] == node['id'] else edge['source'])
+            neighbor = current_nodes[edge['target'] if edge['source'] == node['id'] else edge['source']]
             if not active(neighbor) or neighbor['source_missing']:
                 continue
             implementation_sources.add(neighbor['source_id'])
@@ -393,6 +434,8 @@ def related_source_context(conn, pid, node, max_blocks=24):
     for _, _, src, block in ranked:
         eid = store.add_evidence(conn, pid, src, block)
         for item in store.evidence(conn, pid, [eid]):
+            if not valid_evidence(item):
+                continue
             item['context_role'] = 'linked_implementation' if src['id'] in implementation_sources else 'current_source'
             meta = block.get('metadata', {})
             if block['kind'] == 'code' and meta.get('symbol_kind') == 'function':
@@ -405,10 +448,10 @@ def related_source_context(conn, pid, node, max_blocks=24):
 
 def _linked_implementations(conn, pid, node, evidence):
     source_ids = set()
-    for row in conn.execute("SELECT data FROM kw_edges WHERE project_id=? AND hidden=0 AND (source=? OR target=?)", (pid, node["id"], node["id"])):
-        edge = json.loads(row[0])
+    current_nodes, current_edges = current_neighbors(conn, pid, node['id'])
+    for edge in current_edges:
         if active(edge) and edge["kind"] in {"IMPLEMENTS", "IMPLEMENTED_BY"}:
-            neighbor = store.record(conn, "kw_nodes", pid, edge["target"] if edge["source"] == node["id"] else edge["source"])
+            neighbor = current_nodes[edge["target"] if edge["source"] == node["id"] else edge["source"]]
             if active(neighbor) and not neighbor["source_missing"]:
                 source_ids.add(neighbor["source_id"])
     source_ids.add(node["source_id"])
@@ -429,10 +472,13 @@ def _linked_implementations(conn, pid, node, evidence):
 def _prerequisite_context(conn, pid, nid):
     nodes = prerequisites(conn, pid, nid)[:10]
     ids = {nid} | {n["id"] for n in nodes}
-    edges = [json.loads(r[0]) for r in conn.execute("SELECT data FROM kw_edges WHERE project_id=? AND hidden=0", (pid,))]
+    edges = {}
+    for node_id in ids:
+        _, current = current_neighbors(conn, pid, node_id)
+        edges.update({edge['id']: edge for edge in current
+                      if edge['kind'] == 'PREREQUISITE_OF' and edge['source'] in ids and edge['target'] in ids})
     return {"nodes": [{k: n[k] for k in ("id", "label", "kind", "summary", "evidence_ids")} for n in nodes],
-            "edges": [{k: e[k] for k in ("id", "source", "target", "label", "origin")} for e in edges
-                      if active(e) and e["kind"] == "PREREQUISITE_OF" and e["source"] in ids and e["target"] in ids]}
+            "edges": [{k: e[k] for k in ("id", "source", "target", "label", "origin")} for e in edges.values()]}
 
 
 def generate(pid, nid, refresh=False, goal="", depth="deep"):
@@ -440,7 +486,7 @@ def generate(pid, nid, refresh=False, goal="", depth="deep"):
     goal, depth = parameters(goal, depth)
     with store.connection(pid) as conn:
         node = store.record(conn, 'kw_nodes', pid, nid)
-        if not active(node) or node['source_missing']:
+        if not current_records(conn, pid, [project_teaching_node(node)]):
             raise HTTPException(409, '当前知识或来源已撤回，请先检查历史依据')
     with model.operation(pid, "learning:" + nid):
         from app.knowledge.formulas import ensure_node
@@ -453,8 +499,73 @@ def generate(pid, nid, refresh=False, goal="", depth="deep"):
         return _generate(pid, nid, refresh, budget, errors, goal=goal, depth=depth)
 
 
+def _generated_sections(result, keys, evidence_by_id):
+    sections = result.get('sections', {}) if isinstance(result, dict) else None
+    if not isinstance(sections, dict) or any(not isinstance(sections.get(k), str) for k in keys):
+        raise model.ModelUnavailable('学习讲解结构不完整')
+    cited = result.get('evidence_ids', [])
+    if not isinstance(cited, list) or (evidence_by_id and not cited) or any(not isinstance(e, str) or e not in evidence_by_id for e in cited):
+        raise model.ModelUnavailable('学习讲解包含未提供的来源标识')
+    return {k: sections[k][:30000] for k in keys}
+
+
+def _review_learning(value, payload, budget, evidence_by_id, output_tokens):
+    """Every candidate must pass review; repairs only run with budget for that gate."""
+    from app.knowledge.learning_depth import GENERATION_PROMPT, REVIEW_PROMPT, bounded_payload
+    attempt = value['last_generation']
+    addressed, repaired = [], False
+    # A second correction may need the remaining fourth request to be reviewed.
+    # Count rounds independently too: test/provider adapters must not create an unbounded loop.
+    for _ in range(max(0, budget.limit - budget.calls)):
+        if budget.calls >= budget.limit:
+            break
+        attempt.update(stage='review', code='review_failed')
+        review_payload = {**payload, 'sections': value['sections']}
+        if attempt['issues']:
+            review_payload['previous_issues'] = attempt['issues']
+        checked = model.structured(REVIEW_PROMPT,
+            bounded_payload(review_payload, REVIEW_PROMPT, get_settings().research_model_max_input_chars, max_tokens=8000),
+            budget, 'learning_review', max_tokens=8000)
+        attempt['review_count'] += 1
+        if not isinstance(checked, dict) or not isinstance(checked.get('accepted'), bool):
+            attempt['code'] = 'review_invalid'
+            raise model.ModelUnavailable('讲解校核返回格式不完整')
+        corrections, issues = checked.get('corrections', {}), checked.get('issues', [])
+        if not isinstance(corrections, dict) or any(k not in value['sections'] or not isinstance(v, str) for k, v in corrections.items()) or not isinstance(issues, list):
+            attempt['code'] = 'review_invalid'
+            raise model.ModelUnavailable('讲解校核返回格式不完整')
+        # Always expose the most recent review, not a superseded first-round diagnosis.
+        attempt['issues'] = issues[:12]
+        updates = {k: v[:30000] for k, v in corrections.items()}
+        changed = any(value['sections'][k] != v for k, v in updates.items())
+        value['sections'].update(updates)
+        if checked['accepted']:
+            value['quality'] = {'review': 'model_checked_not_independent', 'issues_addressed': (addressed + issues)[:12]}
+            attempt.update(code='completed', message='深入讲解已就绪', retryable=False, retained='generated')
+            return
+        addressed.extend(issues)
+        if changed and budget.calls < budget.limit:
+            continue
+        if not repaired and budget.calls + 2 <= budget.limit:
+            # A reviewer may identify a precise problem without supplying replacement prose.
+            # Reserve a further request: this repair is never presented without source review.
+            repaired = True
+            repair_prompt = GENERATION_PROMPT + '\n这是针对校核问题的定向修正。返回所有section和evidence_ids，保留正确内容；逐项修正review_issues，不能补造来源、源码或实验。'
+            attempt.update(stage='generation', code='generation_failed')
+            result = model.structured(repair_prompt,
+                bounded_payload({**payload, 'sections': value['sections'], 'review_issues': issues}, repair_prompt,
+                    get_settings().research_model_max_input_chars, max_tokens=output_tokens),
+                budget, 'learning_repair', max_tokens=output_tokens)
+            value['sections'] = _generated_sections(result, value['sections'], evidence_by_id)
+            continue
+        break
+    attempt.update(stage='review', code='review_rejected')
+    value['quality'] = {'review': 'failed', 'issues': attempt['issues']}
+    raise model.ModelUnavailable('讲解与原文的一致性检查未通过')
+
+
 def _generate(pid, nid, refresh=False, budget=None, initial_errors=None, *, goal="", depth="deep"):
-    from app.knowledge.learning_depth import (GENERATION_PROMPT, REVIEW_PROMPT, RULES_VERSION,
+    from app.knowledge.learning_depth import (GENERATION_PROMPT, RULES_VERSION,
         bounded_payload, coverage, model_sources, pack_evidence, parameters, requirements, safe_presentation)
     goal, depth = parameters(goal, depth)
     with store.connection(pid) as conn:
@@ -463,11 +574,13 @@ def _generate(pid, nid, refresh=False, budget=None, initial_errors=None, *, goal
         if saved["status"] == "ready" and not saved["stale"] and not refresh:
             return saved
         value = basic(conn, pid, nid, goal, depth)
-        current = store.record(conn, "kw_nodes", pid, nid)
+        current = project_teaching_node(store.record(conn, "kw_nodes", pid, nid))
+        if not current_records(conn, pid, [current]):
+            raise HTTPException(409, "当前知识或依据已失效，请先检查原文与历史记录")
         retrieved = related_source_context(conn, pid, current, max_blocks=24 if depth == 'deep' else 18)
-        direct = store.evidence(conn, pid, current["evidence_ids"])
+        direct = [e for e in store.evidence(conn, pid, current["evidence_ids"]) if valid_evidence(e)]
         prerequisite_graph = _prerequisite_context(conn, pid, nid)
-        prereq_evidence = store.evidence(conn, pid, list(dict.fromkeys(e for n in prerequisite_graph['nodes'] for e in n['evidence_ids'])))
+        prereq_evidence = [e for e in store.evidence(conn, pid, list(dict.fromkeys(e for n in prerequisite_graph['nodes'] for e in n['evidence_ids']))) if valid_evidence(e)]
         value["evidence"] = pack_evidence(direct, sorted(retrieved, key=lambda e: e.get('context_role') != 'linked_implementation') + prereq_evidence, value["evidence"], depth=depth)
         by_id = {e["id"]: e for e in value["evidence"]}
         implementations = _linked_implementations(conn, pid, current, value["evidence"])
@@ -485,17 +598,23 @@ def _generate(pid, nid, refresh=False, budget=None, initial_errors=None, *, goal
                          "source_versions": [{"id": sid, "version": version} for sid, version in source_versions.items()]})
     code_supplied = bool(implementations)
     generation_failed = None
+    value['last_generation'] = {'stage': 'generation', 'code': 'generation_failed', 'message': '',
+        'retryable': True, 'retained': 'basic', 'review_count': 0, 'issues': []}
     if not model.available():
+        value['last_generation']['code'] = 'model_unavailable'
         generation_failed = "平台模型当前不可用；已保留可阅读内容"
     else:
         resources = fetch_resources(pid, discover_resources(pid, current, value["resources"]))
         value["resources"] = [{k: v for k, v in r.items() if k != "content"} for r in resources]
         protected = set(saved.get('user_edited_sections', [])) | set(saved.get('curated_sections', []))
         payload = {"node": {"id": current['id'], "label": current['label'], "kind": current['kind'],
+                    "origin": current.get('origin', 'inference'),
+                    "knowledge_role": current.get('metadata', {}).get('knowledge_role', 'research_content'),
                     "summary": current['summary'][:3000], "metadata": {k: current['metadata'][k] for k in ('latex', 'heading', 'symbol', 'path', 'start_line', 'end_line') if k in current['metadata']}},
             "goal": goal, "depth": depth, "mode": prefs["mode"], "research_question": project.research_question,
             "current_source": {"id": src['id'], "kind": src['kind'], "title": src['title'], "version": src['version'],
-                "reported_at": src.get('reported_at'), "implementation_code_supplied": code_supplied},
+                "reported_at": src.get('reported_at'), "implementation_code_supplied": code_supplied,
+                "role": "study_context_only" if teaching_node(current) else "original_source"},
             "linked_implementations": implementations, "prerequisite_graph": prerequisite_graph,
             "verified_teaching_reference": teaching, "sources": model_sources(value["evidence"]),
             "external_resources": [{**r, "content": r.get("content", "")[:2000]} for r in resources[:2]],
@@ -505,13 +624,7 @@ def _generate(pid, nid, refresh=False, budget=None, initial_errors=None, *, goal
         try:
             output_tokens = 10000 if depth == 'deep' else 6500
             result = model.structured(GENERATION_PROMPT, bounded_payload(payload, GENERATION_PROMPT, get_settings().research_model_max_input_chars, max_tokens=output_tokens), budget, "node_learning", max_tokens=output_tokens)
-            sections = result.get("sections", {})
-            if not isinstance(sections, dict) or any(not isinstance(sections.get(k), str) for k in value["sections"]):
-                raise model.ModelUnavailable("学习讲解结构不完整")
-            cited = result.get("evidence_ids", [])
-            if not isinstance(cited, list) or (by_id and not cited) or any(e not in by_id for e in cited):
-                raise model.ModelUnavailable("学习讲解包含未提供的来源标识")
-            value['sections'] = {k: sections[k][:30000] for k in value['sections']}
+            value['sections'] = _generated_sections(result, value['sections'], by_id)
             assessed = coverage(value['sections'], current, depth=depth, code_supplied=code_supplied, prerequisites=prerequisite_graph['nodes'])
             # One targeted expansion can use spare budget; the final source review is reserved.
             if assessed['missing'] and budget.calls + 2 <= budget.limit:
@@ -522,22 +635,7 @@ def _generate(pid, nid, refresh=False, budget=None, initial_errors=None, *, goal
                 updates = expanded.get('sections', {})
                 if isinstance(updates, dict) and all(k in value['sections'] and isinstance(v, str) for k, v in updates.items()):
                     value['sections'].update({k: v[:30000] for k, v in updates.items()})
-            checked = model.structured(REVIEW_PROMPT, bounded_payload({**payload, 'sections': value['sections']}, REVIEW_PROMPT, get_settings().research_model_max_input_chars, max_tokens=8000), budget, 'learning_review', max_tokens=8000)
-            corrections = checked.get('corrections', {})
-            if not isinstance(corrections, dict) or any(k not in value['sections'] or not isinstance(v, str) for k, v in corrections.items()):
-                raise model.ModelUnavailable('讲解校核返回格式不完整')
-            issues = checked.get('issues', []) if isinstance(checked.get('issues'), list) else []
-            if corrections:
-                value['sections'].update({k: v[:30000] for k, v in corrections.items()})
-            if checked.get('accepted') is not True and corrections and budget.calls < budget.limit:
-                checked = model.structured(REVIEW_PROMPT, bounded_payload({**payload, 'sections': value['sections'], 'previous_issues': issues}, REVIEW_PROMPT, get_settings().research_model_max_input_chars, max_tokens=8000), budget, 'learning_review', max_tokens=8000)
-                corrections = checked.get('corrections', {})
-                if isinstance(corrections, dict) and all(k in value['sections'] and isinstance(v, str) for k, v in corrections.items()):
-                    value['sections'].update({k: v[:30000] for k, v in corrections.items()})
-            if checked.get('accepted') is not True:
-                value['quality'] = {'review': 'failed', 'issues': issues[:12]}
-                raise model.ModelUnavailable('讲解与原文的一致性检查未通过')
-            value['quality'] = {'review': 'model_checked_not_independent', 'issues_addressed': issues[:12]}
+            _review_learning(value, payload, budget, by_id, output_tokens)
             value['status'] = 'ready' if not value['errors'] else 'partial'
             if current['kind'] == 'formula' and not current.get('metadata', {}).get('latex'):
                 value['status'] = 'partial'
@@ -545,12 +643,15 @@ def _generate(pid, nid, refresh=False, budget=None, initial_errors=None, *, goal
         except model.ModelUnavailable as exc:
             generation_failed = str(exc)
     if generation_failed:
+        value['last_generation']['message'] = ('深入讲解仍需核对，可重试；当前内容已保留'
+            if value['last_generation']['code'] == 'review_rejected' else '深入讲解暂未完成，可重试；当前内容已保留')
         # Keep this variant's good lesson; a failed refresh must not erase it.
         prior_rich = saved['status'] == 'ready' or any(len(saved['sections'].get(k, '')) >= 200 for k in ('derivation', 'implementation'))
         if prior_rich:
             value['sections'] = dict(saved['sections'])
             value['retained_from'] = {'id': saved['id'], 'node_version': saved['node_version'], 'stale': saved.get('stale', False)}
             value['quality'] = {**saved.get('quality', {}), 'last_attempt': 'failed_previous_content_retained'}
+            value['last_generation']['retained'] = 'previous'
             value['errors'].append(generation_failed + '；上一版深入内容已保留')
         else:
             value['sections'] = basic_from_value(value, current)
@@ -573,6 +674,10 @@ def _generate(pid, nid, refresh=False, budget=None, initial_errors=None, *, goal
 def basic_from_value(value, node):
     # This fallback never keeps rejected generated mathematics.
     from app.knowledge.math_content import learning_quote, usable_latex
+    if teaching_node(node):
+        authored = foundation_sections(node['metadata'].get('demo'))
+        if authored:
+            return authored
     latex = usable_latex(node.get('metadata', {}).get('latex'))
     return {'overview': node['summary'] if node['kind'] != 'formula' else '',
         'definition': '\n\n'.join(learning_quote(e) for e in value['evidence'] if e['id'] in node['evidence_ids'] and not e.get('formula')),

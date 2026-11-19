@@ -1,0 +1,8 @@
+.kw-formula-context { margin:20px 0; padding:18px 0; border-block:1px solid var(--atlas-line); }
+.kw-formula-context h3 { margin:0 0 12px; font-size:17px; }
+.kw-formula-context dl { margin:0; }
+.kw-formula-context dl>div { display:grid; grid-template-columns:minmax(80px,20%) minmax(0,1fr); gap:16px; padding:9px 0; }
+.kw-formula-context dt { font-weight:600; }
+.kw-formula-context dd { margin:0; line-height:1.8; overflow-wrap:anywhere; }
+.kw-formula-context small { display:block; color:var(--atlas-muted); line-height:1.8; }
+.kw-formula-context-actions { display:flex; gap:10px; margin-top:12px; }

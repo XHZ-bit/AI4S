@@ -15,6 +15,7 @@ from urllib.parse import parse_qs, quote, urlencode, urlparse
 from fastapi import HTTPException
 
 from app.knowledge import learning, model, store
+from app.knowledge.graph_validity import (active, current_records, project_teaching_edge, project_teaching_node)
 
 PROGRESS_STATES = {"not_started", "in_progress", "understood", "review"}
 MAX_GRAPH_NODES = 5000
@@ -29,15 +30,13 @@ def init(conn):
 
 
 def usable(value):
-    return not (value.get("hidden") or value.get("source_missing") or
-                value.get("quality_status") in {"withdrawn", "rejected"} or
-                value.get("metadata", {}).get("source_withdrawn"))
+    return active(value)
 
 
 def active_node(conn, pid, nid):
-    value = store.record(conn, "kw_nodes", pid, nid)
-    if not usable(value):
-        raise HTTPException(409, "该知识已隐藏、撤回或缺少有效来源，请先查看其历史记录")
+    value = project_teaching_node(store.record(conn, "kw_nodes", pid, nid))
+    if not current_records(conn, pid, [value]):
+        raise HTTPException(409, "该知识或依据已失效，请先查看原文及历史记录")
     return value
 
 
@@ -70,11 +69,15 @@ def save_progress(conn, pid, nid, status, expected_version=None):
 
 
 def graph_records(conn, pid):
-    removed = {r[0] for r in conn.execute("SELECT id FROM kw_sources WHERE project_id=? AND removed=1", (pid,))}
+    sources = {r[0]: json.loads(r[1]) for r in conn.execute(
+        "SELECT id,data FROM kw_sources WHERE project_id=? AND removed=0", (pid,))}
     raw_nodes = conn.execute("SELECT data FROM kw_nodes WHERE project_id=? AND hidden=0 ORDER BY id LIMIT ?", (pid, MAX_GRAPH_NODES + 1)).fetchall()
-    nodes = {n["id"]: n for row in raw_nodes[:MAX_GRAPH_NODES] if usable(n := json.loads(row[0])) and n["source_id"] not in removed}
+    candidates = [project_teaching_node(json.loads(row[0])) for row in raw_nodes[:MAX_GRAPH_NODES]]
+    nodes = {n['id']: n for n in current_records(conn, pid, candidates, source_map=sources)}
     raw_edges = conn.execute("SELECT data FROM kw_edges WHERE project_id=? AND hidden=0 ORDER BY id LIMIT ?", (pid, MAX_GRAPH_EDGES + 1)).fetchall()
-    edges = [e for row in raw_edges[:MAX_GRAPH_EDGES] if usable(e := json.loads(row[0])) and e["source"] in nodes and e["target"] in nodes]
+    candidates = [project_teaching_edge(json.loads(row[0]), nodes) for row in raw_edges[:MAX_GRAPH_EDGES]]
+    edges = [edge for edge in current_records(conn, pid, candidates, source_map=sources)
+             if edge['source'] in nodes and edge['target'] in nodes]
     return nodes, edges, len(raw_nodes) > MAX_GRAPH_NODES or len(raw_edges) > MAX_GRAPH_EDGES
 
 
@@ -211,12 +214,10 @@ def resources(conn, pid, nid):
     image_relations = {}
     # A method's figure can be a separate graph node. Follow only explicit,
     # active links and keep its origin visible instead of calling it a direct quote.
-    for row in conn.execute("SELECT data FROM kw_edges WHERE project_id=? AND hidden=0 AND (source=? OR target=?) LIMIT 40", (pid, nid, nid)):
-        edge = json.loads(row[0])
-        if not usable(edge):
-            continue
+    nodes, edges, _ = graph_records(conn, pid)
+    for edge in [e for e in edges if nid in (e['source'], e['target'])][:40]:
         other_id = edge['target'] if edge['source'] == nid else edge['source']
-        other = store.record(conn, 'kw_nodes', pid, other_id)
+        other = nodes[other_id]
         if not usable(other) or other['source_id'] != src['id'] or other.get('kind') not in {'resource', 'figure'}:
             continue
         for item in store.evidence(conn, pid, other.get('evidence_ids', [])):
@@ -291,14 +292,14 @@ def ask(pid, nid, question):
     with store.connection(pid) as conn:
         node, related, edges, evidence = question_context(conn, pid, nid, question)
         init(conn)
-        fingerprint = store.identity("graph-question-v1", question, node, related, edges, evidence)
+        fingerprint = store.identity("graph-question-v1", question, node, related, edges, evidence, *model.identity())
         row = conn.execute("SELECT data FROM kw_questions WHERE project_id=? AND node_id=? AND fingerprint=?", (pid, nid, fingerprint)).fetchone()
         if row:
             return {**json.loads(row[0]), "cached": True}
     snippets = [f"[{i + 1}] {e['source_title']}：{e['quote'][:600]}" for i, e in enumerate(evidence[:5])]
     result = {"answer": "当前节点：" + node["label"] + "\n\n" + (node.get("summary") or "原文尚未提供足够说明。") +
               ("\n\n可核对的来源片段：\n" + "\n\n".join(snippets) if snippets else "\n\n当前没有可定位的原文依据，不能据此作出确定回答。"),
-              "origin": "source", "citations": evidence, "node_ids": [nid] + [n["id"] for n in related],
+              "origin": "source" if node.get("origin") == "source" else "inference", "citations": evidence, "node_ids": [nid] + [n["id"] for n in related],
               "edge_ids": [e["id"] for e in edges], "model_used": False, "cached": False,
               "warnings": ["当前展示节点及原文摘录，尚未生成针对问题的解释。"], "question": question}
     if model.available() and evidence:
@@ -335,7 +336,7 @@ def ask(pid, nid, question):
     if result["model_used"]:
         with store.connection(pid) as conn:
             current = question_context(conn, pid, nid, question)
-            if store.identity("graph-question-v1", question, *current) == fingerprint:
+            if store.identity("graph-question-v1", question, *current, *model.identity()) == fingerprint:
                 init(conn)
                 conn.execute("INSERT OR REPLACE INTO kw_questions VALUES(?,?,?,?)", (pid, nid, fingerprint, store.encode(result)))
             else:

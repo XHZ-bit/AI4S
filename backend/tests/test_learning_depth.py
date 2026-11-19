@@ -97,8 +97,179 @@ def test_failed_refresh_retains_prior_deep_content_and_records_failure(generated
     assert failed['sections'] == first['sections']
     assert failed['retained_from']['id'] == first['id']
     assert failed['quality']['last_attempt'] == 'failed_previous_content_retained'
+    assert failed['last_generation']['code'] == 'model_unavailable'
+    assert failed['last_generation']['retained'] == 'previous'
+    assert failed['last_generation']['retryable']
     with store.connection(pid) as conn:
         assert learning.get_learning(conn, pid, node['id'])['sections'] == first['sections']
+
+
+def test_second_review_correction_gets_final_review_in_remaining_budget(generated, monkeypatch):
+    pid, src, node = fixture_node()
+    original, reviewed = model.structured, []
+    def structured(system, payload, budget, purpose, **kwargs):
+        result = original(system, payload, budget, purpose, **kwargs)
+        if purpose == 'learning_review':
+            reviewed.append(payload['sections']['derivation'])
+            count = len(reviewed)
+            return {'accepted': count == 3, 'issues': [f'Issue {count}'] if count < 3 else [],
+                    'corrections': {'derivation': f'Corrected round {count}. ' + complete_sections()['derivation']} if count < 3 else {}}
+        return result
+    monkeypatch.setattr(model, 'structured', structured)
+    result = learning.generate(pid, node['id'])
+    assert result['status'] == 'ready' and result['usage']['calls'] == 4
+    assert reviewed[2].startswith('Corrected round 2.')
+    assert result['last_generation']['code'] == 'completed'
+    assert result['last_generation']['review_count'] == 3
+    assert result['last_generation']['retained'] == 'generated'
+
+
+def test_persistent_rejection_reports_final_review_and_never_leaks_rejected_math(generated, monkeypatch):
+    pid, src, node = fixture_node()
+    original, count = model.structured, 0
+    def structured(system, payload, budget, purpose, **kwargs):
+        nonlocal count
+        result = original(system, payload, budget, purpose, **kwargs)
+        if purpose == 'learning_review':
+            count += 1
+            return {'accepted': False, 'issues': [f'Unresolved issue {count}'],
+                    'corrections': {'derivation': f'Unverified mathematics {count}'}}
+        return result
+    monkeypatch.setattr(model, 'structured', structured)
+    result = learning.generate(pid, node['id'])
+    assert result['status'] == 'partial' and result['usage']['calls'] == 4
+    assert result['sections']['derivation'] == ''
+    assert result['quality']['issues'] == ['Unresolved issue 3']
+    assert result['last_generation']['issues'] == ['Unresolved issue 3']
+    assert result['last_generation']['code'] == 'review_rejected'
+    assert result['last_generation']['retained'] == 'basic'
+    with store.connection(pid) as conn:
+        assert learning.get_learning(conn, pid, node['id'])['last_generation'] == result['last_generation']
+
+
+def test_rejection_without_replacement_can_repair_but_must_pass_final_review(generated, monkeypatch):
+    pid, src, node = fixture_node()
+    original, reviewed = model.structured, []
+    def structured(system, payload, budget, purpose, **kwargs):
+        result = original(system, payload, budget, purpose, **kwargs)
+        if purpose == 'learning_review':
+            reviewed.append(payload['sections']['derivation'])
+            return {'accepted': len(reviewed) > 1, 'issues': ['Incorrect source attribution'] if len(reviewed) == 1 else [], 'corrections': {}}
+        if purpose == 'learning_repair':
+            assert payload['review_issues'] == ['Incorrect source attribution']
+            result['sections']['derivation'] = 'Repaired attribution. ' + result['sections']['derivation']
+        return result
+    monkeypatch.setattr(model, 'structured', structured)
+    result = learning.generate(pid, node['id'])
+    assert [purpose for purpose, _ in generated] == ['node_learning', 'learning_review', 'learning_repair', 'learning_review']
+    assert reviewed[-1].startswith('Repaired attribution.')
+    assert result['status'] == 'ready' and result['last_generation']['review_count'] == 2
+
+
+def test_repair_with_unprovided_evidence_is_not_exposed_or_accepted(generated, monkeypatch):
+    pid, src, node = fixture_node()
+    original = model.structured
+    def structured(system, payload, budget, purpose, **kwargs):
+        result = original(system, payload, budget, purpose, **kwargs)
+        if purpose == 'learning_review':
+            return {'accepted': False, 'issues': ['Wrong calculation'], 'corrections': {}}
+        if purpose == 'learning_repair':
+            result['evidence_ids'] = ['invented-evidence']
+        return result
+    monkeypatch.setattr(model, 'structured', structured)
+    result = learning.generate(pid, node['id'])
+    assert result['status'] == 'partial' and result['sections']['derivation'] == ''
+    assert result['last_generation']['review_count'] == 1
+    assert '未提供的来源标识' in result['errors'][0]
+
+
+@pytest.mark.parametrize('invalid', [
+    {'accepted': 'true', 'issues': [], 'corrections': {}},
+    {'accepted': True, 'issues': [], 'corrections': {'unknown': 'Invented section'}},
+    {'accepted': True, 'issues': 'not a list', 'corrections': {}},
+])
+def test_malformed_review_cannot_promote_an_unverified_lesson(generated, monkeypatch, invalid):
+    pid, src, node = fixture_node()
+    original = model.structured
+    def structured(system, payload, budget, purpose, **kwargs):
+        result = original(system, payload, budget, purpose, **kwargs)
+        return invalid if purpose == 'learning_review' else result
+    monkeypatch.setattr(model, 'structured', structured)
+    result = learning.generate(pid, node['id'])
+    assert result['status'] == 'partial' and result['sections']['derivation'] == ''
+    assert result['last_generation']['code'] == 'review_invalid'
+    assert result['last_generation']['retryable']
+
+
+def test_failed_review_refresh_keeps_manual_sections_and_latest_failure_diagnostic(generated, monkeypatch):
+    pid, src, node = fixture_node()
+    first = learning.generate(pid, node['id'])
+    edited = learning.revise(pid, node['id'], first['revision'], {'derivation': 'My independently checked calculation'}, hidden_sections=['implementation'])
+    original, reviews = model.structured, []
+    def structured(system, payload, budget, purpose, **kwargs):
+        result = original(system, payload, budget, purpose, **kwargs)
+        if purpose == 'learning_review':
+            reviews.append(True)
+            return {'accepted': False, 'issues': [f'Failure {len(reviews)}'], 'corrections': {}}
+        return result
+    monkeypatch.setattr(model, 'structured', structured)
+    result = learning.generate(pid, node['id'], refresh=True)
+    assert result['status'] == 'partial' and result['sections'] == edited['sections']
+    assert result['hidden_sections'] == ['implementation']
+    assert result['user_edited_sections'] == ['derivation']
+    assert result['last_generation']['issues'] == ['Failure 2']
+    assert result['last_generation']['retained'] == 'previous'
+    assert result['quality']['last_attempt'] == 'failed_previous_content_retained'
+    assert result['revision'] > edited['revision']
+
+
+def test_review_has_no_budget_to_present_unchecked_last_correction(generated, monkeypatch):
+    pid, src, node = fixture_node()
+    original = model.structured
+    def structured(system, payload, budget, purpose, **kwargs):
+        result = original(system, payload, budget, purpose, **kwargs)
+        if purpose == 'learning_review':
+            return {'accepted': False, 'issues': ['Still incorrect'], 'corrections': {'derivation': 'Not yet reviewed correction'}}
+        return result
+    monkeypatch.setattr(model, 'structured', structured)
+    budget = model.Budget(pid, 'already-used-for-formula', 4)
+    budget.calls = 2
+    result = learning._generate(pid, node['id'], budget=budget)
+    assert budget.calls == 4 and result['status'] == 'partial'
+    assert result['sections']['derivation'] == ''
+    assert [purpose for purpose, _ in generated] == ['node_learning', 'learning_review']
+
+
+def test_unchanged_rejected_correction_does_not_waste_last_request(generated, monkeypatch):
+    pid, src, node = fixture_node()
+    original = model.structured
+    def structured(system, payload, budget, purpose, **kwargs):
+        result = original(system, payload, budget, purpose, **kwargs)
+        if purpose == 'learning_review':
+            return {'accepted': False, 'issues': ['Cannot confirm attribution'],
+                    'corrections': {'derivation': payload['sections']['derivation']}}
+        return result
+    monkeypatch.setattr(model, 'structured', structured)
+    budget = model.Budget(pid, 'formula-used-one-request', 4)
+    budget.calls = 1
+    result = learning._generate(pid, node['id'], budget=budget)
+    assert budget.calls == 3 and result['status'] == 'partial'
+    assert [purpose for purpose, _ in generated] == ['node_learning', 'learning_review']
+
+
+def test_nonblocking_teaching_feedback_keeps_fact_checked_lesson(generated, monkeypatch):
+    pid, src, node = fixture_node()
+    original = model.structured
+    suggestion = {'section': 'derivation', 'category': 'clarity', 'blocking': False, 'description': 'Could add a second teaching example'}
+    def structured(system, payload, budget, purpose, **kwargs):
+        result = original(system, payload, budget, purpose, **kwargs)
+        if purpose == 'learning_review':
+            return {'accepted': True, 'issues': [suggestion], 'corrections': {}}
+        return result
+    monkeypatch.setattr(model, 'structured', structured)
+    result = learning.generate(pid, node['id'])
+    assert result['status'] == 'ready' and result['quality']['issues_addressed'] == [suggestion]
+    assert result['last_generation']['issues'] == [suggestion]
 
 
 def test_unrelated_source_and_node_do_not_invalidate_but_dependency_edit_does(generated):

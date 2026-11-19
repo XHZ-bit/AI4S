@@ -179,6 +179,8 @@ def record(conn, table, pid, rid):
     result = json.loads(row[0])
     src = conn.execute("SELECT removed FROM kw_sources WHERE id=? AND project_id=?", (result["source_id"], pid)).fetchone()
     result["source_missing"] = not src or bool(src[0])
+    from app.knowledge.provenance import review_is_stale
+    result['quality_review_stale'] = review_is_stale(result, evidence(conn, pid, result.get('evidence_ids', [])))
     return result
 
 
@@ -198,11 +200,16 @@ def evidence(conn, pid, ids):
                     value['unresolved'] = True
                 block_row = conn.execute("SELECT data FROM kw_blocks WHERE id=? AND asset_id=?", (value["block_id"], source_value["asset_id"])).fetchone()
                 if block_row:
+                    block_value = json.loads(block_row[0])
+                    if value.get('quote') and value['quote'] not in block_value.get('text', ''):
+                        value['unresolved'] = True
                     from app.knowledge.math_content import formula_source
                     asset = conn.execute("SELECT filename FROM kw_assets WHERE id=?", (source_value["asset_id"],)).fetchone()
                     formula = formula_source(pid, value, source_value, json.loads(block_row[0]), pdf=bool(asset and asset[0].lower().endswith('.pdf')))
                     if formula:
                         value["formula"] = formula
+                else:
+                    value['unresolved'] = True
             result.append(value)
     return result
 
@@ -237,6 +244,15 @@ def put_record(conn, table, value, *, preserve_user=True, authoritative_fields=(
                 value["hidden"] = old.get("hidden", False)
             elif any(value.get("metadata", {}).get(k) != old.get("metadata", {}).get(k) for k in ("analysis_run", "block_generation")):
                 value["metadata"].pop("superseded", None)
+        from app.knowledge.provenance import content_fingerprint
+        decision = old.get('metadata', {}).get('quality_decision', {})
+        if (preserve_user and decision.get('action') == 'verify'
+                and content_fingerprint(old) != content_fingerprint(value)
+                and 'quality_status' not in authoritative_fields):
+            value['quality_status'] = 'candidate'
+            value.setdefault('metadata', {})['quality_decision'] = {
+                **decision, 'content_fingerprint': decision.get('content_fingerprint') or content_fingerprint(old),
+            }
         if value.get('quality_status') in {'withdrawn', 'rejected'}:
             value['hidden'] = True
         if {k: v for k, v in old.items() if k != "version"} == {k: v for k, v in value.items() if k != "version"}:
@@ -259,13 +275,20 @@ def edit_record(conn, table, pid, rid, expected_version, changes):
     if value["version"] != expected_version:
         raise HTTPException(409, {"message": "内容已有新版本，请刷新后重新修改", "current": value})
     value.pop("source_missing", None)
+    value.pop('quality_review_stale', None)
     before = json.loads(encode(value))
     conn.execute("INSERT INTO kw_history(project_id,record_id,kind,data,created_at) VALUES(?,?,?,?,?)", (pid, rid, table, encode(value), now()))
     value.update(changes)
-    if any(k in changes for k in ("label", "summary", "explanation")):
+    formula_changed = ('latex' in changes.get('metadata', {})
+                       and changes['metadata']['latex'] != before.get('metadata', {}).get('latex'))
+    if any(k in changes for k in ("label", "summary", "explanation")) or formula_changed:
         value["origin"] = "user"
         value['quality_status'] = 'candidate'
         changes = {**changes, "origin": "user"}
+    decision = value.get('metadata', {}).get('quality_decision', {})
+    if decision.get('action') == 'verify' and not decision.get('content_fingerprint'):
+        from app.knowledge.provenance import content_fingerprint
+        value['metadata']['quality_decision'] = {**decision, 'content_fingerprint': content_fingerprint(before)}
     value["version"] += 1
     value.setdefault("metadata", {})["user_fields"] = sorted(set(value.get("metadata", {}).get("user_fields", [])) | set(changes))
     if value["metadata"].get("merged_members") or value["metadata"].get("merged_into"):
@@ -358,6 +381,13 @@ def graph(conn, pid, *, source_id=None, node_id=None, q=None, kind=None, limit=1
     edges = [e for e in all_edges if e["source"] in ids and e["target"] in ids]
     for e in edges:
         e["source_missing"] = e["source_id"] in missing
+    from app.knowledge.graph_validity import current_records, project_teaching_node, project_teaching_edge
+    nodes = [project_teaching_node(node) for node in nodes]
+    mapped = {node['id']: node for node in nodes}
+    edges = [project_teaching_edge(edge, mapped) for edge in edges]
+    concept_edges = [edge for edge in edges if edge.get('metadata', {}).get('concept_correspondence_id')]
+    current_concepts = {edge['id'] for edge in current_records(conn, pid, concept_edges)}
+    edges = [edge for edge in edges if not edge.get('metadata', {}).get('concept_correspondence_id') or edge['id'] in current_concepts]
     return {"nodes": nodes, "edges": edges, "total_nodes": total, "total_edges": len(all_edges), "truncated": total > limit}
 
 

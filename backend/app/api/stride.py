@@ -298,11 +298,19 @@ def interpret(pid: str, req: Interpret):
     """Explicit one-cell paid synthesis. Never replay a request on page load."""
     import httpx
     from app.config import get_settings
+    from app import preferences
 
     settings = get_settings()
     if settings.offline_mode:
         raise HTTPException(409, "离线模式可查找原文候选，不调用模型")
-    if not settings.dashscope_api_key:
+    try:
+        custom = preferences.provider()
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(409, str(exc)) from None
+    key = custom["api_key"] if custom else settings.dashscope_api_key or settings.tutor_default_api_key
+    base = custom["base_url"] if custom else settings.llm_api_base
+    selected_model = custom["model"] if custom else settings.llm_model
+    if not key:
         raise HTTPException(409, "平台提取模型尚未配置，可继续手动填写")
     with closing(connect()) as c:
         setup(c)
@@ -360,8 +368,8 @@ def interpret(pid: str, req: Interpret):
                     col,
                     doc["content_hash"],
                     project.research_question,
-                    settings.llm_api_base,
-                    settings.llm_model,
+                    base,
+                    selected_model,
                     "matrix-interpret-v2",
                 ],
                 sort_keys=True,
@@ -404,7 +412,7 @@ def interpret(pid: str, req: Interpret):
             )
         c.execute(
             "INSERT OR REPLACE INTO stride_model_calls VALUES(?,?,?,?,?)",
-            (fp, "running", time.time(), None, settings.llm_model),
+            (fp, "running", time.time(), None, selected_model),
         )
         c.commit()
     started = time.monotonic()
@@ -412,16 +420,23 @@ def interpret(pid: str, req: Interpret):
         with httpx.Client(
             timeout=90, trust_env=False, follow_redirects=False
         ) as client:
+            url = httpx.URL(base.rstrip("/") + "/chat/completions")
+            headers = {"Authorization": "Bearer " + key}
+            extensions = {}
+            if custom:
+                url = url.copy_with(host=custom["address"])
+                headers["Host"] = custom["host"]
+                extensions["sni_hostname"] = custom["host"]
             response = client.post(
-                settings.llm_api_base.rstrip("/") + "/chat/completions",
-                headers={"Authorization": "Bearer " + settings.dashscope_api_key},
+                url,
+                headers=headers, extensions=extensions,
                 json={
                     **(
                         {"enable_thinking": False}
-                        if settings.llm_model.startswith("qwen3")
+                        if selected_model.startswith("qwen3")
                         else {}
                     ),
-                    "model": settings.llm_model,
+                    "model": selected_model,
                     "temperature": 0.1,
                     "max_tokens": 1600,
                     "response_format": {"type": "json_object"},

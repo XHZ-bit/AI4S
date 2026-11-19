@@ -7,6 +7,14 @@ vi.mock('../api/unifiedGraph',()=>({getKnowledgePath:vi.fn()}));
 vi.mock('antd',()=>({Alert:({message,description}:any)=><p role="alert">{message}{description}</p>,Button:({loading:_,children,...props}:any)=><button {...props}>{children}</button>,Space:({children}:any)=><div>{children}</div>,Select:({options,onChange,showSearch:_,optionFilterProp:__,...props}:any)=><select {...props} onChange={e=>onChange(e.target.value)}><option value="">请选择</option>{options.map((x:any)=><option key={x.value} value={x.value}>{x.label}</option>)}</select>}));
 const nodes=['a','b'].map(id=>({id,label:'知识 '+id,metadata:{}} as KnowledgeNode));
 beforeEach(()=>vi.mocked(getKnowledgePath).mockReset());
+test('current knowledge can request prerequisites directly without configuring endpoints',async()=>{
+ vi.mocked(getKnowledgePath).mockResolvedValue({nodes:[],edges:[],paths:[],cycle_detected:false,truncated:false,message:'暂无已核对的前置关系'});
+ render(<KnowledgePathPanel projectId="p" nodes={nodes} currentNode="b" onNode={vi.fn()} onResult={vi.fn()}/>);
+ expect(getKnowledgePath).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'先学什么'}));
+ await screen.findByText('暂无已核对的前置关系');
+ expect(getKnowledgePath).toHaveBeenCalledWith('p','b',undefined,'prerequisites',expect.any(AbortSignal));
+});
 test('only queries on explicit request and never creates edges for missing paths',async()=>{
  const result=vi.fn();vi.mocked(getKnowledgePath).mockResolvedValue({nodes:[],edges:[],paths:[],cycle_detected:false,truncated:false,message:'没有已保存的连接。'});
  render(<KnowledgePathPanel projectId="p" nodes={nodes} currentNode="a" onNode={vi.fn()} onResult={result}/>);

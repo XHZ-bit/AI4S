@@ -1,0 +1,32 @@
+.kw-node-study-guide { color:var(--atlas-ink); margin:0 0 30px; line-height:1.85; }
+.kw-node-study-guide>header { display:flex; align-items:baseline; gap:14px; margin-bottom:16px; }
+.kw-node-study-guide>header h3 { margin:0; font-size:21px; line-height:1.6; }
+.kw-node-study-guide>header span { font-size:12px; color:var(--atlas-muted); flex-shrink:0; }
+.kw-node-study-guide h4 { font-size:16px; margin:26px 0 10px; font-weight:600; line-height:1.6; }
+.kw-node-study-guide p { max-width:76ch; overflow-wrap:anywhere; }
+.kw-node-study-guide li>p { margin:0; }
+.kw-node-study-guide li { margin:8px 0; }
+.kw-study-flow { padding-left:24px; margin:12px 0 20px; }
+.kw-study-flow>li { padding:10px 0 12px 4px; border-bottom:1px solid var(--atlas-line); }
+.kw-study-flow>li::marker { color:var(--atlas-accent-strong); font-weight:600; }
+.kw-study-flow strong { display:block; margin-bottom:6px; }
+.kw-study-key-points { padding-left:20px; }
+.kw-study-example { margin:24px 0; padding:18px 0; border-top:1px solid var(--atlas-line); border-bottom:1px solid var(--atlas-line); }
+.kw-study-example h4 { margin:0 0 12px; }
+.kw-study-confusions dl,.kw-study-confusions dd { margin:0; }
+.kw-study-confusions dl>div { margin:16px 0; }
+.kw-study-confusions dt { font-weight:600; margin-bottom:5px; }
+.kw-study-confusions dd p { margin:0; }
+.kw-node-study-guide details { margin-top:16px; }
+.kw-node-study-guide summary { cursor:pointer; color:var(--atlas-accent-strong); width:fit-content; }
+.kw-node-study-guide summary:focus-visible { outline:2px solid var(--atlas-focus); outline-offset:3px; }
+.kw-node-study-guide.is-compact { margin-bottom:22px; font-size:13px; line-height:1.85; }
+.kw-node-study-guide.is-compact>header { gap:10px; margin-bottom:10px; }
+.kw-node-study-guide.is-compact>header h3 { font-size:15px; }
+.kw-node-study-guide.is-compact h4 { font-size:13px; margin-top:18px; }
+.kw-node-study-guide.is-compact .kw-study-example h4 { margin-top:0; }
+.kw-node-study-guide.is-compact p { margin:8px 0; }
+.kw-node-study-guide.is-compact .kw-study-key-points li { margin:7px 0; }
+.kw-learning-primer-recall { margin:0 0 28px; padding:0 0 18px; border-bottom:1px solid var(--atlas-line); }
+.kw-learning-primer-recall>summary { cursor:pointer; color:var(--atlas-accent-strong); font-size:14px; }
+.kw-learning-primer-recall[open]>.kw-node-study-guide { margin-top:20px; }

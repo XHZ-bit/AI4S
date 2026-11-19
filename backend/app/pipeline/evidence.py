@@ -142,12 +142,12 @@ def extract_document(conn, paper):
         )
         docs = document_view(conn, paper["uid"])
     doc = docs[0]
-    from app.config import get_settings
+    from app.knowledge.model import identity
 
     import hashlib
-    settings=get_settings()
-    config_hash=hashlib.sha256((settings.llm_api_base+'|'+settings.llm_model).encode()).hexdigest()[:16]
-    version = VERSION + ":" + settings.llm_model + ':' + config_hash
+    selected_model, base = identity()
+    config_hash=hashlib.sha256((base+'|'+selected_model).encode()).hexdigest()[:16]
+    version = VERSION + ":" + selected_model + ':' + config_hash
     counts = {"entities": 0, "relations": 0, "cached": 0}
     total = max(1, len(doc["passages"]))
     for passage_index, passage, prepared in _prepare_passages(conn, doc["passages"], paper["title"], version):

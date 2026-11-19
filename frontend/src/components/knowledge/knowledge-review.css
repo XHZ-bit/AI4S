@@ -1,0 +1,8 @@
+.kw-review-details { margin-top:18px; font-size:13px; }
+.kw-review-details > summary { color:var(--atlas-muted); cursor:pointer; padding:5px 0; }
+.kw-review-details label { display:grid; gap:7px; margin:12px 0; }
+.kw-review-details small { display:block; color:var(--atlas-muted); font-size:12px; line-height:1.7; }
+.kw-review-actions { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0; }
+.kw-review-details article { padding:12px 0; border-bottom:1px solid var(--atlas-line); }
+.kw-review-details article strong { display:block; margin-top:5px; font-size:13px; }
+.kw-review-details article p { white-space:pre-wrap; overflow-wrap:anywhere; }

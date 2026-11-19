@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import threading
 import time
+from datetime import UTC, datetime, timedelta
 from dataclasses import dataclass, field
 from contextlib import contextmanager
 from collections.abc import Callable
@@ -14,6 +15,8 @@ import httpx
 
 from app.config import get_settings
 from app.knowledge import store
+from app import preferences
+from app.tenancy import current_user
 
 _slots = threading.BoundedSemaphore(2)
 
@@ -34,11 +37,28 @@ class Budget:
 
 def available():
     s = get_settings()
-    return bool(s.dashscope_api_key.strip() and not s.offline_mode and s.access_mode == "local" and s.knowledge_model_enabled)
+    if s.offline_mode or not s.knowledge_model_enabled:
+        return False
+    if s.access_mode == "multiuser" and current_user.get() is None:
+        return False
+    return configured()
 
 
 def configured():
-    return bool(get_settings().dashscope_api_key.strip())
+    provider = preferences.read().get("provider", {})
+    if provider.get("enabled"):
+        return bool(provider.get("encrypted_key") and provider.get("base_url") and provider.get("model"))
+    settings = get_settings()
+    return bool((settings.dashscope_api_key or settings.tutor_default_api_key).strip())
+
+
+def identity():
+    """Return the selected model identity without reading or revealing credentials."""
+    provider = preferences.read().get("provider", {})
+    if provider.get("enabled"):
+        return provider.get("model", ""), provider.get("base_url", "")
+    settings = get_settings()
+    return settings.llm_model, settings.llm_api_base
 
 
 def usage_for(project_id, run_id):
@@ -77,12 +97,12 @@ def structured(system, payload, budget: Budget, purpose, *, max_tokens=6000, ima
 
 def structured_request(system, payload, *, max_tokens=6000):
     """Build the exact text request used by transport and context budgeting."""
-    settings = get_settings()
-    request = {"model": settings.llm_model, "temperature": 0.1, "max_tokens": max_tokens,
+    selected_model, _ = identity()
+    request = {"model": selected_model, "temperature": 0.1, "max_tokens": max_tokens,
                "response_format": {"type": "json_object"},
                "messages": [{"role": "system", "content": system},
                             {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}]}
-    if settings.llm_model.startswith("qwen3"):
+    if selected_model.startswith("qwen3"):
         request["enable_thinking"] = False
     return request
 
@@ -93,8 +113,20 @@ def _structured(system, payload, budget: Budget, purpose, *, max_tokens=6000, im
     if budget.calls >= budget.limit:
         raise ModelUnavailable("本次分析达到模型请求上限，已保留完成内容，可继续分析")
     settings = get_settings()
+    try:
+        custom = preferences.provider()
+    except (ValueError, KeyError) as exc:
+        raise ModelUnavailable(str(exc)) from None
+    selected_model = custom["model"] if custom else settings.llm_model
+    base = custom["base_url"] if custom else settings.llm_api_base
+    key = custom["api_key"] if custom else settings.dashscope_api_key or settings.tutor_default_api_key
     call_id = uuid4().hex
     request = structured_request(system, payload, max_tokens=max_tokens)
+    request["model"] = selected_model
+    if selected_model.startswith("qwen3"):
+        request["enable_thinking"] = False
+    else:
+        request.pop("enable_thinking", None)
     if len(json.dumps(request, ensure_ascii=False)) > settings.research_model_max_input_chars:
         raise ModelUnavailable("本次输入超出模型输入预算")
     if images:
@@ -102,16 +134,31 @@ def _structured(system, payload, budget: Budget, purpose, *, max_tokens=6000, im
             raise ModelUnavailable("公式图像超过单次处理范围")
         request['messages'][1]['content'] = [{'type': 'text', 'text': json.dumps(payload, ensure_ascii=False)}] + [
             {'type': 'image_url', 'image_url': {'url': item}} for item in images]
+    trace = {"model": selected_model, "status": "running", "seconds": None, "usage": {}}
+    with store.connection(budget.project_id) as conn:
+        hourly_limit = settings.knowledge_hourly_request_limit
+        if settings.access_mode == "multiuser" and hourly_limit:
+            conn.execute("BEGIN IMMEDIATE")
+            since = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
+            count = conn.execute(
+                "SELECT COUNT(*) FROM kw_model_calls WHERE created_at>=?", (since,)
+            ).fetchone()[0]
+            if count >= hourly_limit:
+                raise ModelUnavailable(f"当前账号已达到每小时 {hourly_limit} 次知识模型请求上限，请稍后再试")
+        conn.execute("INSERT INTO kw_model_calls VALUES(?,?,?,?,?,?,?)", (call_id, budget.project_id, budget.run_id, purpose, "running", store.encode(trace), store.now()))
     budget.calls += 1
     budget.usage["calls"] += 1
-    trace = {"model": settings.llm_model, "status": "running", "seconds": None, "usage": {}}
-    with store.connection(budget.project_id) as conn:
-        conn.execute("INSERT INTO kw_model_calls VALUES(?,?,?,?,?,?,?)", (call_id, budget.project_id, budget.run_id, purpose, "running", store.encode(trace), store.now()))
     started = time.monotonic()
     try:
         with httpx.Client(timeout=httpx.Timeout(settings.llm_timeout_seconds, connect=15), follow_redirects=False, trust_env=False) as client:
-            response = client.post(settings.llm_api_base.rstrip("/") + "/chat/completions", json=request,
-                                   headers={"Authorization": "Bearer " + settings.dashscope_api_key})
+            url = httpx.URL(base.rstrip("/") + "/chat/completions")
+            headers = {"Authorization": "Bearer " + key}
+            extensions = {}
+            if custom:
+                url = url.copy_with(host=custom["address"])
+                headers["Host"] = custom["host"]
+                extensions["sni_hostname"] = custom["host"]
+            response = client.post(url, json=request, headers=headers, extensions=extensions)
             response.raise_for_status()
             data = response.json()
         usage = data.get("usage") or {}

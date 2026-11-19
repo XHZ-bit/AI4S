@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Alert, Button, Input, InputNumber, Select, Space, Spin } from "antd";
 import { FullscreenExitOutlined, FullscreenOutlined, MenuOutlined, SearchOutlined } from "@ant-design/icons";
 import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from "pdfjs-dist";
 import type { Resource } from "../../api/assistant";
 import ReadingExcerpt from "./ReadingExcerpt";
 import "./pdf-reader.css";
+import "./pdf-reading-space.css";
 
 type PageSize = { width: number; height: number };
 type OutlineItem = { title: string; depth: number; dest: string | unknown[] | null };
@@ -75,7 +76,7 @@ export interface PdfReaderProps {
 }
 
 export default function PdfReader({ resource, initialPage = 1, quote, onPageChange, bbox, targetPage }: PdfReaderProps) {
-  const host = useRef<HTMLDivElement>(null), pages = useRef<HTMLDivElement>(null);
+  const host = useRef<HTMLDivElement>(null), pages = useRef<HTMLDivElement>(null), toolbar = useRef<HTMLDivElement>(null);
   const [doc, setDoc] = useState<PDFDocumentProxy>(), [sizes, setSizes] = useState<PageSize[]>([]), [error, setError] = useState("");
   const [errorDetail, setErrorDetail] = useState("");
   const [reload, setReload] = useState(0), [page, setPage] = useState(() => normalizePage(targetPage || initialPage));
@@ -88,14 +89,38 @@ export default function PdfReader({ resource, initialPage = 1, quote, onPageChan
   const pageRef = useRef(page), onPageRef = useRef(onPageChange), lastNotified = useRef<number | null>(null);
   const searchGeneration = useRef(0), textCache = useRef(new Map<number, string>()), docGeneration = useRef(0);
   const focusedBox = useRef("");
+  const pendingAnchor = useRef<{ page: number; fraction: number }>();
+  const measuredWidths = useRef<{ host: number; viewport?: number }>({ host: 640 });
   const scrollTimer = useRef<ReturnType<typeof setTimeout>>();
   pageRef.current = page; onPageRef.current = onPageChange;
+
+  const captureAnchor = useCallback(() => {
+    const viewport = pages.current;
+    if (!viewport || pendingAnchor.current) return;
+    const elements = [...viewport.querySelectorAll<HTMLElement>("[data-pdf-page]")];
+    const height = (element: HTMLElement) => element.getBoundingClientRect().height || parseFloat(element.style.height);
+    const selected = elements.find(element => element.offsetTop + height(element) > viewport.scrollTop) || elements[elements.length - 1];
+    if (!selected || !height(selected)) return;
+    pendingAnchor.current = { page: Number(selected.dataset.pdfPage), fraction: (viewport.scrollTop - selected.offsetTop) / height(selected) };
+  }, []);
+
+  // A resize or zoom changes every preceding page's height. Restore the same
+  // page and relative reading position after those dimensions reach the DOM.
+  useLayoutEffect(() => {
+    const anchor = pendingAnchor.current, viewport = pages.current;
+    if (!anchor || !viewport) return;
+    const selected = viewport.querySelector<HTMLElement>(`[data-pdf-page="${anchor.page}"]`);
+    if (!selected) return;
+    const height = selected.getBoundingClientRect().height || parseFloat(selected.style.height);
+    viewport.scrollTop = Math.max(0, selected.offsetTop + anchor.fraction * height);
+    pendingAnchor.current = undefined;
+  });
 
   useEffect(() => {
     let dead = false; let loadingTask: { destroy: () => Promise<void> } | undefined;
     const generation = ++docGeneration.current;
     setDoc(undefined); setSizes([]); setViewportWidth(undefined); setError(""); setErrorDetail(""); setOutline([]); setHits([]); setSearchQuery(""); setSearch(""); setSearchError(""); setSearching(false);
-    textCache.current.clear(); searchGeneration.current++; lastNotified.current = null; focusedBox.current = "";
+    textCache.current.clear(); searchGeneration.current++; lastNotified.current = null; focusedBox.current = ""; pendingAnchor.current = undefined; measuredWidths.current.viewport = undefined;
     void Promise.all([import("pdfjs-dist"), import("pdfjs-dist/build/pdf.worker.min.mjs?url")]).then(async ([pdf, worker]) => {
       if (dead) return;
       if (!resource.url) throw new Error("没有 PDF 文件地址");
@@ -135,21 +160,32 @@ export default function PdfReader({ resource, initialPage = 1, quote, onPageChan
     if (!host.current) return;
     const measureHeight = () => {
       const top = pages.current?.getBoundingClientRect().top ?? host.current?.getBoundingClientRect().top ?? 120;
-      setReaderHeight(Math.max(280, window.innerHeight - Math.max(0, top) - 24));
+      const next = Math.max(200, Math.floor(window.innerHeight - Math.max(0, top) - 12));
+      setReaderHeight(old => old === next ? old : next);
     };
     const observer = new ResizeObserver(entries => {
       entries.forEach(entry => {
         if (entry.contentRect.width <= 0) return;
-        if (entry.target && entry.target === pages.current) setViewportWidth(entry.contentRect.width);
-        else setWidth(entry.contentRect.width);
+        if (entry.target && entry.target === pages.current) {
+          if (entry.contentRect.width !== measuredWidths.current.viewport) captureAnchor();
+          measuredWidths.current.viewport = entry.contentRect.width;
+          setViewportWidth(entry.contentRect.width);
+        } else if (entry.target === host.current) {
+          if (entry.contentRect.width !== measuredWidths.current.host) captureAnchor();
+          measuredWidths.current.host = entry.contentRect.width;
+          setWidth(entry.contentRect.width);
+        }
       });
       measureHeight();
     });
-    observer.observe(host.current); if (pages.current) observer.observe(pages.current);
+    observer.observe(host.current); if (pages.current) observer.observe(pages.current); if (toolbar.current) observer.observe(toolbar.current);
+    // Related-knowledge disclosures above the reader can change its position.
+    // Reclaim the available height when those controls open or close.
+    if (host.current.parentElement) observer.observe(host.current.parentElement);
     measureHeight(); window.addEventListener("resize", measureHeight);
     const frame = requestAnimationFrame(measureHeight);
     return () => { observer.disconnect(); window.removeEventListener("resize", measureHeight); cancelAnimationFrame(frame); };
-  }, [resource.id, doc, expanded, outlineOpen]);
+  }, [resource.id, doc, expanded, outlineOpen, captureAnchor]);
 
   const notify = useCallback((next: number) => {
     if (lastNotified.current === next) return;
@@ -157,6 +193,7 @@ export default function PdfReader({ resource, initialPage = 1, quote, onPageChan
   }, []);
   const jump = useCallback((number: number, announce = true) => {
     if (!doc) return;
+    pendingAnchor.current = undefined;
     const next = normalizePage(number, doc.numPages); pageRef.current = next; setPage(next);
     setActivePages(old => new Set([...old, next, Math.max(1, next - 1), Math.min(doc.numPages, next + 1)]));
     const viewport = pages.current, selected = viewport?.querySelector<HTMLElement>(`[data-pdf-page="${next}"]`);
@@ -265,16 +302,15 @@ export default function PdfReader({ resource, initialPage = 1, quote, onPageChan
   });
   const navigationOutline = outline.length ? outline : parsedOutline;
   return <div ref={host} className={`atlas-reader ps-continuous-reader${expanded ? " is-expanded" : ""}`} style={{ "--ps-reader-height": `${readerHeight}px` } as React.CSSProperties} aria-label="PDF 阅读器">
-    <div className="atlas-reader-controls ps-pdf-toolbar"><Space wrap>
-      <Button size="small" aria-label="目录" icon={<MenuOutlined aria-hidden />} aria-pressed={outlineOpen} onClick={() => setOutlineOpen(value => !value)} disabled={!doc}>目录</Button>
+    <div ref={toolbar} className="atlas-reader-controls ps-pdf-toolbar"><Space wrap>
+      <Button size="small" aria-label="目录" icon={<MenuOutlined aria-hidden />} aria-pressed={outlineOpen} onClick={() => { captureAnchor(); setOutlineOpen(value => !value); }} disabled={!doc}>目录</Button>
       <Button size="small" disabled={!doc || page <= 1} onClick={() => jump(page - 1)}>上一页</Button>
       <InputNumber aria-label="PDF 页码" size="small" disabled={!doc} precision={0} min={1} max={doc?.numPages || 1} value={page} onChange={value => value !== null && jump(value)} onBlur={event => { if (!event.target.value) event.target.value = String(pageRef.current); }} />
       <span className="ps-pdf-page-count">/ {doc?.numPages || "—"}</span>
       <Button size="small" disabled={!doc || page >= doc.numPages} onClick={() => jump(page + 1)}>下一页</Button>
-      <Select<"fit" | number> aria-label="PDF 缩放" size="small" value={zoom} onChange={setZoom} options={[{ value: "fit", label: "适应宽度" }, { value: 0.75, label: "75%" }, { value: 1, label: "100%" }, { value: 1.5, label: "150%" }, { value: 2, label: "200%" }]} />
+      <Select<"fit" | number> aria-label="PDF 缩放" size="small" value={zoom} onChange={value => { captureAnchor(); setZoom(value); }} options={[{ value: "fit", label: "适应宽度" }, { value: 0.75, label: "75%" }, { value: 1, label: "100%" }, { value: 1.5, label: "150%" }, { value: 2, label: "200%" }]} />
       <Button size="small" aria-label={expanded ? "退出全屏" : "全屏"} icon={expanded ? <FullscreenExitOutlined aria-hidden /> : <FullscreenOutlined aria-hidden />} onClick={() => void toggleFullscreen()}>{expanded ? "退出全屏" : "全屏"}</Button>
-    </Space><Input.Search aria-label="搜索论文全文" placeholder="搜索论文全文" value={search} onChange={event => setSearch(event.target.value)} onSearch={value => void searchDocument(value)} disabled={!doc} loading={searching} allowClear enterButton={<SearchOutlined aria-label="搜索" />} /></div>
-    {quote && <details className="ps-pdf-citation"><summary>定位依据片段</summary><ReadingExcerpt text={quote} compact /></details>}
+    </Space>{quote && <details className="ps-pdf-citation"><summary>定位依据片段</summary><ReadingExcerpt text={quote} compact /></details>}<Input.Search aria-label="搜索论文全文" placeholder="搜索论文全文" value={search} onChange={event => setSearch(event.target.value)} onSearch={value => void searchDocument(value)} disabled={!doc} loading={searching} allowClear enterButton={<SearchOutlined aria-label="搜索" />} /></div>
     {searchQuery && <div className="ps-pdf-search-status" role="status" aria-live="polite">{searching ? "正在搜索全文…" : hits.length ? <><span>{hits.reduce((sum, hit) => sum + hit.count, 0)} 处匹配，分布于 {hits.length} 页；当前第 {hits[hitIndex]?.page} 页</span><Button size="small" onClick={() => moveHit(-1)}>上一匹配页</Button><Button size="small" onClick={() => moveHit(1)}>下一匹配页</Button><span className="ps-pdf-search-snippet">{hits[hitIndex]?.snippet}</span></> : "未找到匹配文字。扫描件需要先完成文字识别。"}</div>}
     {searchError && <Alert type="warning" message={searchError} closable onClose={() => setSearchError("")} />}
     {!doc && !error && <Spin tip="加载原文与页面尺寸…"><div style={{ minHeight: 280 }} /></Spin>}

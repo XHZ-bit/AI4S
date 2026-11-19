@@ -4,7 +4,7 @@ export type Feature = "foundations"|"glossary"|"quizzes"|"coding"|"visuals"|"pap
 export interface Preferences {
  profile:{display_name:string;bio:string;institution:string;interests:string;level:"beginner"|"reader"|"researcher";weekly_hours:number};
  features:Record<Feature,boolean>;
- provider:{enabled:boolean;base_url:string;model:string;has_key?:boolean;api_key?:string;clear_key?:boolean};
+ provider:{enabled:boolean;base_url:string;model:string;embedding_model?:string;has_key?:boolean;api_key?:string;clear_key?:boolean};
  version:number;default_model?:string;avatar_url?:string|null;
 }
 export const featureLabels:Record<Feature,[string,string]>={

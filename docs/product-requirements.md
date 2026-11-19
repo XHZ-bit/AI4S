@@ -1,5 +1,7 @@
 # Research Atlas 产品需求文档
 
+> 2026-10-29 更新：本文保留早期产品设想。本轮已结合两轮用户交流细化为[独立研究空间需求分析](knowledge-workspace-requirements.md)，实际实现与使用见[交付说明](knowledge-workspace-release.md)。本轮范围和验收以新文档及对应验收记录为准，历史目标不自动视为已交付。
+
 ## 1. 文档概述
 
 ### 1.1 产品名称

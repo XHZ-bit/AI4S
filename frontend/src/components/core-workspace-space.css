@@ -1,0 +1,57 @@
+/* Dense desktop work surfaces share one compact outer frame. */
+@media (min-width:801px) {
+ .atlas-shell.atlas-interface:has(:is(.kw-workspace,.atlas-graph-explorer,.stride-explore,.learning-page,.atlas-paper-page[data-active-panel="reading"])) .atlas-global-header { height:48px; }
+ .atlas-shell.atlas-interface:has(:is(.kw-workspace,.atlas-graph-explorer,.stride-explore,.learning-page,.atlas-paper-page[data-active-panel="reading"])) .atlas-content { max-width:none;min-height:0;padding:12px 20px; }
+ .atlas-shell.atlas-interface:has(:is(.kw-workspace,.atlas-graph-explorer,.stride-explore,.learning-page,.atlas-paper-page[data-active-panel="reading"])) .atlas-footer { display:none; }
+ .kw-graph-first.kw-workspace .kw-workspace-header.kw-space-heading { gap:12px;padding-bottom:8px;margin-bottom:8px; }
+ .kw-workspace .kw-space-title>div { min-width:0; }
+ .kw-workspace:not(.kw-view-reading) .kw-space-title>div { display:flex;align-items:baseline;gap:12px; }
+ .kw-workspace:not(.kw-view-reading) .kw-space-title h1 { font-size:20px;margin:0;min-width:0;max-width:34ch;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+ .kw-workspace:not(.kw-view-reading) .kw-space-title p { margin:0;max-width:32ch; }
+ .kw-workspace .kw-space-actions>.ant-btn { height:32px;padding-inline:9px;font-size:13px; }
+ .kw-workspace .kw-space-options>summary { min-height:32px;padding:4px 7px; }
+ .kw-workspace .kw-space-actions>.kw-return-graph { color:var(--atlas-accent); }
+ .kw-workspace>.kw-main-view>section>.kw-section-heading { margin-bottom:12px; }
+ .kw-materials>.kw-section-heading { align-items:center;margin-bottom:12px; }
+ .kw-materials>.kw-section-heading h2 { margin:0;font-size:21px; }
+ .kw-material-title { display:flex;align-items:center;gap:20px; }
+ .kw-material-tabs { display:flex;gap:16px; }
+ .kw-material-tabs>button { border:0;border-bottom:2px solid transparent;background:transparent;color:var(--atlas-muted);padding:6px 0;font:inherit;font-size:14px;cursor:pointer; }
+ .kw-material-tabs>button[aria-selected=true] { color:var(--atlas-accent-strong);border-color:var(--atlas-accent);font-weight:600; }
+ .kw-materials [hidden] { display:none!important; }
+ .kw-material-import-intro { margin:0 0 12px;color:var(--atlas-muted);font-size:13px; }
+ .kw-material-import .kw-upload-area { padding:14px 16px; }
+ .kw-material-import .kw-upload-area p { margin:4px 0 0;font-size:13px; }
+ .kw-material-import .kw-import-lines { padding:12px 0;gap:12px 20px; }
+ .kw-materials .kw-source-list { margin-top:0; }
+ .kw-materials .kw-source-list>li { padding-block:14px; }
+ .kw-materials .kw-notebook { margin-top:0; }
+ .kw-view-practice .kw-practice-desk-header { gap:12px;padding-bottom:8px; }
+ .kw-view-practice .kw-practice-desk-title { display:flex;align-items:center;gap:12px; }
+ .kw-view-practice .kw-practice-desk-title>div { flex-shrink:0;gap:6px; }
+ .kw-view-practice .kw-practice-desk-title h2 { margin:0;font-size:21px; }
+ .kw-view-practice .kw-practice-desk-meta { margin:6px 0 8px; }
+ .kw-view-practice .kw-practice-ide { margin-top:8px; }
+ .atlas-graph-explorer>header { margin-bottom:8px; }
+ .atlas-graph-explorer>header h1 { font-size:22px; }
+ .kw-graph-secondary-tools>.kw-open-content-list { width:auto;min-height:28px;margin:0 0 0 auto;padding:2px 8px;border:0;font-size:13px; }
+ .learning-page { max-width:none; }
+ .learning-page .learning-heading { gap:12px;margin-bottom:8px; }
+ .learning-page .learning-heading>div { display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 14px; }
+ .learning-page .learning-heading h1 { font-size:22px;margin:0; }
+ .learning-page .learning-heading p { margin:0;font-size:13px; }
+ .learning-page .learning-return { margin:0;font-size:13px; }
+ .learning-page .learning-view-picker { margin-bottom:12px; }
+ .learning-page .learning-course-layout { grid-template-columns:210px minmax(0,1fr);gap:20px; }
+ .learning-page .learning-course-main { padding:16px 20px; }
+ .learning-page .learning-course-main>header>h2 { margin:0 0 6px;font-size:21px; }
+ .learning-page .learning-context-details { margin:8px 0; }
+ .learning-page .learning-activity-picker { margin:8px 0 12px; }
+ .atlas-paper-page[data-active-panel="reading"] .atlas-paper-back { margin-bottom:6px;font-size:13px; }
+ .atlas-paper-page[data-active-panel="reading"] .atlas-paper-title-row { gap:16px; }
+ .atlas-paper-page[data-active-panel="reading"] .atlas-paper-title-row h2.ant-typography { margin-bottom:6px;font-size:22px;line-height:1.4; }
+ .atlas-paper-page[data-active-panel="reading"] .atlas-paper-options { margin-top:6px; }
+ .atlas-paper-page[data-active-panel="reading"] .atlas-paper-options .ant-collapse-header { padding-block:6px!important; }
+ .atlas-paper-page[data-active-panel="reading"] .atlas-paper-tabs>.ant-tabs-nav { margin-bottom:8px; }
+ .atlas-paper-page[data-active-panel="reading"] .atlas-paper-tabs>.ant-tabs-nav .ant-tabs-tab { padding-block:8px;font-size:14px; }
+}

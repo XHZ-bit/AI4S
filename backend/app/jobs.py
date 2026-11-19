@@ -198,9 +198,9 @@ def _run(tid):
                 process_saved_pdf(conn, uid)
             from app.db.sqlite import get_paper
             from app.pipeline.evidence import extract_document
-            from app.config import get_settings
+            from app.llm.client import configured
             result = {"uid": uid, "parse_status": "parsed"}
-            if row['type'] != 'parse' and get_settings().dashscope_api_key:
+            if row['type'] != 'parse' and configured():
                 checkpoint(conn, "extract", 0.65)
                 stage(conn, uid, "extract", "running")
                 try:

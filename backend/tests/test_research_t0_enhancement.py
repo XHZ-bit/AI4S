@@ -68,6 +68,33 @@ def test_model_transport_metadata_without_content(enabled, caplog):
     assert "synthetic-secret-never-log" not in caplog.text
 
 
+def test_research_transport_uses_personal_provider(enabled, monkeypatch):
+    from app.research import model_runtime
+    monkeypatch.setattr(model_runtime.preferences, 'provider', lambda: {
+        'api_key': 'personal-secret', 'base_url': 'https://personal.example/v1',
+        'model': 'personal-model', 'address': '8.8.8.8', 'host': 'personal.example',
+    })
+    route = respx.post("https://8.8.8.8/v1/chat/completions").mock(return_value=response())
+    with model_call_scope('personal'):
+        assert json.loads(call())['additional_steps']
+    request = route.calls[0].request
+    assert request.headers['authorization'] == 'Bearer personal-secret'
+    assert request.headers['host'] == 'personal.example'
+    assert request.extensions['sni_hostname'] == 'personal.example'
+    assert json.loads(request.content)['model'] == 'personal-model'
+
+
+def test_invalid_personal_research_provider_does_not_fall_back(enabled, monkeypatch):
+    from app.research import model_runtime
+    def invalid():
+        raise ValueError("invalid key")
+    monkeypatch.setattr(model_runtime.preferences, 'provider', invalid)
+    route = respx.post(URL).mock(return_value=response())
+    with pytest.raises(ResearchModelError, match='model_not_configured'):
+        call()
+    assert route.call_count == 0
+
+
 def test_strict_schema_and_single_task_budget(enabled, monkeypatch):
     monkeypatch.setenv("RESEARCH_MODEL_RESPONSE_FORMAT", "json_schema")
     monkeypatch.setenv("RESEARCH_MODEL_MAX_REQUESTS", "1")

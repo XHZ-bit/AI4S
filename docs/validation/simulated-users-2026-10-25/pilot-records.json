@@ -1,0 +1,841 @@
+{
+  "label": "LLM simulated-role navigation pilot; not a human user study",
+  "human_participants": 0,
+  "model": "qwen3.8-flash",
+  "distinct_models": 1,
+  "synthetic_personas": 4,
+  "scenarios": 4,
+  "api_attempts": 8,
+  "http_200": 8,
+  "browser_actions_verified": 8,
+  "executor_adaptations": 3,
+  "prompt_tokens": 3219,
+  "completion_tokens": 255,
+  "total_tokens": 3474,
+  "api_seconds_sum": 10.5739,
+  "records": [
+    {
+      "attempt": {
+        "id": "crossfield-1",
+        "synthetic": true,
+        "human_participants": 0,
+        "model": "qwen3.8-flash",
+        "max_output_tokens": 600,
+        "automatic_retries": 0,
+        "started_at": "2026-10-25T10:31:50.174952+00:00",
+        "input_sha256": "9218f732a3da999f26f5b6c9a56ee5801cb83f2a2d1cfe78430fcb2bbced0674",
+        "input": {
+          "id": "crossfield-1",
+          "synthetic": true,
+          "persona": "生成模型背景的跨领域学习者，想补机器人基础，不清楚先学什么。",
+          "task": "找到以图形或层级呈现的学习依赖，查看应该先学哪些知识。",
+          "observation": {
+            "controls": [
+              {
+                "action": "click",
+                "id": "c1",
+                "name": "工作台",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c2",
+                "name": "资料库",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c3",
+                "name": "探索",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c4",
+                "name": "全部课题",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c5",
+                "name": "设置",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c6",
+                "name": "新建研究空间",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c7",
+                "name": "继续上次任务",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c8",
+                "name": "打开资料库",
+                "role": "link"
+              }
+            ],
+            "page": "研究工作台"
+          },
+          "history": []
+        }
+      },
+      "actor_response": {
+        "id": "crossfield-1",
+        "synthetic": true,
+        "human_participants": 0,
+        "requested_model": "qwen3.8-flash",
+        "browser_executed": false,
+        "http_status": 200,
+        "returned_model": "qwen3.8-flash",
+        "provider_id": "chatcmpl-829dcbb1-012e-960f-a2bd-b7a1337220dd",
+        "usage": {
+          "completion_tokens": 28,
+          "prompt_tokens": 413,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "text_tokens": 413
+          },
+          "total_tokens": 441
+        },
+        "finish_reason": "stop",
+        "content": "{\"action_id\":\"c3\",\"value\":\"\",\"note\":\"寻找以图形或层级呈现的学习依赖，探索功能可能提供此类可视化路径\"}",
+        "decision": {
+          "action_id": "c3",
+          "value": "",
+          "note": "寻找以图形或层级呈现的学习依赖，探索功能可能提供此类可视化路径"
+        },
+        "status": "decision_ready",
+        "api_seconds": 1.0158,
+        "finished_at": "2026-10-25T10:31:51.192039+00:00"
+      },
+      "execution": {
+        "id": "crossfield-1",
+        "action": "探索",
+        "verified": true,
+        "observed": "探索标题和文献关系/学习依赖模式可见"
+      }
+    },
+    {
+      "attempt": {
+        "id": "crossfield-2",
+        "synthetic": true,
+        "human_participants": 0,
+        "model": "qwen3.8-flash",
+        "max_output_tokens": 600,
+        "automatic_retries": 0,
+        "started_at": "2026-10-25T10:33:33.121709+00:00",
+        "input_sha256": "a3e203d0fdae6f4fe30a6d4ca5a1904c9df8c5882369c1186efd5280288c88df",
+        "input": {
+          "id": "crossfield-2",
+          "synthetic": true,
+          "persona": "生成模型背景的跨领域学习者，想补机器人基础，不清楚先学什么。",
+          "task": "找到以图形或层级呈现的学习依赖，查看应该先学哪些知识。",
+          "observation": {
+            "page": "探索",
+            "description": "沿着论文找到相关研究，沿着概念补齐理解。",
+            "controls": [
+              {
+                "id": "c1",
+                "name": "文献关系",
+                "role": "radio",
+                "action": "click"
+              },
+              {
+                "id": "c2",
+                "name": "学习依赖",
+                "role": "radio",
+                "action": "click"
+              },
+              {
+                "id": "c3",
+                "name": "查找相关文献",
+                "role": "button",
+                "action": "click"
+              },
+              {
+                "id": "c4",
+                "name": "图谱",
+                "role": "radio",
+                "action": "click"
+              },
+              {
+                "id": "c5",
+                "name": "列表",
+                "role": "radio",
+                "action": "click"
+              },
+              {
+                "id": "c6",
+                "name": "返回上篇",
+                "role": "button",
+                "action": "click"
+              }
+            ]
+          },
+          "history": [
+            {
+              "action": "探索",
+              "observed": "进入探索，当前选择文献关系"
+            }
+          ]
+        }
+      },
+      "actor_response": {
+        "id": "crossfield-2",
+        "synthetic": true,
+        "human_participants": 0,
+        "requested_model": "qwen3.8-flash",
+        "browser_executed": false,
+        "http_status": 200,
+        "returned_model": "qwen3.8-flash",
+        "provider_id": "chatcmpl-4f719f67-d17a-9e9c-b66f-3c5833bd716c",
+        "usage": {
+          "completion_tokens": 39,
+          "prompt_tokens": 394,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "text_tokens": 394
+          },
+          "total_tokens": 433
+        },
+        "finish_reason": "stop",
+        "content": "{\"action_id\": \"c2\", \"value\": \"\", \"note\": \"任务要求查看学习依赖，当前选中“文献关系”，需切换至“学习依赖”单选按钮。\"}",
+        "decision": {
+          "action_id": "c2",
+          "value": "",
+          "note": "任务要求查看学习依赖，当前选中“文献关系”，需切换至“学习依赖”单选按钮。"
+        },
+        "status": "decision_ready",
+        "api_seconds": 1.4488,
+        "finished_at": "2026-10-25T10:33:34.571705+00:00"
+      },
+      "execution": {
+        "id": "crossfield-2",
+        "action": "学习依赖",
+        "verified": true,
+        "observed": "学习依赖标题和知识点控件可见",
+        "executor_note": "AntD radio 的原生 input 点击未命中；改点同一可见文字标签完成操作，不计为模型改选"
+      }
+    },
+    {
+      "attempt": {
+        "id": "expert-1",
+        "synthetic": true,
+        "human_participants": 0,
+        "model": "qwen3.8-flash",
+        "max_output_tokens": 600,
+        "automatic_retries": 0,
+        "started_at": "2026-10-25T10:31:48.243874+00:00",
+        "input_sha256": "9211defe7d854d6d76c26ccab6296c43a3e91ee7d922b9633996943078e855e3",
+        "input": {
+          "id": "expert-1",
+          "synthetic": true,
+          "persona": "有科研经验的回访用户，不需要基础教学。",
+          "task": "继续上次的论文阅读，希望直接回到之前的研究空间和 PDF 页码。",
+          "observation": {
+            "controls": [
+              {
+                "action": "click",
+                "id": "c1",
+                "name": "工作台",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c2",
+                "name": "资料库",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c3",
+                "name": "探索",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c4",
+                "name": "全部课题",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c5",
+                "name": "设置",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c6",
+                "name": "新建研究空间",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c7",
+                "name": "继续上次任务",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c8",
+                "name": "打开资料库",
+                "role": "link"
+              }
+            ],
+            "page": "研究工作台"
+          },
+          "history": []
+        }
+      },
+      "actor_response": {
+        "id": "expert-1",
+        "synthetic": true,
+        "human_participants": 0,
+        "requested_model": "qwen3.8-flash",
+        "browser_executed": false,
+        "http_status": 200,
+        "returned_model": "qwen3.8-flash",
+        "provider_id": "chatcmpl-a7a971e0-a64c-9e82-b17f-ab4dfe95d815",
+        "usage": {
+          "completion_tokens": 26,
+          "prompt_tokens": 406,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "text_tokens": 406
+          },
+          "total_tokens": 432
+        },
+        "finish_reason": "stop",
+        "content": "{\"action_id\":\"c7\",\"value\":\"\",\"note\":\"点击“继续上次任务”以恢复之前的研究空间和PDF页码\"}",
+        "decision": {
+          "action_id": "c7",
+          "value": "",
+          "note": "点击“继续上次任务”以恢复之前的研究空间和PDF页码"
+        },
+        "status": "decision_ready",
+        "api_seconds": 1.5181,
+        "finished_at": "2026-10-25T10:31:49.764193+00:00"
+      },
+      "execution": {
+        "id": "expert-1",
+        "action": "继续上次任务",
+        "verified": true,
+        "observed": "返回同一研究空间的 DONIC 原文，PDF 页码为 2"
+      }
+    },
+    {
+      "attempt": {
+        "id": "idea-1",
+        "synthetic": true,
+        "human_participants": 0,
+        "model": "qwen3.8-flash",
+        "max_output_tokens": 600,
+        "automatic_retries": 0,
+        "started_at": "2026-10-25T10:33:34.920641+00:00",
+        "input_sha256": "f1c3d6b2d02d9d957737c0d02fdf28af22ad289fdae34af95da5a241456af92c",
+        "input": {
+          "id": "idea-1",
+          "synthetic": true,
+          "persona": "研究方向尚不明确的学生，不知道如何填写研究问题、领域和验证目标。",
+          "task": "先建立名为“模拟测试 · 机器人学习想法”的研究空间，研究问题和验证目标暂时不填。",
+          "observation": {
+            "controls": [
+              {
+                "action": "click",
+                "id": "c1",
+                "name": "工作台",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c2",
+                "name": "资料库",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c3",
+                "name": "探索",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c4",
+                "name": "全部课题",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c5",
+                "name": "设置",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c6",
+                "name": "新建研究空间",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c7",
+                "name": "继续上次任务",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c8",
+                "name": "打开资料库",
+                "role": "link"
+              }
+            ],
+            "page": "研究工作台"
+          },
+          "history": []
+        }
+      },
+      "actor_response": {
+        "id": "idea-1",
+        "synthetic": true,
+        "human_participants": 0,
+        "requested_model": "qwen3.8-flash",
+        "browser_executed": false,
+        "http_status": 200,
+        "returned_model": "qwen3.8-flash",
+        "provider_id": "chatcmpl-d8ff4568-0151-93ec-b16f-5d0351e5aae9",
+        "usage": {
+          "completion_tokens": 25,
+          "prompt_tokens": 418,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "text_tokens": 418
+          },
+          "total_tokens": 443
+        },
+        "finish_reason": "stop",
+        "content": "{\"action_id\":\"c6\",\"value\":\"\",\"note\":\"点击“新建研究空间”以开始创建任务所需的研究空间\"}",
+        "decision": {
+          "action_id": "c6",
+          "value": "",
+          "note": "点击“新建研究空间”以开始创建任务所需的研究空间"
+        },
+        "status": "decision_ready",
+        "api_seconds": 1.3743,
+        "finished_at": "2026-10-25T10:33:36.296552+00:00"
+      },
+      "execution": {
+        "id": "idea-1",
+        "action": "新建研究空间",
+        "verified": true,
+        "observed": "进入研究空间页，显示内嵌名称表单，研究问题/验证目标未设为必填",
+        "executor_note": "执行器先等待旧版 dialog，现版为内嵌 region；按实际区域核对。"
+      }
+    },
+    {
+      "attempt": {
+        "id": "idea-2",
+        "synthetic": true,
+        "human_participants": 0,
+        "model": "qwen3.8-flash",
+        "max_output_tokens": 600,
+        "automatic_retries": 0,
+        "started_at": "2026-10-25T10:35:16.301491+00:00",
+        "input_sha256": "aa04d81e1f709194bc5665088d8d98e71b3d525c1d1f55dcfa39dcc7d8bc57f2",
+        "input": {
+          "id": "idea-2",
+          "synthetic": true,
+          "persona": "研究方向尚不明确的学生，不知道如何填写研究问题、领域和验证目标。",
+          "task": "先建立名为“模拟测试 · 机器人学习想法”的研究空间，研究问题和验证目标暂时不填。",
+          "observation": {
+            "page": "研究空间",
+            "description": "先给这次探索起个名字。可以是暂定名称。进入空间后，再逐步明确问题和研究条件。",
+            "controls": [
+              {
+                "id": "c1",
+                "name": "课题名称",
+                "role": "textbox",
+                "action": "fill",
+                "current_value": ""
+              },
+              {
+                "id": "c2",
+                "name": "已有想法？补充领域、问题和目标",
+                "role": "summary",
+                "action": "click"
+              },
+              {
+                "id": "c3",
+                "name": "建立探索空间",
+                "role": "button",
+                "action": "click"
+              },
+              {
+                "id": "c4",
+                "name": "取消",
+                "role": "button",
+                "action": "click"
+              }
+            ]
+          },
+          "history": [
+            {
+              "action": "新建研究空间",
+              "observed": "名称表单可见，名称尚为空"
+            }
+          ]
+        }
+      },
+      "actor_response": {
+        "id": "idea-2",
+        "synthetic": true,
+        "human_participants": 0,
+        "requested_model": "qwen3.8-flash",
+        "browser_executed": false,
+        "http_status": 200,
+        "returned_model": "qwen3.8-flash",
+        "provider_id": "chatcmpl-dfa61fa7-09e8-9725-9e13-2611cf44902d",
+        "usage": {
+          "completion_tokens": 34,
+          "prompt_tokens": 374,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "text_tokens": 374
+          },
+          "total_tokens": 408
+        },
+        "finish_reason": "stop",
+        "content": "{\"action_id\": \"c1\", \"value\": \"模拟测试 · 机器人学习想法\", \"note\": \"根据任务要求，先填写研究空间的名称\"}",
+        "decision": {
+          "action_id": "c1",
+          "value": "模拟测试 · 机器人学习想法",
+          "note": "根据任务要求，先填写研究空间的名称"
+        },
+        "status": "decision_ready",
+        "api_seconds": 1.1799,
+        "finished_at": "2026-10-25T10:35:17.485365+00:00"
+      },
+      "execution": {
+        "id": "idea-2",
+        "action": "填写课题名称",
+        "verified": true,
+        "observed": "名称为模拟测试 · 机器人学习想法，其余条件未填写"
+      }
+    },
+    {
+      "attempt": {
+        "id": "idea-3",
+        "synthetic": true,
+        "human_participants": 0,
+        "model": "qwen3.8-flash",
+        "max_output_tokens": 600,
+        "automatic_retries": 0,
+        "started_at": "2026-10-25T10:35:47.882295+00:00",
+        "input_sha256": "5013f229da02cbf10ab667f2984ab9eb507eba1a95d3b624da1614be266b4980",
+        "input": {
+          "id": "idea-3",
+          "synthetic": true,
+          "persona": "研究方向尚不明确的学生，不知道如何填写研究问题、领域和验证目标。",
+          "task": "先建立名为“模拟测试 · 机器人学习想法”的研究空间，研究问题和验证目标暂时不填。",
+          "observation": {
+            "page": "研究空间",
+            "description": "名称已填写；研究问题和验证目标保持未填。",
+            "controls": [
+              {
+                "id": "c1",
+                "name": "课题名称",
+                "role": "textbox",
+                "action": "fill",
+                "current_value": "模拟测试 · 机器人学习想法"
+              },
+              {
+                "id": "c2",
+                "name": "已有想法？补充领域、问题和目标",
+                "role": "summary",
+                "action": "click"
+              },
+              {
+                "id": "c3",
+                "name": "建立探索空间",
+                "role": "button",
+                "action": "click"
+              },
+              {
+                "id": "c4",
+                "name": "取消",
+                "role": "button",
+                "action": "click"
+              }
+            ]
+          },
+          "history": [
+            {
+              "action": "新建研究空间",
+              "observed": "名称表单可见"
+            },
+            {
+              "action": "填写课题名称",
+              "observed": "名称已填写为模拟测试 · 机器人学习想法"
+            }
+          ]
+        }
+      },
+      "actor_response": {
+        "id": "idea-3",
+        "synthetic": true,
+        "human_participants": 0,
+        "requested_model": "qwen3.8-flash",
+        "browser_executed": false,
+        "http_status": 200,
+        "returned_model": "qwen3.8-flash",
+        "provider_id": "chatcmpl-344fe009-5135-9d73-93ad-f8c9312f7256",
+        "usage": {
+          "completion_tokens": 35,
+          "prompt_tokens": 391,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "text_tokens": 391
+          },
+          "total_tokens": 426
+        },
+        "finish_reason": "stop",
+        "content": "{\"action_id\": \"c3\", \"value\": \"\", \"note\": \"名称已填写，研究问题和验证目标按要求留空，点击建立探索空间以完成任务\"}",
+        "decision": {
+          "action_id": "c3",
+          "value": "",
+          "note": "名称已填写，研究问题和验证目标按要求留空，点击建立探索空间以完成任务"
+        },
+        "status": "decision_ready",
+        "api_seconds": 1.5668,
+        "finished_at": "2026-10-25T10:35:49.451852+00:00"
+      },
+      "execution": {
+        "id": "idea-3",
+        "action": "建立探索空间",
+        "verified": true,
+        "observed": "探索空间已建立；标题匹配；当前研究问题仍未填写",
+        "project_id": "project-8925c09b93ae47d085fd94edbadf6e14"
+      }
+    },
+    {
+      "attempt": {
+        "id": "novice-1",
+        "synthetic": true,
+        "human_participants": 0,
+        "model": "qwen3.8-flash",
+        "max_output_tokens": 600,
+        "automatic_retries": 0,
+        "started_at": "2026-10-25T10:30:44.776682+00:00",
+        "input_sha256": "6b3bfde3b17b56075a93c24b479dc979e1f436c01ec9c625f4461cad9fea4983",
+        "input": {
+          "id": "novice-1",
+          "synthetic": true,
+          "persona": "科研入门者，会使用普通网页，从未使用过 PaperStride。",
+          "task": "我有一篇自己的 PDF，想找到添加资料或上传论文的位置，先不实际上传。",
+          "observation": {
+            "controls": [
+              {
+                "action": "click",
+                "id": "c1",
+                "name": "工作台",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c2",
+                "name": "资料库",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c3",
+                "name": "探索",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c4",
+                "name": "全部课题",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c5",
+                "name": "设置",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c6",
+                "name": "新建研究空间",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c7",
+                "name": "继续上次任务",
+                "role": "link"
+              },
+              {
+                "action": "click",
+                "id": "c8",
+                "name": "打开资料库",
+                "role": "link"
+              }
+            ],
+            "page": "研究工作台"
+          },
+          "history": []
+        }
+      },
+      "actor_response": {
+        "id": "novice-1",
+        "synthetic": true,
+        "human_participants": 0,
+        "requested_model": "qwen3.8-flash",
+        "browser_executed": false,
+        "http_status": 200,
+        "returned_model": "qwen3.8-flash",
+        "provider_id": "chatcmpl-746dcefa-f448-97a6-8690-a916d06c70a2",
+        "usage": {
+          "completion_tokens": 48,
+          "prompt_tokens": 414,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "text_tokens": 414
+          },
+          "total_tokens": 462
+        },
+        "finish_reason": "stop",
+        "content": "{\"action_id\": \"c8\", \"value\": \"\", \"note\": \"作为科研入门者，看到‘打开资料库’这个按钮最直观地对应了任务中提到的‘找到添加资料或上传论文的位置’。\"}",
+        "decision": {
+          "action_id": "c8",
+          "value": "",
+          "note": "作为科研入门者，看到‘打开资料库’这个按钮最直观地对应了任务中提到的‘找到添加资料或上传论文的位置’。"
+        },
+        "status": "decision_ready",
+        "api_seconds": 1.5886,
+        "finished_at": "2026-10-25T10:30:46.366635+00:00"
+      },
+      "execution": {
+        "id": "novice-1",
+        "action": "打开资料库",
+        "verified": true,
+        "observed": "论文库标题和我的论文列表可见",
+        "executor_note": "初次等待误用资料库标题，实际标题为论文库；更正执行器检查后确认页面。非应用错误。"
+      }
+    },
+    {
+      "attempt": {
+        "id": "novice-2",
+        "synthetic": true,
+        "human_participants": 0,
+        "model": "qwen3.8-flash",
+        "max_output_tokens": 600,
+        "automatic_retries": 0,
+        "started_at": "2026-10-25T10:31:47.011148+00:00",
+        "input_sha256": "2652c60c8c4ae8e9f03f8decd7f47520e611fe5fe94ff60dc6e233639599cd9b",
+        "input": {
+          "id": "novice-2",
+          "synthetic": true,
+          "persona": "科研入门者，会使用普通网页，从未使用过 PaperStride。",
+          "task": "我有一篇自己的 PDF，想找到添加资料或上传论文的位置，先不实际上传。",
+          "observation": {
+            "page": "论文库",
+            "controls": [
+              {
+                "id": "c1",
+                "name": "添加论文",
+                "role": "button",
+                "action": "click"
+              },
+              {
+                "id": "c2",
+                "name": "我的论文",
+                "role": "radio",
+                "action": "click"
+              },
+              {
+                "id": "c3",
+                "name": "添加资料",
+                "role": "radio",
+                "action": "click"
+              },
+              {
+                "id": "c4",
+                "name": "检索与发现",
+                "role": "radio",
+                "action": "click"
+              },
+              {
+                "id": "c5",
+                "name": "工作台",
+                "role": "link",
+                "action": "click"
+              },
+              {
+                "id": "c6",
+                "name": "探索",
+                "role": "link",
+                "action": "click"
+              },
+              {
+                "id": "c7",
+                "name": "刷新列表",
+                "role": "button",
+                "action": "click"
+              }
+            ]
+          },
+          "history": [
+            {
+              "action": "打开资料库",
+              "observed": "已进入论文库，当前为我的论文列表"
+            }
+          ]
+        }
+      },
+      "actor_response": {
+        "id": "novice-2",
+        "synthetic": true,
+        "human_participants": 0,
+        "requested_model": "qwen3.8-flash",
+        "browser_executed": false,
+        "http_status": 200,
+        "returned_model": "qwen3.8-flash",
+        "provider_id": "chatcmpl-9ca6e5dc-c057-9956-8e47-c6770d61358c",
+        "usage": {
+          "completion_tokens": 20,
+          "prompt_tokens": 409,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "text_tokens": 409
+          },
+          "total_tokens": 429
+        },
+        "finish_reason": "stop",
+        "content": "{\"action_id\":\"c1\",\"value\":\"\",\"note\":\"点击添加论文按钮，寻找上传入口\"}",
+        "decision": {
+          "action_id": "c1",
+          "value": "",
+          "note": "点击添加论文按钮，寻找上传入口"
+        },
+        "status": "decision_ready",
+        "api_seconds": 0.8816,
+        "finished_at": "2026-10-25T10:31:47.894260+00:00"
+      },
+      "execution": {
+        "id": "novice-2",
+        "action": "添加论文",
+        "verified": true,
+        "observed": "添加资料被选中；选择 PDF 文件和上传 PDF 控件可见；未上传文件"
+      }
+    }
+  ]
+}

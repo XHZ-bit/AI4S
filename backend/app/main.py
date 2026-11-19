@@ -36,6 +36,10 @@ from app.api.stride_learning import router as stride_learning_router
 from app.api.stride_graph import router as stride_graph_router
 from app.api.topic_exploration import router as topic_exploration_router
 from app.api.knowledge import router as knowledge_router
+from app.api.implementations import router as implementations_router
+from app.api.knowledge_concepts import router as knowledge_concepts_router
+from app.api.knowledge_routes import router as knowledge_routes_router
+from app.api.knowledge_materials import router as knowledge_materials_router
 from app.api.knowledge_practice import router as knowledge_practice_router
 from app.api.knowledge_experience import router as knowledge_experience_router
 from app.api.knowledge_global import router as knowledge_global_router
@@ -202,6 +206,10 @@ app.include_router(stride_graph_router)
 app.include_router(topic_exploration_router)
 
 app.include_router(knowledge_router)
+app.include_router(knowledge_materials_router)
+app.include_router(implementations_router)
+app.include_router(knowledge_concepts_router)
+app.include_router(knowledge_routes_router)
 app.include_router(knowledge_practice_router)
 app.include_router(knowledge_experience_router)
 app.include_router(knowledge_global_router)

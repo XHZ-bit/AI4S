@@ -1,0 +1,125 @@
+.kw-implementation {
+  container-type: inline-size;
+  border-top: 1px solid var(--atlas-line);
+  padding: 14px 0;
+  margin: 12px 0;
+  min-width: 0;
+}
+.kw-implementation > summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--atlas-ink);
+}
+.kw-implementation-content {
+  display: grid;
+  gap: 12px;
+  padding-top: 12px;
+  color: var(--atlas-ink);
+}
+.kw-implementation-content p {
+  margin: 0;
+  line-height: 1.6;
+}
+.kw-implementation-generate,
+.kw-implementation-form {
+  display: grid;
+  gap: 10px;
+}
+.kw-implementation label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.kw-implementation-item {
+  border-top: 1px solid var(--atlas-line);
+  padding-top: 14px;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.kw-implementation-sides {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.kw-implementation-sides section {
+  min-width: 0;
+}
+.kw-implementation h4 {
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+.kw-implementation small {
+  display: block;
+  color: var(--atlas-muted);
+  overflow-wrap: anywhere;
+}
+.kw-implementation pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 260px;
+  overflow: auto;
+  background: var(--atlas-surface-alt);
+  padding: 10px;
+  border-radius: 7px;
+}
+.kw-implementation-lines {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (max-width: 760px) {
+  .kw-implementation-sides {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kw-implementation-side-toggle {
+  display: none;
+}
+@media (max-width: 760px) {
+  .kw-implementation-side-toggle {
+    display: flex;
+    gap: 8px;
+  }
+  .kw-implementation-side-toggle button {
+    background: var(--atlas-surface);
+    color: var(--atlas-ink);
+    border: 1px solid var(--atlas-line);
+    border-radius: 7px;
+    padding: 6px 12px;
+  }
+  .kw-implementation-side-toggle button[aria-pressed="true"] {
+    background: var(--atlas-accent-soft);
+    border-color: var(--atlas-accent);
+  }
+  .kw-implementation-sides[data-side="paper"] .kw-implementation-code,
+  .kw-implementation-sides[data-side="code"] .kw-implementation-paper {
+    display: none;
+  }
+}
+
+@container (max-width: 520px) {
+  .kw-implementation-sides {
+    grid-template-columns: 1fr;
+  }
+  .kw-implementation-side-toggle {
+    display: flex;
+    gap: 8px;
+  }
+  .kw-implementation-side-toggle button {
+    background: var(--atlas-surface);
+    color: var(--atlas-ink);
+    border: 1px solid var(--atlas-line);
+    border-radius: 7px;
+    padding: 6px 12px;
+  }
+  .kw-implementation-side-toggle button[aria-pressed="true"] {
+    background: var(--atlas-accent-soft);
+    border-color: var(--atlas-accent);
+  }
+  .kw-implementation-sides[data-side="paper"] .kw-implementation-code,
+  .kw-implementation-sides[data-side="code"] .kw-implementation-paper {
+    display: none;
+  }
+}

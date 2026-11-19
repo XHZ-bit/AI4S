@@ -17,13 +17,13 @@ class LoginRequest(BaseModel):
 
 class RegisterRequest(BaseModel):
     username: str = Field(min_length=3, max_length=64)
-    password: str = Field(min_length=12, max_length=1024)
+    password: str = Field(min_length=accounts.PASSWORD_MIN_LENGTH, max_length=1024)
     email: str | None = Field(default=None, max_length=254)
 
 
 class CreateUserRequest(BaseModel):
     username: str = Field(min_length=3, max_length=64)
-    password: str = Field(min_length=12, max_length=1024)
+    password: str = Field(min_length=accounts.PASSWORD_MIN_LENGTH, max_length=1024)
     role: str = "user"
 
 
@@ -33,7 +33,7 @@ class DisableRequest(BaseModel):
 
 class PasswordRequest(BaseModel):
     current_password: str = Field(min_length=1, max_length=1024)
-    new_password: str = Field(min_length=12, max_length=1024)
+    new_password: str = Field(min_length=accounts.PASSWORD_MIN_LENGTH, max_length=1024)
 
 
 class RecoveryIssue(BaseModel):
@@ -43,7 +43,7 @@ class RecoveryIssue(BaseModel):
 class RecoveryReset(BaseModel):
     username: str = Field(min_length=1, max_length=254)
     code: str = Field(min_length=1, max_length=160)
-    new_password: str = Field(min_length=12, max_length=1024)
+    new_password: str = Field(min_length=accounts.PASSWORD_MIN_LENGTH, max_length=1024)
 
 
 class EmailRequest(BaseModel):
@@ -59,7 +59,7 @@ class TokenRequest(BaseModel):
 
 
 class ResetPasswordRequest(TokenRequest):
-    new_password: str = Field(min_length=12, max_length=1024)
+    new_password: str = Field(min_length=accounts.PASSWORD_MIN_LENGTH, max_length=1024)
 
 
 def _mode():

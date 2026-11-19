@@ -1,0 +1,13 @@
+@media (min-width:801px) {
+ .ps-continuous-reader .ps-pdf-toolbar { flex-wrap:wrap;gap:8px;padding:5px 8px;min-height:36px; }
+ .ps-continuous-reader .ps-pdf-toolbar>.ant-space { flex-shrink:1;min-width:0;max-width:100%;gap:6px!important; }
+ .ps-continuous-reader .ps-pdf-toolbar>.ant-input-search { flex:1;min-width:120px;max-width:250px;width:180px; }
+ .ps-continuous-reader .ps-pdf-toolbar .ant-select { min-width:100px; }
+ .ps-continuous-reader .ps-pdf-toolbar .ant-input-number { width:62px; }
+ .ps-continuous-reader .ps-pdf-toolbar .ant-btn { padding-inline:7px; }
+ .ps-continuous-reader .ps-pdf-toolbar>.ps-pdf-citation { position:relative;flex-shrink:0;padding:0;margin:0;font-size:12px; }
+ .ps-continuous-reader .ps-pdf-citation>summary { min-height:28px;padding:4px 0;line-height:20px;white-space:nowrap; }
+ .ps-continuous-reader .ps-pdf-citation>.atlas-reading-excerpt { position:absolute;top:calc(100% + 6px);right:0;z-index:10;box-sizing:border-box;width:min(640px,calc(100vw - 64px));max-height:min(480px,calc(100dvh - 140px));overflow:auto;margin:0;padding:16px;border:1px solid var(--atlas-line);border-radius:8px;background:var(--atlas-surface);color:var(--atlas-ink); }
+ .ps-continuous-reader .atlas-pdf-pages,.atlas-shell.atlas-interface .ps-continuous-reader .atlas-pdf-pages { min-height:200px; }
+ .ps-continuous-reader .ps-pdf-search-status { padding-block:5px;gap:6px; }
+}

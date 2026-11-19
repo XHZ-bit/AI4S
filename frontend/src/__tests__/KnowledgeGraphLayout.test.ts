@@ -1,10 +1,27 @@
 import {expect,test} from 'vitest';
 import type {KnowledgeGraph,KnowledgeNode} from '../api/knowledge';
-import {graphBoxes,layoutFocusGraph,placeEdgeLabels,routeGraphEdges,selectGraphScene,wrapNodeLabel,NODE_WIDTH,NODE_HEIGHT} from '../components/knowledge/KnowledgeGraphLayout';
+import {graphBoxes,layoutFocusGraph,placeEdgeLabels,routeGraphEdges,selectGraphScene,selectQuestionGraphScene,wrapNodeLabel,NODE_WIDTH,NODE_HEIGHT} from '../components/knowledge/KnowledgeGraphLayout';
 
 const node=(id:string,kind='module',extra:Partial<KnowledgeNode>={}):KnowledgeNode=>({id,kind,label:'A long current research topic '+id,project_id:'p',source_id:'s',parent_id:'root',summary:'Actual source context',origin:'source',research_status:'unknown',version:1,hidden:false,source_missing:false,evidence_ids:['e'],metadata:{semantic:true},...extra});
 const graph=(nodes:KnowledgeNode[],edges:KnowledgeGraph['edges']=[]):KnowledgeGraph=>({nodes,edges,total_nodes:nodes.length,total_edges:edges.length,truncated:false});
 const overlap=(a:{x:number;y:number;width:number;height:number},b:{x:number;y:number;width:number;height:number})=>a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y;
+
+test('question scene balances experiment findings and mechanisms while keeping only actual edges',()=>{
+ const nodes=[node('paper','paper',{parent_id:null}),node('question','problem',{label:'记忆保持问题'}),node('method','method',{label:'提取练习'}),node('experiment','experiment',{label:'延迟测试实验'}),node('finding','finding',{label:'延迟回忆的发现'}),...Array.from({length:15},(_,index)=>node('module'+index))];
+ const edge={id:'reported',project_id:'p',source_id:'s',source:'experiment',target:'finding',kind:'SUPPORTS',label:'支持',explanation:'原文报告的条件',origin:'source',version:1,hidden:false,source_missing:false,evidence_ids:['e'],metadata:{}};
+ const scene=selectQuestionGraphScene(graph(nodes,[edge]),'提取练习如何影响延迟回忆',9);
+ expect(scene.center?.id).toBe('method');
+ expect(scene.graph.nodes.map(item=>item.id)).toEqual(expect.arrayContaining(['question','method','experiment','finding']));
+ expect(scene.graph.edges).toEqual([edge]);
+ expect(new Set([...scene.graph.nodes,...scene.omitted].map(item=>item.id)).size).toBe(nodes.length);
+});
+
+test('question scene preserves same-name concepts with separate provenance and a direct-linked node',()=>{
+ const nodes=[node('first','concept',{label:'Attention',source_id:'paper-one'}),node('second','concept',{label:'Attention',source_id:'paper-two'}),node('selected','finding',{label:'Boundary condition'})];
+ const scene=selectQuestionGraphScene(graph(nodes),'Attention',9,'selected');
+ expect(scene.graph.nodes.map(item=>item.id)).toEqual(['selected','first','second']);
+ expect(scene.graph.edges).toEqual([]);
+});
 
 test('English wraps at word boundaries while Chinese and a single long identifier remain readable',()=>{
  expect(wrapNodeLabel('configuration and observation space')).toEqual(['configuration and','observation space']);
@@ -55,6 +72,17 @@ test('a connected core method outranks isolated methods, reserves module space a
 test('a selected theme includes two-hop knowledge instead of requiring another browse level',()=>{
  const input=graph([node('root','method',{parent_id:null}),node('direct'),node('deep','formula',{parent_id:'direct'})],[{id:'edge',project_id:'p',source_id:'s',source:'root',target:'direct',kind:'USES',label:'用于',explanation:'Source-grounded relation',origin:'source',version:1,hidden:false,source_missing:false,evidence_ids:['e'],metadata:{}}]);
  expect(selectGraphScene(input,undefined,'root').graph.nodes.map(n=>n.id)).toEqual(['root','direct','deep']);
+});
+test('returning to a selected node reserves actual structural neighbors before unrelated popular kinds',()=>{
+ const nodes=[node('paper','paper',{parent_id:null}),node('section','concept',{parent_id:'paper',metadata:{structural:true}}),node('selected','concept',{parent_id:'section'}),node('related','formula',{parent_id:'section'}),...Array.from({length:20},(_,i)=>node('unrelated'+i,'method',{parent_id:'paper'}))];
+ const edges=[['paper','section'],['section','selected'],['selected','related']].map(([source,target],i)=>({id:'structure'+i,project_id:'p',source_id:'s',source,target,kind:'CONTAINS',label:'包含',explanation:'Actual document structure',origin:'source',version:1,hidden:false,source_missing:false,evidence_ids:[],metadata:{}}));
+ // focus is empty after restoring the overview. Selection must still preserve
+ // its true context rather than fill all nine slots with disconnected methods.
+ const scene=selectGraphScene(graph(nodes,edges),'s','',9,'selected');
+ expect(scene.center?.id).toBe('selected');
+ expect(scene.graph.nodes.map(n=>n.id)).toEqual(expect.arrayContaining(['paper','section','selected','related']));
+ expect(scene.graph.edges.map(e=>e.id)).toEqual(['structure0','structure1','structure2']);
+ expect(scene.graph.nodes.length).toBeLessThanOrEqual(9);
 });
 test('reverse and same-layer edges avoid node bodies; visible labels collide with neither nodes nor labels',()=>{
  const nodes=Array.from({length:16},(_,i)=>node('n'+i));

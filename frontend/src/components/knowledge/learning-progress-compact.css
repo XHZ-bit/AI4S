@@ -1,0 +1,77 @@
+.kw-learning-progress.kw-learning-progress--dock {
+ display: flex;
+ flex-direction: column;
+ align-items: stretch;
+ flex-wrap: nowrap;
+ gap: 0;
+ min-width: 0;
+ margin: 0;
+}
+.kw-learning-progress--dock .kw-learning-progress-status {
+ display: grid;
+ grid-template-columns: minmax(0, 1fr) auto;
+ align-items: end;
+ gap: 10px;
+ padding: 0;
+ flex-shrink: 0;
+}
+.kw-learning-progress--dock .kw-learning-progress-status label {
+ display: grid;
+ gap: 5px;
+ min-width: 0;
+ color: var(--atlas-ink);
+ font-size: 13px;
+ font-weight: 550;
+}
+.kw-learning-progress--dock .kw-learning-progress-status select {
+ width: 100%;
+ min-width: 0;
+ height: 32px;
+ padding: 4px 8px;
+ font: inherit;
+ font-weight: 400;
+ border-color: var(--atlas-accent);
+ background: var(--atlas-surface);
+}
+.kw-learning-progress--dock .kw-learning-open-summary,
+.kw-learning-progress--dock .kw-learning-progress-records button:not(p button):not(li button) {
+ min-height: 32px;
+ padding: 5px 10px;
+ border: 1px solid var(--atlas-line);
+ border-radius: 7px;
+ background: var(--atlas-surface);
+ color: var(--atlas-ink);
+ font: inherit;
+ cursor: pointer;
+}
+.kw-learning-progress--dock .kw-learning-open-summary {
+ color: var(--atlas-accent);
+ border-color: var(--atlas-accent);
+ white-space: nowrap;
+}
+.kw-learning-progress--dock .kw-learning-open-summary[aria-expanded="true"] {
+ background: var(--atlas-accent-soft);
+}
+.kw-learning-progress--dock .kw-learning-open-summary:hover:not(:disabled),
+.kw-learning-progress--dock .kw-learning-progress-records button:hover:not(:disabled) {
+ color: var(--atlas-accent);
+ border-color: var(--atlas-accent);
+}
+.kw-learning-progress--dock button:disabled { cursor: not-allowed; opacity: .55; }
+.kw-learning-progress--dock .kw-learning-progress-feedback {
+ min-height: 22px;
+ padding-top: 3px;
+ color: var(--atlas-accent);
+ font-size: 12px;
+ line-height: 1.5;
+ flex-shrink: 0;
+}
+.kw-learning-progress--dock .kw-experience-error { margin: 0 0 8px; }
+.kw-learning-progress--dock .kw-learning-progress-records { min-width: 0; overflow-wrap: anywhere; }
+.kw-learning-progress--dock .kw-learning-progress-records[hidden] { display: none; }
+.kw-learning-progress--dock .kw-learning-progress-records > [role="status"] { display: grid; gap: 10px; }
+.kw-learning-progress--dock .kw-learning-progress-records p { margin: 8px 0; line-height: 1.7; }
+.kw-learning-progress--dock .kw-learning-progress-records ul { padding-left: 20px; line-height: 1.7; }
+.kw-learning-progress--dock .kw-learning-record-scope { margin: 8px 0 12px; color: var(--atlas-muted); font-size: 12px; line-height: 1.65; }
+.kw-learning-progress--dock .kw-learning-record-scope > summary { cursor: pointer; }
+.kw-learning-progress--dock .kw-learning-progress-records > section { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--atlas-line); }

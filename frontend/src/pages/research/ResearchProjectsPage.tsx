@@ -29,7 +29,7 @@ export default function ResearchProjectsPage(){
  <Form form={form} layout="vertical" onFinish={submit} initialValues={{domain:'custom'}}>
   <Form.Item name="title" label="课题名称" rules={[{required:true,whitespace:true,message:'先给这个研究空间起个名字'}]}><Input autoFocus maxLength={300} placeholder="例如：我对人机协作的探索"/></Form.Item>
   <Form.Item label="本空间使用方式"><Select aria-label="新空间使用方式" value={mode} onChange={setMode} options={[{value:'explore',label:'零基础探索'},{value:'research',label:'已有思路深入研究'},{value:'reproduce',label:'阅读与复现'}]}/><p className="kw-muted">决定讲解深度和推荐内容，进入空间后可以随时调整。</p></Form.Item>
-  <details open={details} onToggle={event=>setDetails(event.currentTarget.open)}><summary>已有想法？补充领域、问题和目标</summary><div className="ps-create-details">
+  <details open={details} onToggle={event=>setDetails(event.currentTarget.open)}><summary>研究方向与问题（可选）</summary><div className="ps-create-details">
    <div className="project-start-options" aria-label="研究准备阶段">{starts.map(s=><button key={s.stage} type="button" aria-pressed={stage===s.stage} onClick={()=>setStage(s.stage)}><strong>{s.title}</strong><span>{s.description}</span></button>)}</div>
    <Form.Item name="domain_input" label="研究领域"><ResearchDomainInput/></Form.Item>
    {stage!=='validating'&&<section><Button type="link" onClick={()=>setShowExplore(v=>!v)}>{showExplore?'收起选题探索':'还没思路，帮我找一个起点'}</Button>{showExplore&&<TopicExplorer onChoose={(d,b)=>{form.setFieldValue('research_question',d.question);setBrief(JSON.stringify(b));setStage('framing');message.info('已填入暂拟问题，你可以继续改写')}}/>}</section>}

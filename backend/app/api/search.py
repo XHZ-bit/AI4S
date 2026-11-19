@@ -1,15 +1,28 @@
 from contextlib import closing
 from typing import Literal
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from app.db.sqlite import connect
-from app.search.service import lexical_search, semantic_search
+from app.search.service import index_papers, lexical_search, semantic_search
+from app.tenancy import workspace_write_lock
 
 router = APIRouter(prefix="/api/search", tags=["search"])
 
 
 def _connect():
     return connect()
+
+
+@router.post("/reindex")
+def reindex():
+    """Explicitly build embeddings for the current account's paper library."""
+    with workspace_write_lock(), closing(_connect()) as conn:
+        papers = conn.execute("SELECT uid,title,abstract FROM papers ORDER BY uid").fetchall()
+        try:
+            index_papers(conn, [(row["uid"], f"{row['title'] or ''}\n{row['abstract'] or ''}") for row in papers])
+        except Exception:
+            raise HTTPException(502, "索引未全部完成，请检查向量模型配置或服务后重试。已完成的批次保留。") from None
+        return {"indexed": len(papers)}
 
 
 class SearchHit(BaseModel):
@@ -42,11 +55,12 @@ def search_v2(q: str, limit: int = Query(10, ge=1, le=50)):
     with closing(_connect()) as conn:
         lexical = lexical_search(conn, q, limit=50)
         semantic = []
+        semantic_notice = ""
         if conn.execute("SELECT 1 FROM paper_embeddings LIMIT 1").fetchone():
             try:
                 semantic = semantic_search(conn, q, limit=50)
             except Exception:
-                pass  # Local lexical results remain available without a model.
+                semantic_notice = "当前向量模型不可用或索引需要重建，已使用关键词检索。"
         merged = {}
         for rank, item in enumerate(lexical, 1):
             merged[item["uid"]] = {**item, "score": 2 / (60 + rank)}
@@ -67,7 +81,7 @@ def search_v2(q: str, limit: int = Query(10, ge=1, le=50)):
             used_semantic = True
         items = sorted(merged.values(), key=lambda item: (-item["score"], item["uid"]))[:limit]
         return {"items": items, "mode": "hybrid" if used_semantic and lexical else "semantic" if used_semantic else "keyword",
-                "notice": "排名仅表示检索相关性，不表示论文质量或结论可靠性。"}
+                "notice": semantic_notice or "排名仅表示检索相关性，不表示论文质量或结论可靠性。"}
 
 
 @router.get("")

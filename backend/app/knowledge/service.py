@@ -25,6 +25,14 @@ class Cancelled(RuntimeError):
     pass
 
 
+class AnalysisSchedulingUnavailable(HTTPException):
+    """The source and interrupted run are durable, but no worker accepted it."""
+
+    def __init__(self, status_code, message, run_id):
+        super().__init__(status_code=status_code, detail=message)
+        self.run_id = run_id
+
+
 def enqueue(pid, sid, *, retry=False):
     with store.connection(pid) as conn:
         src = store.source(conn, pid, sid)
@@ -36,22 +44,24 @@ def enqueue(pid, sid, *, retry=False):
         if not _queue_slots.acquire(blocking=False):
             with store.connection(pid) as conn:
                 store.update_run(conn, pid, value["id"], status="interrupted", errors=["分析队列已满，原文已保存，请稍后继续"])
-            raise HTTPException(429, "分析队列已满，原文已保存")
+            raise AnalysisSchedulingUnavailable(429, "分析队列已满，原文已保存，可稍后继续分析", value["id"])
         try:
             future = submit_task(analyze, pid, sid, value["id"], retry)
-            key = (pid, value["id"])
-            with _future_lock:
-                _futures[key] = future
-            def finished(_future):
-                _queue_slots.release()
-                with _future_lock:
-                    _futures.pop(key, None)
-            future.add_done_callback(finished)
-        except Exception:
+        except Exception as exc:
             _queue_slots.release()
             with store.connection(pid) as conn:
                 store.update_run(conn, pid, value["id"], status="interrupted", errors=["后台执行器暂不可用，原文已保存"])
+            if isinstance(exc, RuntimeError):
+                raise AnalysisSchedulingUnavailable(503, "分析服务暂不可用，原文已保存，可稍后继续分析", value["id"]) from exc
             raise
+        key = (pid, value["id"])
+        with _future_lock:
+            _futures[key] = future
+        def finished(_future):
+            _queue_slots.release()
+            with _future_lock:
+                _futures.pop(key, None)
+        future.add_done_callback(finished)
     return value
 
 

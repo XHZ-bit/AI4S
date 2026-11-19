@@ -806,6 +806,17 @@ def graph(
         and (include_hidden or active(e))
     ]
     if not include_hidden:
+        from app.knowledge.graph_validity import current_records
+
+        concept_projects = {edge['project_id'] for edge in edges
+                            if edge.get('metadata', {}).get('concept_correspondence_id')}
+        valid_concepts = set()
+        for pid in concept_projects:
+            values = [edge for edge in edges if edge['project_id'] == pid
+                      and edge.get('metadata', {}).get('concept_correspondence_id')]
+            valid_concepts.update(edge['id'] for edge in current_records(conn, pid, values))
+        edges = [edge for edge in edges if not edge.get('metadata', {}).get('concept_correspondence_id')
+                 or edge['id'] in valid_concepts]
         all_nodes = supported_nodes(all_nodes, edges)
         valid_ids = {n["id"] for n in all_nodes}
         edges = [
@@ -854,9 +865,12 @@ def graph(
     )
     shown = matches[offset : offset + limit]
     ids = {n["id"] for n in shown}
+    from app.knowledge.graph_validity import project_teaching_node, project_teaching_edge
+    shown = [project_teaching_node(node) for node in shown]
+    shown_map = {node['id']: node for node in shown}
     return {
         "nodes": shown,
-        "edges": [e for e in edges if e["source"] in ids and e["target"] in ids],
+        "edges": [project_teaching_edge(e, shown_map) for e in edges if e["source"] in ids and e["target"] in ids],
         "total_nodes": len(matches),
         "total_edges": total_edges,
         "truncated": offset + len(shown) < len(matches),
@@ -882,7 +896,7 @@ def detail(conn, nid, project_id=None):
     if not row or (project_id and project_id != row[0]):
         raise HTTPException(404, "知识节点不存在")
     scope = require_scope(conn, row[0])
-    node = store.record(conn, "kw_nodes", row[0], nid)
+    store.record(conn, "kw_nodes", row[0], nid)
     data = graph(conn, project_id=row[0], node_id=nid, limit=1000)
     shown = next((n for n in data["nodes"] if n["id"] == nid), None)
     if not shown:
@@ -894,7 +908,7 @@ def detail(conn, nid, project_id=None):
         "node": shown,
         "edges": data["edges"],
         "neighbors": [n for n in data["nodes"] if n["id"] != nid],
-        "evidence": store.evidence(conn, row[0], node["evidence_ids"]),
+        "evidence": store.evidence(conn, row[0], shown["evidence_ids"]),
         "scope": scope,
         "prerequisites": [],
         "resources": [],
@@ -1085,6 +1099,9 @@ def review_record(
     if status is None:
         raise HTTPException(422, "未知审核操作")
     evidence = store.evidence(conn, row[0], value.get("evidence_ids", []))
+    from app.knowledge.graph_validity import teaching_node
+    if action == 'verify' and teaching_node(value):
+        raise HTTPException(422, '此内容是教学补充，不能将匹配论文作为其核验依据')
     if action == "verify" and value.get("metadata", {}).get("legacy_input_issues"):
         raise HTTPException(
             422, "历史记录存在缺失或无效的类型/名称，请先补正结构再核验"
@@ -1098,7 +1115,8 @@ def review_record(
     if action == "verify" and (
         value.get("metadata", {}).get("legacy_checks", {}).get("structure") is False
         or not evidence
-        or any(e.get("unresolved") or e.get("source_missing") for e in evidence)
+        or len(evidence) != len(set(value.get('evidence_ids', [])))
+        or any(e.get("unresolved") or e.get("source_missing") or e.get('source_changed') for e in evidence)
     ):
         raise HTTPException(422, "人工核验需要可定位的有效原文依据")
     before = decode(store.encode(value))
@@ -1109,7 +1127,10 @@ def review_record(
         "actor": actor,
         "reason": reason,
         "at": store.now(),
+        "content_version": value['version'],
     }
+    from app.knowledge.provenance import content_fingerprint
+    value['metadata']['quality_decision']['content_fingerprint'] = content_fingerprint(value)
     if row[0] == LIBRARY:
         value["metadata"]["source_withdrawn"] = False
     if table == "kw_nodes":

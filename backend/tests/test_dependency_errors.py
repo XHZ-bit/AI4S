@@ -24,8 +24,9 @@ def test_graph_failure_is_retryable_without_disclosing_connection(monkeypatch, f
 
 
 @pytest.mark.parametrize("profile", [{"offline_mode": True}, {"access_mode": "multiuser"}])
-def test_offline_profiles_disable_all_model_clients_even_with_a_key(profile):
+def test_isolated_profiles_remove_platform_key_from_legacy_field(profile):
     settings = Settings(_env_file=None, dashscope_api_key="synthetic-key",
                         research_model_enabled=True, **profile)
     assert settings.dashscope_api_key == ""
-    assert not settings.research_model_enabled
+    if settings.offline_mode:
+        assert not settings.research_model_enabled

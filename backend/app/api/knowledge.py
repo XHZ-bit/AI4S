@@ -10,7 +10,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
-from app.knowledge import comparison, learning, model, service, sources, store
+from app.knowledge import comparison, comparison_outcomes, coverage, learning, model, service, sources, store
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["knowledge-workspace"])
 
@@ -32,6 +32,20 @@ class Analyze(BaseModel):
 class SourcePatch(BaseModel):
     removed: bool | None = None
     title: str | None = Field(default=None, min_length=1, max_length=500)
+
+
+CoverageCategory = Literal['problem', 'method', 'experiment', 'finding', 'limitation']
+
+
+class CoverageSupplement(BaseModel):
+    category: CoverageCategory
+    expected_source_version: str = Field(min_length=1, max_length=200)
+    expected_revision: int = Field(ge=0)
+
+
+class CoverageReview(CoverageSupplement):
+    status: Literal['not_reported', 'not_applicable', 'reset']
+    reason: str = Field(default='', max_length=1500)
 
 
 class Preferences(BaseModel):
@@ -84,6 +98,7 @@ class Compare(Generate):
     source_ids: list[str] = Field(min_length=2, max_length=8)
     focus_node_ids: list[str] = Field(default_factory=list, max_length=8)
     dimensions: list[str] | None = Field(default=None, max_length=12)
+    template: Literal['method', 'study'] | None = None
 
 
 class ComparisonPatch(Compare):
@@ -91,19 +106,58 @@ class ComparisonPatch(Compare):
     dimension: str = Field(min_length=1, max_length=100)
     source_id: str
     text: str = Field(max_length=12000)
+    evidence_ids: list[str] | None = Field(default=None, max_length=30)
+    reviewed: bool | None = None
+
+
+class ComparisonSelection(BaseModel):
+    dimension: str = Field(min_length=1, max_length=100)
+    source_id: str
+
+
+class ComparisonOutcome(BaseModel):
+    expected_revision: int = Field(ge=1)
+    selections: list[ComparisonSelection] = Field(min_length=1, max_length=96)
+    question: str = Field(default='', max_length=1500)
+    interpretation: str = Field(default='', max_length=12000)
+    unresolved: str = Field(default='', max_length=12000)
 
 
 @router.get("/sources")
 def list_sources(project_id: str, include_removed: bool = False):
     with store.connection(project_id) as conn:
-        return {"items": store.sources(conn, project_id, include_removed=include_removed), "preferences": store.preferences(conn, project_id),
+        items = store.sources(conn, project_id, include_removed=include_removed)
+        for item in items:
+            item['availability'] = _source_availability(conn, project_id, item)
+        return {"items": items, "preferences": store.preferences(conn, project_id),
                 "model": {"configured": model.configured(), "enabled": model.available()}}
 
 
+def _source_availability(conn, project_id, source):
+    """Describe stored results, independently of the most recent task status."""
+    asset = conn.execute('SELECT path FROM kw_assets WHERE id=?', (source['asset_id'],)).fetchone()
+    parsed = conn.execute('SELECT 1 FROM kw_parses WHERE asset_id=?', (source['asset_id'],)).fetchone() is not None
+    blocks = conn.execute('SELECT COUNT(*) FROM kw_blocks WHERE asset_id=?', (source['asset_id'],)).fetchone()[0]
+    semantic_nodes = conn.execute("SELECT COUNT(*) FROM kw_nodes WHERE project_id=? AND source_id=? AND hidden=0 AND json_extract(data, '$.metadata.semantic')=1", (project_id, source['id'])).fetchone()[0]
+    quality = source.get('quality') or {}
+    return {'original': bool(asset and Path(asset[0]).is_file()), 'parsed': parsed, 'blocks': blocks,
+            'semantic_nodes': semantic_nodes, 'parse_partial': parsed and (quality.get('status') in {'partial', 'fallback'} or 'fallback' in (source.get('parser') or '').casefold())}
+
+
 def _submitted(project_id, source):
-    analysis = service.enqueue(project_id, source["id"])
+    scheduled, notice = True, ''
+    try:
+        analysis = service.enqueue(project_id, source["id"])
+    except service.AnalysisSchedulingUnavailable as exc:
+        # Uploading and scheduling are separate outcomes: the caller must not
+        # retransmit a file that is already durably saved.
+        scheduled, notice = False, exc.detail
+        with store.connection(project_id) as conn:
+            analysis = store.run(conn, project_id, exc.run_id)
     with store.connection(project_id) as conn:
-        return {"source": store.source(conn, project_id, source["id"]), "analysis": analysis}
+        saved = store.source(conn, project_id, source["id"])
+        saved['availability'] = _source_availability(conn, project_id, saved)
+        return {"source": saved, "analysis": analysis, "scheduled": scheduled, "notice": notice}
 
 
 @router.post("/sources", status_code=202)
@@ -151,6 +205,22 @@ def patch_source(project_id: str, source_id: str, req: SourcePatch):
             for row in rows:
                 store.update_run(conn, project_id, row[0], status="cancelled")
         return value
+
+
+@router.get('/sources/{source_id}/coverage')
+def source_coverage(project_id: str, source_id: str):
+    with store.connection(project_id) as conn:
+        return coverage.inspect(conn, project_id, source_id)
+
+
+@router.patch('/sources/{source_id}/coverage')
+def review_source_coverage(project_id: str, source_id: str, req: CoverageReview):
+    return coverage.review(project_id, source_id, **req.model_dump())
+
+
+@router.post('/sources/{source_id}/coverage/supplement')
+def supplement_source_coverage(project_id: str, source_id: str, req: CoverageSupplement):
+    return coverage.supplement(project_id, source_id, **req.model_dump())
 
 
 @router.get("/sources/{source_id}/file")
@@ -306,20 +376,40 @@ def get_comparisons(project_id: str):
 
 
 @router.get('/knowledge/comparisons/preview')
-def preview_comparison(project_id: str, source_ids: list[str] = Query(default=[]), focus_node_ids: list[str] = Query(default=[]), dimensions: list[str] | None = Query(default=None)):
+def preview_comparison(project_id: str, source_ids: list[str] = Query(default=[]), focus_node_ids: list[str] = Query(default=[]), dimensions: list[str] | None = Query(default=None), template: Literal['method', 'study'] | None = None):
     if not source_ids:
         with store.connection(project_id) as conn:
             source_ids = [s['id'] for s in store.sources(conn, project_id) if s['kind'] in {'paper', 'report'}][:8]
     if len(source_ids) < 2:
         return {'status': 'empty', 'source_ids': source_ids, 'rows': [], 'evidence': [], 'errors': [], 'auto_filled': True}
-    return comparison.compare(project_id, source_ids, focus_node_ids=focus_node_ids, dimensions=dimensions, basic_only=True)
+    return comparison.compare(project_id, source_ids, focus_node_ids=focus_node_ids, dimensions=dimensions, basic_only=True, template=template)
 
 
 @router.post("/knowledge/comparisons")
 def create_comparison(project_id: str, req: Compare):
-    return comparison.compare(project_id, req.source_ids, req.refresh, req.focus_node_ids, req.dimensions)
+    return comparison.compare(project_id, req.source_ids, req.refresh, req.focus_node_ids, req.dimensions, template=req.template)
 
 
 @router.patch('/knowledge/comparisons/{comparison_id}')
 def edit_comparison(project_id: str, comparison_id: str, req: ComparisonPatch):
-    return comparison.revise(project_id, comparison_id, req.expected_revision, req.dimension, req.source_id, req.text, req.source_ids, req.focus_node_ids, req.dimensions)
+    return comparison.revise(project_id, comparison_id, req.expected_revision, req.dimension, req.source_id, req.text, req.source_ids, req.focus_node_ids, req.dimensions, req.evidence_ids, req.reviewed, req.template)
+
+
+@router.get('/knowledge/comparisons/{comparison_id}/evidence')
+def get_comparison_evidence(project_id: str, comparison_id: str, source_id: str):
+    return {'items': comparison.comparison_evidence(project_id, comparison_id, source_id)}
+
+
+@router.post('/knowledge/comparisons/{comparison_id}/outcomes/preview')
+def preview_comparison_outcome(project_id: str, comparison_id: str, req: ComparisonOutcome):
+    return comparison_outcomes.create(project_id, comparison_id, **req.model_dump())
+
+
+@router.post('/knowledge/comparisons/{comparison_id}/outcomes')
+def save_comparison_outcome(project_id: str, comparison_id: str, req: ComparisonOutcome):
+    return comparison_outcomes.create(project_id, comparison_id, **req.model_dump(), save=True)
+
+
+@router.get('/knowledge/comparisons/{comparison_id}/outcomes')
+def list_comparison_outcomes(project_id: str, comparison_id: str):
+    return {'items': comparison_outcomes.list_saved(project_id, comparison_id)}

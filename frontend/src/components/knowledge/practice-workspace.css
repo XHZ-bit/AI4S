@@ -1,0 +1,97 @@
+.kw-practice-ide {
+ display: grid;
+ grid-template-columns: var(--kw-practice-task-width) 12px minmax(480px, 1fr);
+ min-width: 0;
+ min-height: 360px;
+ margin-top: 12px;
+ color: var(--atlas-ink);
+}
+.kw-practice-ide [hidden] { display: none !important; }
+.kw-practice-ide-task,
+.kw-practice-ide-main {
+ display: flex;
+ flex-direction: column;
+ min-width: 0;
+ min-height: 0;
+ overflow: hidden;
+ border: 1px solid var(--atlas-line);
+ border-radius: 8px;
+ background: var(--atlas-surface);
+}
+.kw-practice-ide-tabs {
+ display: flex;
+ align-items: center;
+ flex-shrink: 0;
+ gap: 18px;
+ padding-inline: 14px;
+ border-bottom: 1px solid var(--atlas-line);
+}
+.kw-practice-ide-tabs > button {
+ position: relative;
+ min-height: 38px;
+ padding: 7px 0;
+ border: 0;
+ background: transparent;
+ color: var(--atlas-muted);
+ font: inherit;
+ font-size: 13px;
+ white-space: nowrap;
+ cursor: pointer;
+}
+.kw-practice-ide-tabs > button[aria-selected="true"] { color: var(--atlas-accent-strong); font-weight: 600; }
+.kw-practice-ide-tabs > button[aria-selected="true"]::after { content: ''; position: absolute; inset: auto 0 -1px; height: 2px; background: var(--atlas-accent); }
+.kw-practice-ide :is(button, select, textarea, summary, [role="separator"]):focus-visible { outline: 2px solid var(--atlas-focus); outline-offset: 2px; }
+.kw-practice-ide-task-content,
+.kw-practice-ide-result-content {
+ flex: 1;
+ min-width: 0;
+ min-height: 0;
+ overflow: auto;
+ overscroll-behavior: contain;
+ scrollbar-gutter: stable;
+ padding: 14px;
+ overflow-wrap: anywhere;
+}
+.kw-practice-ide-task-content :is(input, textarea, select) { max-width: 100%; }
+.kw-practice-ide-task-content > section { margin: 0; }
+.kw-practice-ide-task-content h3 { margin-top: 0; font-size: 16px; }
+.kw-practice-ide-task-content pre { max-width: 100%; overflow: auto; }
+.kw-practice-ide-code { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: hidden; }
+.kw-practice-ide-editor-toolbar { flex-shrink: 0; padding: 7px 12px; border-bottom: 1px solid var(--atlas-line); font-size: 12px; }
+.kw-practice-ide-editor { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 180px; overflow: hidden; }
+.kw-practice-ide .kw-practice-ide-editor .learning-code-editor,
+.kw-practice-ide .kw-practice-ide-editor > textarea {
+ display: block;
+ flex: 1;
+ width: 100%;
+ height: 100%;
+ min-height: 0;
+ max-height: none;
+ margin: 0;
+ padding: 14px;
+ border: 0;
+ border-radius: 0;
+ resize: none;
+ overflow: auto;
+ color: var(--atlas-ink);
+ background: var(--atlas-surface);
+ font: 13px/1.7 Consolas, 'Courier New', monospace;
+ tab-size: 4;
+}
+.kw-practice-ide-actions { flex-shrink: 0; padding: 8px 12px; border-top: 1px solid var(--atlas-line); background: var(--atlas-surface); }
+.kw-practice-ide-actions .ant-space { row-gap: 6px !important; }
+.kw-practice-ide-results { display: flex; flex-direction: column; flex: 0 0 var(--kw-practice-result-height); min-height: 100px; overflow: hidden; }
+.kw-practice-ide-result-content > section { margin: 0; }
+.kw-practice-ide-result-content h3 { margin-top: 0; font-size: 15px; }
+.kw-practice-ide-result-content pre { max-width: 100%; overflow: auto; }
+.kw-practice-ide-resizer { display: flex; align-items: center; justify-content: center; flex-shrink: 0; touch-action: none; outline-offset: -3px; }
+.kw-practice-ide-resizer > span { display: block; border-radius: 2px; background: var(--atlas-line); }
+.kw-practice-ide-resizer-task { cursor: col-resize; }
+.kw-practice-ide-resizer-task > span { width: 2px; height: 36px; }
+.kw-practice-ide-resizer-result { height: 12px; cursor: row-resize; border-block: 1px solid var(--atlas-line); background: var(--atlas-bg); }
+.kw-practice-ide-resizer-result > span { width: 36px; height: 2px; }
+.kw-practice-ide-resizer:hover > span,
+.kw-practice-ide-resizer:focus-visible > span { background: var(--atlas-accent); }
+.kw-practice-ide-resizing-task { cursor: col-resize; user-select: none; }
+.kw-practice-ide-resizing-result { cursor: row-resize; user-select: none; }
+.kw-practice-ide-save-error { margin: 0; padding: 6px 12px; font-size: 12px; color: var(--atlas-muted); }

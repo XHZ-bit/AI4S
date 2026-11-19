@@ -102,6 +102,96 @@ def test_examples_really_compute_curves_tables_and_changed_parameters():
         run_example(knowledge_demo.GAUSSIAN_CODE, {"sigma": -1})
 
 
+def test_beginner_path_has_matching_lessons_and_runnable_practice(prepared):
+    target, marker = prepared
+    pid, fixture = marker["project_id"], marker["unified_demo"]
+    with contextlib.closing(connect(str(target / "atlas.db"))) as conn:
+        for key, expected in (("foundations:gradient", "解析导数"),
+                              ("foundations:chain", "链式法则导数")):
+            nid = fixture["node_ids"][key]
+            lesson = learning.get_learning(conn, pid, nid)
+            practice = json.loads(conn.execute(
+                "SELECT data FROM kw_practice WHERE project_id=? AND node_id=?",
+                (pid, nid)).fetchone()[0])
+            assert "数值差分" in lesson["sections"]["implementation"]
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                namespace = {"inputs": json.loads(practice["input_json"])}
+                exec(compile(practice["starter_code"], "<demo>", "exec"), namespace)
+                exec(compile(practice["test_code"], "<demo-test>", "exec"), namespace)
+            assert expected in output.getvalue()
+            assert "数值差分" in output.getvalue()
+            namespace["derivative"] = 999
+            with pytest.raises(AssertionError):
+                exec(compile(practice["test_code"], "<demo-test>", "exec"), namespace)
+
+
+def test_existing_demo_upgrade_adds_exercise_only_when_original_is_untouched(prepared):
+    target, marker = prepared
+    pid, fixture = marker["project_id"], marker["unified_demo"]
+    gradient = fixture["node_ids"]["foundations:gradient"]
+    chain = fixture["node_ids"]["foundations:chain"]
+    with contextlib.closing(connect(str(target / "atlas.db"))) as conn:
+        for node_id in (gradient, chain):
+            row = conn.execute("SELECT id,data FROM kw_practice WHERE project_id=? AND node_id=?",
+                               (pid, node_id)).fetchone()
+            original = json.loads(row["data"])
+            original.update(starter_code=knowledge_demo.PRACTICE_CODE,
+                            draft_code=knowledge_demo.PRACTICE_CODE,
+                            reference_code=knowledge_demo.PRACTICE_CODE,
+                            title="旧版残差演示",
+                            test_code="",
+                            input_json=json.dumps({"alpha": 0.5}))
+            if node_id == chain:
+                original.update(draft_code="print('user work')", revision=2)
+            conn.execute("UPDATE kw_practice SET data=? WHERE id=?", (store.encode(original), row["id"]))
+        migration = dict(fixture, version=3)
+        conn.execute("UPDATE kw_migrations SET data=? WHERE name=?",
+                     (store.encode(migration), "portable-knowledge-demo-v3:" + pid))
+        conn.commit()
+        upgraded = knowledge_demo.seed(conn, target, pid)
+        assert upgraded["version"] == knowledge_demo.VERSION
+        entries = [json.loads(row[0]) for row in conn.execute(
+            "SELECT data FROM kw_practice WHERE project_id=? AND node_id=? ORDER BY rowid", (pid, gradient))]
+        assert len(entries) == 2
+        assert entries[0]["starter_code"] == knowledge_demo.PRACTICE_CODE
+        assert entries[0]["title"] == "旧版残差演示"
+        assert entries[1]["starter_code"] == knowledge_demo.GRADIENT_CODE
+        assert "含检查" in entries[1]["title"]
+        user_entries = [json.loads(row[0]) for row in conn.execute(
+            "SELECT data FROM kw_practice WHERE project_id=? AND node_id=?", (pid, chain))]
+        assert len(user_entries) == 1 and user_entries[0]["draft_code"] == "print('user work')"
+        knowledge_demo.seed(conn, target, pid)
+        assert conn.execute("SELECT COUNT(*) FROM kw_practice WHERE project_id=? AND node_id=?",
+                            (pid, gradient)).fetchone()[0] == 2
+
+
+def test_prepare_upgrades_old_marker_once_without_changing_runs(prepared):
+    target, marker = prepared
+    pid = marker["project_id"]
+    nid = marker["unified_demo"]["node_ids"]["foundations:gradient"]
+    marker["unified_demo"]["version"] = 3
+    (target / preparation.MANIFEST).write_text(json.dumps(marker), encoding="utf-8")
+    with contextlib.closing(connect(str(target / "atlas.db"))) as conn:
+        row = conn.execute("SELECT id,data FROM kw_practice WHERE project_id=? AND node_id=?", (pid, nid)).fetchone()
+        original = json.loads(row["data"])
+        original.update(starter_code=knowledge_demo.PRACTICE_CODE, draft_code=knowledge_demo.PRACTICE_CODE,
+                        test_code="", input_json=json.dumps({"alpha": 0.5}))
+        conn.execute("UPDATE kw_practice SET data=? WHERE id=?", (store.encode(original), row["id"]))
+        conn.execute("INSERT INTO kw_practice_runs VALUES(?,?,?,?)", ("run1", pid, row["id"], '{"id":"run1"}'))
+        fixture = dict(marker["unified_demo"], version=3)
+        conn.execute("UPDATE kw_migrations SET data=? WHERE name=?",
+                     (store.encode(fixture), "portable-knowledge-demo-v3:" + pid))
+        conn.commit()
+    assert preparation.prepare(target, target / "missing", check=True)["unified_demo"]["version"] == 3
+    upgraded = preparation.prepare(target, target / "missing", synthetic_only=True)
+    assert upgraded["upgraded"] and upgraded["unified_demo"]["version"] == knowledge_demo.VERSION
+    with contextlib.closing(connect(str(target / "atlas.db"))) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM kw_practice WHERE project_id=? AND node_id=?", (pid, nid)).fetchone()[0] == 1
+        assert conn.execute("SELECT COUNT(*) FROM kw_practice_runs WHERE project_id=? AND practice_id=?", (pid, row["id"])).fetchone()[0] == 1
+    assert preparation.prepare(target, target / "missing", synthetic_only=True).get("upgraded") is not True
+
+
 def test_repeated_prepare_and_seed_preserve_revisions_progress_and_snapshots(prepared):
     target, marker = prepared
     pid, demo = marker["project_id"], marker["unified_demo"]

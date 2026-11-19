@@ -18,6 +18,13 @@ def test_find_match_levels():
     assert find_match(conn, "totally different", [0.0, 1.0])["decision"] == "new"
 
 
+def test_different_embedding_provider_does_not_auto_merge(monkeypatch):
+    conn = connect(":memory:")
+    save_entity_vector(conn, "method:ppo", "PPO", [1.0, 0.0])
+    monkeypatch.setattr("app.llm.client.embedding_identity", lambda: ("https://other.example", "other-model"))
+    assert find_match(conn, "PPO", [1.0, 0.0])["decision"] == "new"
+
+
 def test_align_pending_entities():
     conn = connect(":memory:")
     save_entity_vector(conn, "method:ppo", "PPO", [1.0, 0.0])

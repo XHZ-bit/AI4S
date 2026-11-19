@@ -17,9 +17,19 @@ def cosine(a: list[float], b: list[float]) -> float:
 
 
 def find_match(conn, name: str, embedding: list[float], entity_type: str | None = None) -> dict:
+    from app.config import get_settings
+    from app.llm.client import embedding_identity
+
+    settings = get_settings()
+    if embedding_identity() != (settings.llm_api_base.rstrip("/"), settings.llm_embed_model):
+        # Older entity vectors have no model identity. Keep candidates separate
+        # until a user can verify alignment rather than comparing incompatible spaces.
+        return {"decision": "new", "match_uid": None, "match_name": None, "similarity": 0.0}
     best_uid, best_name, best_sim = None, None, 0.0
     for row in all_entity_vectors(conn):
         if entity_type and not row["uid"].startswith(f"{entity_type.lower()}:"):
+            continue
+        if len(embedding) != len(row["embedding"]):
             continue
         sim = cosine(embedding, row["embedding"])
         if sim > best_sim:

@@ -7,7 +7,7 @@ import "./session.css";
 type AuthMode = "login" | "register" | "forgot" | "recovery" | "reset" | "verify";
 interface AuthValues { username: string; password: string; email?: string; code: string; new_password: string }
 export const usernameRules = [{ required: true, message: "请输入用户名" }, { pattern: /^[A-Za-z0-9][A-Za-z0-9_.-]{2,63}$/, message: "使用 3–64 位字母、数字、点、横线或下划线，并以字母或数字开头" }];
-export const newPasswordRules = [{ required: true, message: "请输入密码" }, { min: 12, message: "密码至少需要 12 个字符" }, { max: 1024, message: "密码不能超过 1024 个字符" }];
+export const newPasswordRules = [{ required: true, message: "请输入密码" }, { min: 6, message: "密码至少需要 6 个字符" }, { max: 1024, message: "密码不能超过 1024 个字符" }];
 
 export function ConfirmPassword({ name = "confirm_password", dependency = "password", label = "确认密码" }: { name?: string; dependency?: string; label?: string }) {
   return <Form.Item name={name} label={label} dependencies={[dependency]} rules={[
@@ -50,7 +50,7 @@ export default function AuthenticationForm({ registrationEnabled = false, emailR
   const descriptions: Record<AuthMode, string> = {
     login: "继续阅读，回到你的研究空间。", register: "用一个账号保存论文、笔记和学习进度。",
     forgot: "输入已验证的邮箱，我们会向你发送密码重置链接。", recovery: "输入预先保存的一次性恢复码，重新设置账号密码。",
-    reset: "设置一个至少 12 个字符的新密码。", verify: "确认此邮箱属于你，之后即可用它登录和找回密码。",
+    reset: "设置一个至少 6 个字符的新密码。", verify: "确认此邮箱属于你，之后即可用它登录和找回密码。",
   };
   return <section className="atlas-auth-form" aria-label={titles[mode]}>
     <header><h1>{titles[mode]}</h1><p>{descriptions[mode]}</p></header>
@@ -64,7 +64,7 @@ export default function AuthenticationForm({ registrationEnabled = false, emailR
       {((mode === "register" && emailRecoveryEnabled) || mode === "forgot") && <Form.Item name="email" label={mode === "register" ? "邮箱（选填）" : "已验证的邮箱"} rules={[{ required: mode === "forgot", message: "请输入邮箱" }, { type: "email", message: "请输入有效的邮箱地址" }]} extra={mode === "register" ? "验证后可用于找回密码；也可以稍后在账号设置中绑定。" : undefined}>
         <Input type="email" autoComplete="email" maxLength={254} autoCapitalize="none" spellCheck={false} />
       </Form.Item>}
-      {(mode === "login" || mode === "register") && <Form.Item name="password" label="密码" rules={mode === "register" ? newPasswordRules : [{ required: true, message: "请输入密码" }]} extra={mode === "register" ? "至少 12 个字符，建议使用容易记住的长密码。" : undefined}>
+      {(mode === "login" || mode === "register") && <Form.Item name="password" label="密码" rules={mode === "register" ? newPasswordRules : [{ required: true, message: "请输入密码" }]} extra={mode === "register" ? "至少 6 个字符。" : undefined}>
         <Input.Password autoComplete={mode === "register" ? "new-password" : "current-password"} maxLength={1024} />
       </Form.Item>}
       {mode === "register" && <ConfirmPassword />}

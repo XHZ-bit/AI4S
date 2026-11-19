@@ -40,7 +40,14 @@ export default function ResearchProjectPage() {
   const [params,setParams] = useSearchParams();
   const tab=params.get('tab')||'';
   const primary:Record<string,string>={overview:'graph',reading:'reading',compare:'compare',practice:'practice',workbench:'materials',outcomes:'materials',evidence:'materials'};
-  const historical=params.get('legacy')==='1'&&(tab==='settings'||['plans','audit','changes','scenarios','radar'].includes(tab)||tab==='outcomes'&&['formal','plan','audit','changes'].includes(params.get('output')||'')||tab==='compare'&&params.get('tool')==='historical-matrix');
+  // Historical deep links were saved before the explicit legacy flag existed.
+  // Keep their targets reachable, while an explicit current view takes priority.
+  const historical=!params.has('view')&&(
+    tab==='settings'||['plans','audit','changes','scenarios','radar'].includes(tab)||
+    tab==='workbench'&&params.has('record')||
+    tab==='outcomes'&&(params.has('record')||['formal','plan','audit','changes'].includes(params.get('output')||''))||
+    tab==='compare'&&params.get('tool')==='historical-matrix'
+  );
   useEffect(()=>{if(historical||params.has('view')||!primary[tab])return;const next=new URLSearchParams(params);next.set('view',primary[tab]);next.delete('tab');next.delete('legacy');if(tab==='compare'&&!/^[a-f0-9]{32}$/.test(next.get('comparison')||''))next.delete('comparison');setParams(next,{replace:true})},[historical,tab,params,setParams]);
   return historical ? <LegacyResearchProjectPage key={projectId}/> : <KnowledgeWorkbench key={projectId} projectId={projectId}/>;
 }

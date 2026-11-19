@@ -1,0 +1,196 @@
+{
+  "date": "2026-10-16",
+  "timezone": "Asia/Shanghai",
+  "recorded_at_utc": "2026-10-16T04:55:55.926754+00:00",
+  "scope": "local offline demo readiness; no real model calls or effectiveness claims",
+  "environment": {
+    "os": "Windows-11-10.0.26200-SP0",
+    "python": "3.13.9",
+    "node": "v24.14.0",
+    "chrome": "155.0.8059.80"
+  },
+  "tests": {
+    "backend": {
+      "passed": 342,
+      "exit_code": 0,
+      "log": ".ui_validation/demo-readiness-20261016/backend-final.txt"
+    },
+    "frontend": {
+      "files": 19,
+      "passed": 56,
+      "exit_code": 0,
+      "log": ".ui_validation/demo-readiness-20261016/frontend-test-final.log"
+    },
+    "archive_subset": {
+      "passed": 15
+    },
+    "demo_preparation_subset": {
+      "passed": 11
+    },
+    "frontend_build": {
+      "passed": true,
+      "log": ".ui_validation/demo-readiness-20261016/frontend-build.log"
+    },
+    "ruff": {
+      "passed": true,
+      "log": ".ui_validation/demo-readiness-20261016/ruff-all.txt"
+    }
+  },
+  "browser": {
+    "started_at": "2026-10-16T04:48:26.121Z",
+    "real_chromium": true,
+    "data_scope": "pinned public PDFs plus explicitly synthetic project; no model calls",
+    "checks": {
+      "isolated_offline_runtime": true,
+      "profiles_produce_different_routes": true,
+      "original_passage_modal": true,
+      "profile_edit_recomputes_route": true,
+      "personalized_projection_and_mobile_fit": true,
+      "original_paper_link_and_pdf_render": true,
+      "unsaved_draft_survives_refresh": true,
+      "manual_save_and_saved_refresh": true,
+      "snapshot_created_through_ui": true,
+      "snapshot_available_when_graph_is_unavailable": true,
+      "json_and_markdown_downloads": true,
+      "snapshot_pdf_export": true,
+      "old_snapshot_unchanged_after_plan_edit": true,
+      "old_snapshot_review_flag_updates": true,
+      "plan_mobile_fit": true,
+      "long_version_titles_readable_on_mobile": true
+    },
+    "errors": [],
+    "expected_degradations": [
+      "Neo4j snapshot projection unavailable in offline demo"
+    ],
+    "screenshots": [
+      "personalized-desktop.png",
+      "personalized-evidence.png",
+      "personalized-1280.png",
+      "personalized-390.png",
+      "original-paper.png",
+      "plan-snapshot-desktop.png",
+      "snapshot-print.png",
+      "plan-mobile.png",
+      "plan-mobile-versions.png"
+    ],
+    "blocked_external_requests": [],
+    "browser_version": "155.0.8059.80",
+    "initial_routes": {
+      "robotics": [
+        "diffusion models",
+        "diffusion policy"
+      ],
+      "generative": [
+        "imitation learning",
+        "diffusion policy"
+      ]
+    },
+    "snapshot_id": "snapshot-4dc27899a3b84c91a002eaafc14798e1",
+    "passed": true,
+    "finished_at": "2026-10-16T04:48:43.450Z",
+    "evidence_directory": ".ui_validation/demo-readiness-20261016/browser-release"
+  },
+  "platform_browser": {
+    "fixture": "synthetic",
+    "checks": {
+      "no_model_no_graph_local_available": true,
+      "upload_partial_coverage_reading_separate_from_mastery": true,
+      "immutable_action_save_and_refresh": true,
+      "restart_restores_activity_and_plan": true,
+      "changed_source_review_preview_new_version_old_preserved": true,
+      "partial_failure_other_sections_survive": true,
+      "snapshot_step_output_restored": true,
+      "unified_task_progress_available": true,
+      "network_failure_and_recovery_visible": true,
+      "mobile_action_list_no_overflow": true
+    },
+    "errors": [],
+    "screenshots": [
+      "platform-paper.png",
+      "platform-actions.png",
+      "platform-actions-mobile.png"
+    ],
+    "passed": true
+  },
+  "demo_runtime": {
+    "fixture": "local_demo_pinned_and_synthetic",
+    "checks": {
+      "offline_model_disabled": true,
+      "local_parser_and_graph_isolated": true,
+      "combined_demo_papers_available": true,
+      "repeated_start_reuses_process": true,
+      "restart_uses_new_process_same_data": true,
+      "restart_preserves_snapshot": true,
+      "restart_keeps_model_disabled": true,
+      "stop_releases_services": true,
+      "repeated_prepare_preserves_seed_identity": true
+    },
+    "passed": true,
+    "data_dir": "D:\\storage\\Codex_program\\AI4S\\.ui_validation\\demo-readiness-20261016\\runtime-data",
+    "model_calls": 0,
+    "backend_port": 18030,
+    "frontend_port": 15199
+  },
+  "local_runtime_regression": {
+    "fixture": "synthetic",
+    "checks": {
+      "repeated_start_reuses_same_data_process": true,
+      "restart_preserves_data_and_offline_profile": true,
+      "different_data_profile_rejected": true
+    },
+    "passed": true
+  },
+  "delivered_runtime": {
+    "url": "http://127.0.0.1:5173",
+    "database": ".demo/data",
+    "paper_count": 4,
+    "host_smoke_checks": {
+      "host_reachable_from_separate_process": true,
+      "home_with_prepared_data": true,
+      "personalized_routes_on_delivered_database": true
+    },
+    "model_calls": 0,
+    "model_status": "unconfigured",
+    "graph_status": "unavailable",
+    "parser": "PyMuPDF fallback",
+    "log": ".ui_validation/demo-readiness-20261016/host-runtime.json"
+  },
+  "pdf": {
+    "path": ".ui_validation/demo-readiness-20261016/browser-release/snapshot.pdf",
+    "pages": 2,
+    "sha256": "631c64be5aceb6e040da061496f2a4f8565f435b47ff0ce7a8d40febf52e2f85",
+    "rendered_with": "Poppler pdftoppm",
+    "visual_review": "both pages checked; Chinese, steps and frozen references readable"
+  },
+  "fixes": [
+    "visible Vitest progress",
+    "correct home API fixtures and async assertions",
+    "Windows metadata-based backup path checks including links and aliases",
+    "isolated demo preparation with record-preserving validation",
+    "CIM-independent runtime controls and offline dotenv isolation",
+    "bounded mobile plan version selector with readable expanded labels"
+  ],
+  "code_sha256": {
+    ".gitignore": "56af412af9324b3c00a0aa12b854842c5ab16c9157cfae3010c840284736cd23",
+    "demo.ps1": "5c4d1e275ec0ce64d95f91aec6880bd9d1a2006572d9161e7a2206f1fac51785",
+    "start.ps1": "a9a6feffaba7a1e8329a2aaa9689ccd13df5bdd161f04cb0ebc786a3205461bb",
+    "stop.ps1": "ce9b57d17e5d570ccfc012486278d1079612cc7be34c8226478167bf7f844073",
+    "backend/scripts/prepare_demo.py": "00217ed9b3dc61d64c5166ec476ef06490e272f7a936ef124dc64373e2d238d0",
+    "backend/tests/test_demo_preparation.py": "ffe5115c4f5312f915b34d3c567087f54ca875ee1aa318e714e444f634a3fd36",
+    "backend/app/data_archive.py": "68a9eb6ed93534ab7ffc910a00bf9efaffb0029ca480226f84661767e47e1d23",
+    "backend/tests/test_data_archive.py": "3d49680657fba982452a1d4ae05c374633390dff46cadf4653c3a0ba6d414453",
+    "frontend/scripts/test.mjs": "72703a8e6b137210e5c3882eb920f83e670cec96d0ca31e000f8c97165b8c2eb",
+    "frontend/vitest.config.ts": "33a53752ecbc252ddacdf3be7ed37f89f6529e7dd4e8b65845fa55980d847a3f",
+    "frontend/src/__tests__/App.test.tsx": "83d0a85e032ee189eb4b84175a0debcde9583edb40e9b0fd20d3d61399f46625",
+    "frontend/src/pages/Home.tsx": "1212d5eb031eb761bc33115f9caceda94452fe06647116e5a5ec6b59182109cf",
+    "frontend/src/components/research/PlansPanel.tsx": "2526bbb5d0d964db7ab75e8b6bf77bb2b69d3b976ec5430c26c356015e798c9c",
+    "frontend/src/pages/research/research-workspace.css": "1f86640719fc7db57d9b4b75b85d226226719b09b75bb40bf2223652c35b14f9",
+    "evaluation/research_atlas/run_demo_browser.cjs": "f19ccef2d8430017ef50055681a6d6009e2c37a6d09b23ed00aac736cfe0a5f1"
+  },
+  "limitations": [
+    "No real model quality or real user effectiveness verification",
+    "Neo4j snapshot projection intentionally unavailable in offline demo",
+    "No OCR for scanned PDF pages",
+    "Pinned public PDFs are local files and not distributed with source"
+  ]
+}

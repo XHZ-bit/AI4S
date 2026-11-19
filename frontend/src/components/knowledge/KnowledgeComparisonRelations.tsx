@@ -4,13 +4,14 @@ import {getUnifiedEdge} from '../../api/unifiedGraph';
 import {getKnowledgeNode,nodeKindLabels,originLabels} from '../../api/knowledge';
 import type {KnowledgeEvidence,KnowledgeNode,NodeDetail} from '../../api/knowledge';
 import {EvidenceList} from './KnowledgeSources';
+import MathText from '../learning/MathText';
 import {layoutFocusGraph,routeGraphEdges,wrapNodeLabel,NODE_WIDTH,NODE_HEIGHT} from './KnowledgeGraphLayout';
 
 /** A view over saved relationships; comparison prose never becomes a graph edge. */
 export default function KnowledgeComparisonRelations({projectId,nodeIds,dimension,onNode,onEvidence}:{projectId:string;nodeIds:string[];dimension?:string;onNode:(id:string)=>void;onEvidence:(value:KnowledgeEvidence)=>void}){
  const [details,setDetails]=useState<NodeDetail[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState(''),[selected,setSelected]=useState(''),[retry,setRetry]=useState(0);
  const [edgeEvidence,setEdgeEvidence]=useState<KnowledgeEvidence[]>([]),[evidenceError,setEvidenceError]=useState('');
- useEffect(()=>{const c=new AbortController();setEdgeEvidence([]);setEvidenceError('');if(selected)void getUnifiedEdge(selected,c.signal).then(r=>{if(!c.signal.aborted)setEdgeEvidence(r.evidence||[])}).catch(e=>{if(!c.signal.aborted)setEvidenceError(String(e))});return()=>c.abort()},[projectId,selected]);
+ useEffect(()=>{const c=new AbortController();setEdgeEvidence([]);setEvidenceError('');if(selected)void getUnifiedEdge(selected,c.signal,projectId).then(r=>{if(!c.signal.aborted)setEdgeEvidence(r.evidence||[])}).catch(e=>{if(!c.signal.aborted)setEvidenceError(String(e))});return()=>c.abort()},[projectId,selected]);
  const key=[...new Set(nodeIds)].slice(0,4).join('|');
  useEffect(()=>{
   const c=new AbortController();setDetails([]);setSelected('');setError('');
@@ -50,7 +51,7 @@ export default function KnowledgeComparisonRelations({projectId,nodeIds,dimensio
    </svg></div>
    <div className="kw-comparison-edge-list">{graph.edges.map(e=><Button key={e.id} type={e.id===selected?'primary':'default'} onClick={()=>setSelected(e.id)}>{name(e.source)} → {e.label} → {name(e.target)}</Button>)}</div>
    {!graph.edges.length&&<p className="kw-muted">当前节点间尚无已保存关系；表格中的比较仍需各自核对来源。</p>}
-   {edge&&<div className="kw-comparison-relation-evidence"><h4>{name(edge.source)} → {edge.label} → {name(edge.target)}</h4><p>{originLabels[edge.origin]||edge.origin} · {edge.explanation||'当前记录未附关系解释。'}</p>{evidenceError&&<p role="alert">关系原文暂不可用：{evidenceError}</p>}<EvidenceList items={evidence} onOpen={onEvidence}/>{!evidence.length&&<p className="kw-muted">此关系尚无可定位的原文依据。</p>}</div>}
+   {edge&&<div className="kw-comparison-relation-evidence"><h4>{name(edge.source)} → {edge.label} → {name(edge.target)}</h4><p>{originLabels[edge.origin]||edge.origin} · <MathText text={edge.explanation||'当前记录未附关系解释。'}/></p>{evidenceError&&<p role="alert">关系原文暂不可用：{evidenceError}</p>}<EvidenceList items={evidence} onOpen={onEvidence}/>{!evidence.length&&<p className="kw-muted">此关系尚无可定位的原文依据。</p>}</div>}
    {graph.truncated&&<p className="kw-muted">当前呈现 10 个关联节点，可点击节点进入图谱继续展开。</p>}
   </>}
  </section>;

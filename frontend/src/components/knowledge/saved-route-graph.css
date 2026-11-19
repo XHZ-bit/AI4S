@@ -1,0 +1,18 @@
+.kw-saved-route-map { margin:0 0 12px; padding:16px 0; border-top:1px solid var(--atlas-line); border-bottom:1px solid var(--atlas-line); color:var(--atlas-ink); }
+.kw-saved-route-map header { display:flex; align-items:center; justify-content:space-between; gap:18px; }
+.kw-saved-route-map h3 { margin:0; font-size:17px; }
+.kw-saved-route-map p { margin:9px 0 12px; color:var(--atlas-muted); font-size:13px; line-height:1.7; }
+.kw-saved-route-steps { display:flex; flex-wrap:wrap; gap:8px; list-style:none; padding:0; margin:0; }
+.kw-saved-route-steps li { min-width:0; max-width:100%; }
+.kw-saved-route-steps button { display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:9px; row-gap:3px; align-items:start; max-width:100%; padding:9px 12px; border:1px solid var(--atlas-line); border-radius:7px; background:var(--atlas-surface); color:var(--atlas-ink); cursor:pointer; text-align:left; font:inherit; }
+.kw-saved-route-steps button:disabled { color:var(--atlas-muted); cursor:default; }
+.kw-saved-route-steps button:focus-visible { outline:2px solid var(--atlas-focus); outline-offset:3px; }
+.kw-saved-route-steps button[data-route-state="next"] { border-color:var(--atlas-accent); background:var(--atlas-accent-soft); }
+.kw-saved-route-steps button[aria-current="step"] { box-shadow:inset 0 0 0 1px var(--atlas-accent); }
+.kw-saved-route-steps small { grid-column:2; color:var(--atlas-muted); font-size:11px; }
+.kw-saved-route-steps strong { overflow-wrap:anywhere; font-size:13px; font-weight:500; }
+.kw-saved-route-index { color:var(--atlas-accent-strong); font-size:12px; font-variant-numeric:tabular-nums; }
+.kw-graph-first .kw-flat-graph .kw-graph-node.kw-route-next rect { stroke:var(--atlas-accent); stroke-width:2; }
+.kw-graph-first .kw-flat-graph .kw-graph-node.kw-route-done .kw-node-kind { fill:var(--atlas-accent-strong); }
+.kw-graph-first .kw-flat-graph .kw-graph-node.kw-route-skipped rect { stroke-dasharray:5 4; }
+.kw-content-list .kw-content-route-state { display:block; margin-top:4px; font-size:12px; color:var(--atlas-accent-strong); }

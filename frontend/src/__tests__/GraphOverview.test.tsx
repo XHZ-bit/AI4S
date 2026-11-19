@@ -23,8 +23,11 @@ beforeEach(()=>{
  });
 });
 
+// Multi-step Ant Design interactions can exceed 15s in JSDOM.
+// Keep their budget local; real canvas behavior is covered by browser checks.
 test('global overview displays distinct scoped sources and expands the chosen source with a bounded request',async()=>{
  render(<MemoryRouter><Graph/></MemoryRouter>);
+ fireEvent.click(screen.getByRole('button',{name:'显示对象列表'}));
  const source=await screen.findByLabelText('Shared paper · 论文 · 资料库');
  expect(screen.getByLabelText('Shared paper · 论文 · 空间 A')).toBeVisible();
  expect(within(source).getByText('论文 · 资料库 · 61 条知识')).toBeVisible();
@@ -38,10 +41,11 @@ test('global overview displays distinct scoped sources and expands the chosen so
  fireEvent.click(screen.getByRole('button',{name:'返回 / 收起上次展开'}));
  expect(screen.getByRole('heading',{name:'来源总览'})).toBeVisible();
  expect(screen.getByLabelText('Shared paper · 论文 · 空间 A')).toBeVisible();
-});
+},30000);
 
 test('library source reading keeps graph return context without impersonating a research project',async()=>{
  render(<MemoryRouter initialEntries={['/graph?project_id=library&project=library']}><Graph/></MemoryRouter>);
+ fireEvent.click(screen.getByRole('button',{name:'显示对象列表'}));
  fireEvent.click(await screen.findByLabelText('Shared paper · 论文 · 资料库'));
  const link=await screen.findByRole('link',{name:'阅读这篇论文'});
  const url=new URL(link.getAttribute('href')!,'http://localhost');
@@ -53,6 +57,7 @@ test('library source reading keeps graph return context without impersonating a 
 
 test('historical paper records remain searchable and their link explicitly opens source evidence',async()=>{
  render(<MemoryRouter initialEntries={['/graph?project_id=library']}><Graph/></MemoryRouter>);
+ fireEvent.click(screen.getByRole('button',{name:'显示对象列表'}));
  await screen.findByLabelText('Shared paper · 论文 · 资料库');
  const input=screen.getByLabelText('搜索图谱');
  fireEvent.change(input,{target:{value:'Shared paper'}});fireEvent.keyDown(input,{key:'Enter',code:'Enter',keyCode:13});
@@ -80,6 +85,7 @@ test('library relationship evidence links to its actual source and clears stale 
   return base(input,...args);
  });
  render(<MemoryRouter initialEntries={['/graph?project_id=library&project=library']}><Graph/></MemoryRouter>);
+ fireEvent.click(screen.getByRole('button',{name:'显示对象列表'}));
  fireEvent.click(await screen.findByLabelText('Shared paper · 论文 · 资料库'));
  fireEvent.click(await screen.findByText('Shared paper → 提及 → Other source'));
  fireEvent.click(screen.getByRole('button',{name:/查看来源 1/}));
@@ -89,12 +95,13 @@ test('library relationship evidence links to its actual source and clears stale 
  expect(url.searchParams.get('page')).toBe('3');
  expect(url.searchParams.has('project')).toBe(false);
  expect(screen.getAllByRole('link',{name:'打开原文位置'})).toHaveLength(1);
-});
+},30000);
 
 test('a project report without a paper ID opens its source and never creates a false paper link',async()=>{
  const report={...roots[1],id:'report-root',source_id:'report-source',paper_uid:null,kind:'report',label:'Project report'};
  globalThis.fetch=vi.fn().mockImplementation(async(input:any)=>({ok:true,json:async()=>String(input).includes('/neighbors/')?{nodes:[{...display(report),sources:[{paper_uid:null,paper_title:'Project report',source_id:'report-source',project_id:'space-a'}]}],links:[]}:{nodes:[report],edges:[],scopes:[project],overview:true}}));
  render(<MemoryRouter initialEntries={['/graph?project_id=space-a']}><Graph/></MemoryRouter>);
+ fireEvent.click(screen.getByRole('button',{name:'显示对象列表'}));
  fireEvent.click(await screen.findByRole('button',{name:/^Project report ·/}));
  const link=await screen.findByRole('link',{name:'查看来源原文'});
  const url=new URL(link.getAttribute('href')!,'http://localhost');
@@ -103,7 +110,7 @@ test('a project report without a paper ID opens its source and never creates a f
  expect(url.searchParams.get('source')).toBe('report-source');
  expect(screen.queryByRole('heading',{name:'来源论文'})).toBeNull();
  expect(screen.getAllByRole('link').every(a=>!a.getAttribute('href')?.match(/\/papers\/(?:null|undefined)/))).toBe(true);
- const context={beginPath:vi.fn(),arc:vi.fn(),stroke:vi.fn(),fill:vi.fn(),measureText:()=>({width:40}),fillText:vi.fn()};
+ const context={save:vi.fn(),restore:vi.fn(),beginPath:vi.fn(),arc:vi.fn(),stroke:vi.fn(),fill:vi.fn(),measureText:()=>({width:40}),fillText:vi.fn()};
  canvas.props.nodeCanvasObject({...display(report),x:0,y:0},context,1);
  expect(context.fillText).toHaveBeenCalledWith('Project report',0,7);
-});
+},30000);

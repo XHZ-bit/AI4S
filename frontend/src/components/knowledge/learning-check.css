@@ -1,0 +1,15 @@
+.kw-learning-check { margin:24px 0; padding-top:18px; border-top:1px solid var(--atlas-line); }
+.kw-learning-check summary { cursor:pointer; color:var(--atlas-accent); font-weight:600; }
+.kw-learning-check p { line-height:1.8; max-width:75ch; }
+.kw-learning-check fieldset { border:0; padding:0; margin:18px 0; }
+.kw-learning-check legend { margin-bottom:12px; color:var(--atlas-ink); font-size:16px; line-height:1.8; }
+.kw-learning-check fieldset>label { display:flex; gap:10px; align-items:baseline; padding:9px 0; line-height:1.7; }
+.kw-learning-check input[type=radio] { accent-color:var(--atlas-accent); }
+.kw-learning-check fieldset>.kw-check-explanation { display:grid; gap:8px; max-width:760px; }
+.kw-check-select { display:flex; gap:12px; align-items:center; margin:16px 0; }
+.kw-check-select select { padding:7px 10px; border:1px solid var(--atlas-line); border-radius:7px; background:var(--atlas-surface); color:var(--atlas-ink); }
+.kw-check-feedback { margin-top:20px; padding:18px; border:1px solid var(--atlas-line); border-radius:10px; background:var(--atlas-surface-alt); }
+.kw-check-history { margin-top:20px; }
+.kw-check-history ul { padding:0; list-style:none; }
+.kw-check-history li { padding:16px 0; border-bottom:1px solid var(--atlas-line); }
+.kw-check-history small { display:block; color:var(--atlas-muted); }

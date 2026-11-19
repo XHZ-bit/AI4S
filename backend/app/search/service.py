@@ -3,7 +3,7 @@ import math
 import re
 import struct
 
-from app.llm.client import embed
+from app.llm.client import embed, embedding_identity
 from app.db.search_index import available as search_index_available
 
 
@@ -28,7 +28,15 @@ def index_paper(conn, paper_uid: str, text: str) -> None:
         "INSERT OR REPLACE INTO paper_embeddings (paper_uid, embedding) VALUES (?, ?)",
         (paper_uid, _pack(vec)),
     )
+    _record_embedding_identity(conn, [paper_uid])
     conn.commit()
+
+
+def _record_embedding_identity(conn, paper_uids):
+    conn.execute("CREATE TABLE IF NOT EXISTS paper_embedding_models (paper_uid TEXT PRIMARY KEY, base TEXT NOT NULL, model TEXT NOT NULL)")
+    base, name = embedding_identity()
+    conn.executemany("INSERT OR REPLACE INTO paper_embedding_models VALUES(?,?,?)",
+                     [(uid, base, name) for uid in paper_uids])
 
 
 def index_papers(conn, items: list[tuple[str, str]]) -> None:
@@ -40,15 +48,31 @@ def index_papers(conn, items: list[tuple[str, str]]) -> None:
             raise ValueError("embedding count does not match input count")
         conn.executemany("INSERT OR REPLACE INTO paper_embeddings(paper_uid,embedding) VALUES(?,?)",
                          [(uid, _pack(vector)) for (uid, _), vector in zip(batch, vectors, strict=True)])
+        _record_embedding_identity(conn, [uid for uid, _ in batch])
         conn.commit()
 
 
 def semantic_search(conn, query: str, limit: int = 10) -> list[dict]:
+    from app.config import get_settings
+    conn.execute("CREATE TABLE IF NOT EXISTS paper_embedding_models (paper_uid TEXT PRIMARY KEY, base TEXT NOT NULL, model TEXT NOT NULL)")
+    base, name = embedding_identity()
+    rows = conn.execute(
+        "SELECT p.paper_uid,p.embedding FROM paper_embeddings p LEFT JOIN paper_embedding_models m "
+        "ON m.paper_uid=p.paper_uid WHERE (m.base=? AND m.model=?) OR "
+        "(m.paper_uid IS NULL AND ?=1)",
+        (base, name, int((base, name) == (
+            get_settings().llm_api_base.rstrip("/"), get_settings().llm_embed_model
+        ))),
+    ).fetchall()
+    if not rows:
+        raise ValueError("当前向量模型尚无索引，请重新建立索引")
     qvec = embed([query])[0]
-    rows = conn.execute("SELECT paper_uid, embedding FROM paper_embeddings").fetchall()
     scored = []
     for r in rows:
-        score = _cosine(qvec, _unpack(r["embedding"]))
+        vector = _unpack(r["embedding"])
+        if len(vector) != len(qvec):
+            continue
+        score = _cosine(qvec, vector)
         scored.append({"uid": r["paper_uid"], "score": score})
     scored.sort(key=lambda x: x["score"], reverse=True)
     return scored[:limit]

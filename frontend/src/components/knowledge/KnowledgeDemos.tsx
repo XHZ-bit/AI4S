@@ -1,8 +1,10 @@
 import {useState} from 'react';
 import {Button,Select} from 'antd';
 import MathText from '../learning/MathText';
+import FoundationDemos,{FOUNDATION_DEMOS} from './FoundationDemos';
 
 export const DEMOS: Record<string,{title:string;note:string}> = {
+ ...FOUNDATION_DEMOS,
  chain_rule:{title:'链式法则与计算图',note:'观察输入和权重怎样共同影响输出及其局部导数。'},
  activations:{title:'激活函数与局部梯度',note:'比较 sigmoid、tanh 的输出和导数，观察饱和区域。'},
  gating:{title:'门控位置与有界残差',note:'在同一消息和门控下比较两种参数化；仅展示局部数学性质。'},
@@ -38,5 +40,5 @@ function Branches(){const [arm,setArm]=useState(0.6),[hand,setHand]=useState(-0.
 export default function KnowledgeDemos({ids}:{ids:string[]}){
  const keys=DEMO_KEYS(ids);const [selection,setSelection]=useState(keys[0]||'');const selected=keys.includes(selection)?selection:keys[0];
  if(!keys.length)return null;
- return <section className="kw-demo"><div className="kw-section-heading"><h3>交互演示</h3>{keys.length>1&&<Select aria-label="选择交互演示" value={selected} onChange={setSelection} options={keys.map(k=>({value:k,label:DEMOS[k].title}))}/>}</div><h4>{DEMOS[selected].title}</h4><p>{DEMOS[selected].note}</p>{selected==='chain_rule'?<Chain/>:selected==='activations'?<Activations/>:selected==='gating'?<Gating/>:selected==='gaussian'?<Gaussian/>:selected==='ppo'?<Ppo/>:<Branches/>}</section>;
+ return <section className="kw-demo"><div className="kw-section-heading"><h3>交互演示</h3>{keys.length>1&&<Select aria-label="选择交互演示" value={selected} onChange={setSelection} options={keys.map(k=>({value:k,label:DEMOS[k].title}))}/>}</div><h4>{DEMOS[selected].title}</h4><p>{DEMOS[selected].note}</p>{FOUNDATION_DEMOS[selected]?<FoundationDemos topic={selected}/>:selected==='chain_rule'?<Chain/>:selected==='activations'?<Activations/>:selected==='gating'?<Gating/>:selected==='gaussian'?<Gaussian/>:selected==='ppo'?<Ppo/>:<Branches/>}</section>;
 }

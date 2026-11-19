@@ -38,6 +38,9 @@ test("new workbench exposes two starts without duplicate tool lists or hero sear
   expect(await screen.findByText("添加第一篇论文，即可开始阅读和记录理解。")).toBeTruthy();
   expect(link("从论文开始").getAttribute("href")).toBe("/manage?add=1");
   expect(link("探索一个想法").getAttribute("href")).toBe("/research?new=1");
+  expect(link('建立研究空间')).toHaveAttribute('href','/research?new=1');
+  expect(link('查看全部知识')).toHaveAttribute('href','/graph');
+  expect(screen.queryByText('进入当前研究图谱')).toBeNull();
   expect(screen.queryByText("继续上次任务")).toBeNull();
   expect(screen.queryByRole('searchbox')).toBeNull();
   expect(screen.queryByText("自动行动清单")).toBeNull();
@@ -52,6 +55,18 @@ test("returning users resume the exact reading location and recent paper titles 
   await screen.findByText("Original paper");
   expect(link("Original paper").getAttribute("href")).toBe("/papers/paper%3Aone?tab=reading");
   expect(screen.getByText("本地 PDF · 2025")).toBeTruthy();
+});
+
+test("continuing a knowledge workspace keeps its position and restores the saved canvas", async () => {
+  localStorage.setItem("paperstride:local:lastWorkspace", "/research/p1?view=practice&node=n1&returnTo=%2Fresearch%2Fp1%3Fview%3Dlearning");
+  vi.mocked(useRecentProjects).mockReturnValue({items:[{id:"p1",title:"研究"}],loading:false,error:"",retry:vi.fn()} as any);
+  show();
+  await screen.findByText("添加第一篇论文，即可开始阅读和记录理解。");
+  const href=link("继续上次任务").getAttribute("href")!;
+  expect(href).toContain("view=practice");
+  expect(href).toContain("node=n1");
+  expect(href).toContain("returnTo=");
+  expect(href).toContain("resumeCanvas=1");
 });
 
 test("latest workflow event wins even if an aborted older request later resolves", async () => {

@@ -1,0 +1,2 @@
+.kw-question-starters { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0; }
+.kw-question-starters .ant-btn { font-size:12px; color:var(--atlas-accent); background:var(--atlas-surface); border-color:var(--atlas-line); }

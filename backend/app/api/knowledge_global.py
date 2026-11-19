@@ -1,6 +1,6 @@
 """Account-scoped knowledge overview; does not call models or migrate on reads."""
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from app.knowledge import store, unified
 from pydantic import BaseModel, Field
 from typing import Literal
@@ -61,7 +61,7 @@ def edge(edge_id: str, project_id: str | None = None):
 
 class Quality(BaseModel):
     action: Literal["verify", "dispute", "withdraw", "restore"]
-    actor: str = Field(min_length=1, max_length=100)
+    actor: str | None = Field(default=None, min_length=1, max_length=100)
     reason: str = Field(min_length=1, max_length=4000)
     expected_version: int = Field(ge=1)
     project_id: str | None = None
@@ -69,13 +69,29 @@ class Quality(BaseModel):
 
 @router.post("/records/{record_id}/quality")
 def review(record_id: str, req: Quality):
+    from app.tenancy import current_user
+    user = current_user.get()
+    actor = (user.get('username') or user.get('id')) if user else (req.actor or '本机用户')
     with store.connection() as conn:
         return unified.review_record(
             conn,
             record_id,
             req.action,
-            req.actor,
+            actor,
             req.reason,
             project_id=req.project_id,
             expected_version=req.expected_version,
         )
+
+
+@router.get('/records/{record_id}/history')
+def history(record_id: str, project_id: str):
+    import json
+    with store.connection() as conn:
+        unified.require_scope(conn, project_id)
+        table = 'kw_nodes' if conn.execute('SELECT 1 FROM kw_nodes WHERE id=? AND project_id=?', (record_id, project_id)).fetchone() else 'kw_edges'
+        current = store.record(conn, table, project_id, record_id)
+        if current['project_id'] != project_id:
+            raise HTTPException(404, '知识内容不在当前研究空间')
+        rows = conn.execute('SELECT kind,data,created_at FROM kw_history WHERE project_id=? AND record_id=? ORDER BY id DESC LIMIT 30', (project_id, record_id)).fetchall()
+        return {'items': [{'kind': row[0], 'snapshot': json.loads(row[1]), 'created_at': row[2]} for row in rows]}

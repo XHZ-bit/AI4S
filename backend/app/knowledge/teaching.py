@@ -1,5 +1,7 @@
 """Reusable teaching references, independent of paper names or research claims."""
 
+from app.knowledge.foundations import references as foundation_references
+
 GATING = r'''教学数学对照（只有原文采用相同参数化时才可对应当前方法）：
 固定独立标量 m,z，c>0，s=σ(z)∈(0,1)。定义两种常见门控残差：
 δ_in=c tanh(2sm/c)，δ_out=cs tanh(2m/c)。令u=2sm/c，v=2m/c。
@@ -13,4 +15,4 @@ GATING = r'''教学数学对照（只有原文采用相同参数化时才可对�
 
 
 def references(demos):
-    return {'gating': GATING} if 'gating' in demos else {}
+    return {**({'gating': GATING} if 'gating' in demos else {}), **foundation_references(demos)}

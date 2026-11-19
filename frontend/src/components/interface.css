@@ -51,6 +51,19 @@ body {
 }
 ::selection { background: var(--atlas-accent-soft); color: var(--atlas-ink); }
 :focus-visible { outline: 2px solid var(--atlas-focus) !important; outline-offset: 3px; }
+/* Composite controls already draw their focus boundary on the wrapper. */
+:is(.ant-input, .ant-input-number-input, .ant-select-selection-search-input):focus-visible {
+  outline: none !important;
+}
+/* Standalone inputs use the same understated boundary as affix controls. */
+:is(input.ant-input, textarea.ant-input):focus:not(.ant-input-status-error):not(.ant-input-status-warning):not(.ant-input-affix-wrapper > input):not(.ant-input-search input) {
+  border-color: var(--atlas-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--atlas-focus) 16%, transparent);
+}
+.ant-input-affix-wrapper:focus-within:not(.ant-input-status-error):not(.ant-input-status-warning) {
+  border-color: var(--atlas-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--atlas-focus) 16%, transparent);
+}
 a { color: var(--atlas-accent); text-underline-offset: .2em; }
 input, textarea { caret-color: var(--atlas-accent); }
 * { scrollbar-width: thin; scrollbar-color: var(--atlas-line) transparent; }
@@ -243,7 +256,15 @@ input, textarea { caret-color: var(--atlas-accent); }
   outline-offset: 2px;
 }
 @media (forced-colors: active) {
-  :is(input[type="search"], .ant-select-selection-search-input, input[role="combobox"], input[placeholder*="搜索"], input[placeholder*="查找"]):focus-visible,
+  :is(input.ant-input, textarea.ant-input):not(.ant-input-affix-wrapper > input):not(.ant-input-search input):focus-visible {
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px;
+  }
+  :is(.ant-input-affix-wrapper, .ant-input-number, .ant-select):focus-within {
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px;
+  }
+  :is(input[type="search"], input[role="combobox"], input[placeholder*="搜索"], input[placeholder*="查找"]):not(.ant-input-affix-wrapper input, .ant-select input, .ant-input-search input):focus-visible,
   html .atlas-home-workbench .home-search input:focus-visible {
     outline: 2px solid Highlight !important;
     outline-offset: 2px;

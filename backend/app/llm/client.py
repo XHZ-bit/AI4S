@@ -46,6 +46,19 @@ def _api_key() -> str:
     return key
 
 
+def configured() -> bool:
+    """Check the selected provider without resolving DNS or exposing a key."""
+    from app import preferences
+    from app.tenancy import current_user
+    settings = get_settings()
+    if settings.offline_mode or (settings.access_mode == "multiuser" and current_user.get() is None):
+        return False
+    provider = preferences.read().get("provider", {})
+    if provider.get("enabled"):
+        return bool(provider.get("encrypted_key") and provider.get("base_url") and provider.get("model"))
+    return bool((settings.dashscope_api_key or settings.tutor_default_api_key).strip())
+
+
 def _retry_delay(attempt: int, response: httpx.Response | None) -> float:
     """优先使用服务端 Retry-After 头，否则线性退避。"""
     if response is not None:
@@ -58,19 +71,27 @@ def _retry_delay(attempt: int, response: httpx.Response | None) -> float:
     return _RETRY_SLEEP * (attempt + 1)
 
 
-def _post_with_retry(client: httpx.Client, url: str, payload: dict) -> dict:
+def _post_with_retry(client: httpx.Client, url: str, payload: dict, provider: dict | None = None,
+                     key_override: str | None = None) -> dict:
     last: Exception | None = None
     last_response: httpx.Response | None = None
     for attempt in range(3):
         from app.task_control import check_active
         check_active()
         try:
-            resp = client.post(
-                url,
-                json=payload,
-                headers={"Authorization": f"Bearer {_api_key()}"},
-                timeout=httpx.Timeout(get_settings().llm_timeout_seconds, connect=10, pool=10),
-            )
+            if provider:
+                target = httpx.URL(url).copy_with(host=provider["address"])
+                resp = client.post(
+                    target, json=payload,
+                    headers={"Authorization": f"Bearer {provider['api_key']}", "Host": provider["host"]},
+                    extensions={"sni_hostname": provider["host"]},
+                    timeout=httpx.Timeout(get_settings().llm_timeout_seconds, connect=10, pool=10),
+                )
+            else:
+                resp = client.post(
+                    url, json=payload, headers={"Authorization": f"Bearer {key_override or _api_key()}"},
+                    timeout=httpx.Timeout(get_settings().llm_timeout_seconds, connect=10, pool=10),
+                )
             resp.raise_for_status()
             check_active()
             return resp.json()
@@ -114,18 +135,57 @@ def _extract_embeddings(data: dict) -> list[list[float]]:
 
 
 def chat(messages: list[dict], json_mode: bool = False) -> str:
-    _api_key()
-    payload = {"model": get_settings().llm_model, "messages": messages, "max_tokens": 8192}
-    if get_settings().llm_model.startswith("qwen3"):
+    from app import preferences
+    settings = get_settings()
+    if settings.offline_mode:
+        raise RuntimeError("离线模式不调用模型")
+    provider = preferences.provider()
+    default_key = settings.tutor_default_api_key if settings.access_mode == "multiuser" else None
+    if not provider and not default_key:
+        _api_key()
+    selected_model = provider["model"] if provider else settings.llm_model
+    payload = {"model": selected_model, "messages": messages, "max_tokens": 8192}
+    if selected_model.startswith("qwen3"):
         payload["enable_thinking"] = False
     if json_mode:
         payload["response_format"] = {"type": "json_object"}
-    data = _post_with_retry(shared_client(), f"{_base()}/chat/completions", payload)
+    if provider:
+        with httpx.Client(trust_env=False, follow_redirects=False) as client:
+            data = _post_with_retry(client, f"{provider['base_url']}/chat/completions", payload, provider)
+    else:
+        data = _post_with_retry(shared_client(), f"{_base()}/chat/completions", payload, key_override=default_key)
     return _extract_choice(data)
 
 
+def embedding_identity() -> tuple[str, str]:
+    from app import preferences
+    settings = get_settings()
+    configured = preferences.read().get("provider", {})
+    if configured.get("enabled"):
+        base = configured.get("base_url", "").rstrip("/")
+        name = configured.get("embedding_model", "").strip()
+        if not name and base == settings.llm_api_base.rstrip("/"):
+            name = settings.llm_embed_model
+        if not name:
+            raise RuntimeError("请在模型设置中填写该服务的向量模型名称")
+        return base, name
+    return settings.llm_api_base.rstrip("/"), settings.llm_embed_model
+
+
 def embed(texts: list[str]) -> list[list[float]]:
-    _api_key()
-    payload = {"model": get_settings().llm_embed_model, "input": texts}
-    data = _post_with_retry(shared_client(), f"{_base()}/embeddings", payload)
+    from app import preferences
+    settings = get_settings()
+    if settings.offline_mode:
+        raise RuntimeError("离线模式不调用向量模型")
+    base, selected_model = embedding_identity()
+    provider = preferences.provider()
+    default_key = settings.tutor_default_api_key if settings.access_mode == "multiuser" else None
+    if not provider and not default_key:
+        _api_key()
+    payload = {"model": selected_model, "input": texts}
+    if provider:
+        with httpx.Client(trust_env=False, follow_redirects=False) as client:
+            data = _post_with_retry(client, f"{base}/embeddings", payload, provider)
+    else:
+        data = _post_with_retry(shared_client(), f"{_base()}/embeddings", payload, key_override=default_key)
     return _extract_embeddings(data)
